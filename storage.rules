@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function isOwner() {
+      return signedIn() && userDoc().data.role == 'owner';
+    }
+
+    function hasPermission(permission) {
+      return isOwner()
+        || (signedIn()
+          && userDoc().data.role == 'employee'
+          && userDoc().data.permissions[permission] == true);
+    }
+
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner() || hasPermission('uploadImages') || hasPermission('editImages');
+    }
+
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner() || hasPermission('uploadImages') || hasPermission('editImages');
+    }
+
+    match /inventory/{allPaths=**} {
+      allow read: if isOwner() || hasPermission('viewInventory');
+      allow write: if isOwner() || hasPermission('uploadImages') || hasPermission('editImages');
+    }
+
+    match /pdfs/customer/{customerId}/{allPaths=**} {
+      allow read: if isOwner()
+        || hasPermission('viewInternalPdfs')
+        || (signedIn() && userDoc().data.customerId == customerId);
+      allow write: if isOwner() || hasPermission('downloadInternalPdfs');
+    }
+
+    match /pdfs/internal/{allPaths=**} {
+      allow read, write: if isOwner() || hasPermission('downloadInternalPdfs');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

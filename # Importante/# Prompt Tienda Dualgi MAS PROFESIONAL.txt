@@ -1,0 +1,1268 @@
+Necesito crear una plataforma web de gestión y venta para mi negocio.
+
+La plataforma debe servir para vender dos tipos de productos:
+
+1. Productos impresos en 3D.
+2. Productos de reventa que no son impresiones 3D.
+
+La app debe estar pensada para uso real de negocio, con catálogo, pedidos, clientes, inventario, cuenta corriente, caja, configuración de precios, dashboard, balance financiero, roles, permisos, imágenes en productos/insumos y generación de documentos PDF.
+
+Debe tener una estética moderna, profesional, clara y fácil de usar. La interfaz debe ser responsive, usable en PC y celular, con navegación simple, tarjetas limpias, tablas claras, filtros, buscadores, estados visuales, imágenes bien presentadas y colores bien usados para diferenciar información importante.
+
+---
+
+# Objetivo principal
+
+Crear una plataforma profesional para administrar un negocio de impresión 3D y venta de productos, donde todo esté conectado:
+
+* Catálogo.
+* Pedidos.
+* Clientes.
+* Cuenta corriente.
+* Inventario.
+* Imágenes de productos, insumos y filamentos.
+* Movimientos de inventario.
+* Caja por turno.
+* Pagos.
+* Balance.
+* Configuración de precios.
+* Cotización automática del dólar.
+* Roles y permisos.
+* Documentos PDF para clientes y para control interno.
+
+No quiero pantallas aisladas. Cada acción debe impactar donde corresponde.
+
+---
+
+# 1. Dashboard / Inicio
+
+Crear una pantalla principal con resumen general del negocio.
+
+Debe mostrar:
+
+* Ventas del día.
+* Ventas del mes.
+* Total pendiente de cobro.
+* Pedidos pendientes.
+* Pedidos en proceso.
+* Pedidos terminados.
+* Pedidos entregados.
+* Productos más vendidos.
+* Productos con mayor ganancia.
+* Clientes con mayor deuda.
+* Alertas de inventario bajo.
+* Estado de caja actual: abierta o cerrada.
+* Cotización actual del dólar usada por el sistema.
+* Accesos rápidos a:
+
+  * Crear pedido.
+  * Agregar producto.
+  * Agregar cliente.
+  * Registrar pago.
+  * Ver cuenta corriente.
+  * Abrir/cerrar caja.
+  * Ver balance.
+
+El dashboard debe tener tarjetas de resumen, gráficos simples y secciones bien separadas.
+
+---
+
+# 2. Catálogo
+
+Crear una página de catálogo donde se publiquen todos los productos disponibles para la venta.
+
+Debe permitir publicar:
+
+* Productos impresos en 3D.
+* Productos que no son impresiones 3D, es decir, productos de reventa.
+
+Cada producto debe tener:
+
+* Nombre.
+* Categoría.
+* Tipo de producto: Impresión 3D o Reventa.
+* Imagen principal.
+* Galería de imágenes adicionales.
+* Descripción.
+* Precio minorista.
+* Precio mayorista si corresponde.
+* Stock disponible.
+* Estado: activo / inactivo.
+
+Si es impresión 3D:
+
+* Peso en gramos.
+* Tiempo de impresión.
+* Filamento asociado (puede tener varios filamentos)
+* Insumos asociados si corresponde.
+* Indicar si es llavero o no, porque cambia el multiplicador de precio.
+* Imagen o imágenes del producto terminado (puede ser tambien gif con movimiento)
+
+Si es producto de reventa:
+
+* Costo de compra.
+* Margen de ganancia.
+* Stock físico.
+* Imagen o imágenes del producto.
+
+Debe tener buscador, filtros por categoría, tipo de producto, estado, stock, precio manual y precio automático.
+
+El catálogo público visible para clientes debe mostrar imágenes de manera profesional:
+
+* Tarjetas de producto con imagen grande.
+* Nombre.
+* Precio.
+* Stock o disponibilidad si corresponde.
+* Botón para ver detalle.
+* Botón para comprar o pedir.
+
+El catálogo interno del dueño/admin debe mostrar además:
+
+* Si el producto tiene precio manual.
+* Costos.
+* Ganancia estimada.
+* Tipo de cálculo.
+* Estado de stock.
+* Acciones rápidas para editar.
+
+---
+
+# 3. Imágenes en productos, inventario e insumos
+
+La plataforma debe permitir cargar imágenes en productos, filamentos, insumos y productos de reventa.
+
+Esto es importante para que la app no se vea básica y para poder identificar visualmente cada elemento.
+
+## Reglas generales de imágenes
+
+Cada imagen debe poder:
+
+* Subirse desde el dispositivo.
+* Previsualizarse antes de guardar.
+* Editarse o reemplazarse.
+* Eliminarse.
+* Tener una imagen principal.
+* Tener imágenes adicionales si corresponde.
+* Mostrarse correctamente en tarjetas, listados y detalles.
+* Tener diseño responsive.
+* Usar placeholder profesional si no hay imagen cargada.
+
+El sistema debe validar:
+
+* Formatos permitidos: JPG, JPEG, PNG, gif con movimiento, mp4.
+* Tamaño máximo configurable.
+* Que no se rompa la interfaz si una imagen no carga.
+* Que las imágenes se vean bien escaladas, centradas y proporcionadas.
+
+## Imágenes en productos del catálogo
+
+Cada producto debe tener:
+
+* Imagen principal obligatoria o recomendada.
+* Galería opcional.
+* Vista previa en formulario de creación/edición.
+* Imagen visible en catálogo.
+* Imagen visible en detalle del producto.
+* Imagen visible en pedidos y PDFs si corresponde.
+
+## Imágenes en filamentos
+
+Cada filamento debe permitir imagen.
+
+La imagen puede ser:
+
+* Foto de la bobina.
+* Foto del color.
+* Muestra impresa.
+* Imagen de referencia.
+* Icono de bobina de filamento con el color de hex configurado
+
+Además del código HEX del color, debe poder verse la imagen del filamento para identificarlo mejor.
+
+En el listado de filamentos debe mostrarse:
+
+* Miniatura de imagen.
+* Marca.
+* Material.
+* Color.
+* Código HEX.
+* Peso disponible.
+* Stock mínimo.
+
+## Imágenes en insumos
+
+Cada insumo debe permitir imagen.
+
+Ejemplos:
+
+* Imanes.
+* Luces LED.
+* Tornillos.
+* Pegamento.
+* Bolsas.
+* Packaging.
+* Etiquetas.
+* Repuestos.
+* Accesorios.
+
+En el listado de insumos debe mostrarse:
+
+* Miniatura de imagen.
+* Nombre.
+* Categoría.
+* Stock actual.
+* Stock mínimo.
+* Costo unitario.
+
+## Imágenes en productos de reventa
+
+Cada producto de reventa debe permitir:
+
+* Imagen principal.
+* Galería opcional.
+* Imagen visible en catálogo.
+* Imagen visible en pedido.
+* Imagen visible en detalle.
+
+## Uso de imágenes en PDFs
+
+El PDF del cliente puede incluir imagen pequeña del producto si queda visualmente prolijo.
+
+El PDF interno puede incluir imagen pequeña del producto para identificación, pero sin perjudicar la claridad del balance.
+
+---
+
+# 4. Precios del catálogo con cotización automática
+
+Para productos impresos en 3D, el precio del filamento se carga en dólares dentro de la configuración de precios. (Configuracion de precios, aca colocamos la configuracion para que los pruductos que agregamos al catalogo se calcule automaticamente segun los parametros de precios, lo que se puede configurar en parametros de precios es : *Precio Filamento por KG (en dolares) *Precio KwH *Consumo (watts) *Vida util de la maquina *Costo en repuestos *Margen de error (%) *Multiplicador Minorista (productos que no son llavero) *Multiplicador minorista (productos que son llaveros) *% Descuento mayorista (Productos que no son llaveros) *% Descuento Mayorista (productos que son llaveros) *Umbral para aplicar descuento mayorista en gramos (productos que no son llaveros) *Umbral para aplicar descuento mayorista en gramos (productos que son llaveros) TODO ESO ES PARA PRODUCTOS DE IMPRESION 3D, AHORA FALTA LO QUE ES PARA PRODUCTOS DE REVENTA: *Ganancia sobre costo de compra % *Descuento mayorista % *Pedido minimo en $ para aplicar el descuento mayorista (0 queda deshabilitado el precio mayorista o colocar un switch que active o desactive el descuento mayorista en reventa)
+
+El catálogo debe mostrar los precios en pesos argentinos.
+
+La conversión debe hacerse automáticamente usando la cotización actual del dólar.
+
+La cotización del dólar debe obtenerse automáticamente desde una API. Usar preferentemente una API confiable basada en la cotización del Banco Nación o una fuente equivalente para Argentina.
+
+Reglas:
+
+* El precio del filamento se guarda en dólares.
+* El precio visible en el catálogo se muestra en pesos argentinos.
+* El sistema debe consultar automáticamente la cotización del dólar.
+* Si cambia la cotización del dólar, los precios del catálogo deben actualizarse automáticamente.
+* No debo tener que editar producto por producto cuando cambia el dólar.
+* Debe guardarse la última cotización obtenida.
+* Debe guardarse fecha y hora de última actualización de la cotización.
+* Si la API falla, el sistema debe usar la última cotización guardada.
+* Si nunca hubo cotización guardada, permitir carga manual de emergencia solo para el dueño/admin.
+* Mostrar en configuración cuál fue la última cotización usada.
+
+La app debe dejar preparada una estructura clara para cambiar de proveedor de API en el futuro si fuera necesario.
+
+---
+
+# 5. Regla fundamental: precio congelado al momento de la venta
+
+Los precios del catálogo pueden actualizarse automáticamente con la cotización del dólar, pero los pedidos ya creados no deben cambiar su precio.
+
+Regla obligatoria:
+
+* Cuando se crea un pedido, el sistema debe guardar una copia congelada del precio usado en ese momento.
+* El pedido debe guardar:
+
+  * Precio unitario vendido.
+  * Precio mayorista o minorista aplicado.
+  * Cotización del dólar usada en ese momento.
+  * Fecha y hora de la cotización.
+  * Costos calculados al momento de la venta.
+  * Ganancia estimada al momento de la venta.
+  * Imagen del producto o referencia visual si corresponde.
+* Si mañana cambia el dólar, solo deben cambiar los precios del catálogo y productos todavía no vendidos.
+* Los pedidos ya creados deben mantener el precio original.
+* Cuenta corriente, pagos parciales, PDFs y balance deben respetar el precio congelado del pedido.
+* Nunca recalcular un pedido viejo usando la cotización actual, salvo que el dueño edite manualmente el pedido y confirme la acción.
+
+Esto es muy importante para que no se modifiquen deudas, pagos parciales, balances históricos ni facturas ya generadas.
+
+---
+
+# 6. Precio manual por producto
+
+En cada producto del catálogo debe existir un switch llamado “Precio manual”.
+
+Solo el dueño/admin puede activar o desactivar este switch.
+
+Cuando el switch “Precio manual” está desactivado:
+
+* El precio del producto se calcula automáticamente según los parámetros de precio.
+* En productos impresos 3D se usa:
+
+  * Costo de filamento.
+  * Cotización del dólar.
+  * Electricidad.
+  * Mantenimiento.
+  * Insumos.
+  * Margen de error.
+  * Multiplicadores.
+  * Descuentos mayoristas.
+* En productos de reventa se usa:
+
+  * Costo de compra.
+  * Porcentaje de ganancia.
+  * Descuento mayorista si corresponde.
+
+Cuando el switch “Precio manual” está activado:
+
+* El dueño puede escribir manualmente el precio de venta minorista.
+* Ese precio minorista manual reemplaza el precio minorista automático.
+* El precio mayorista debe calcularse automáticamente en base al precio minorista manual y los parámetros de descuento mayorista configurados.
+* El sistema debe seguir calculando costos internos y ganancia real, aunque el precio de venta sea manual.
+* El producto debe mostrar un identificativo visual interno que diga “Precio manual”.
+* Ese identificativo solo debe verlo el dueño/admin y los empleados con permiso.
+* El cliente nunca debe ver que el producto tiene precio manual.
+* En el listado interno de productos debe poder filtrarse por:
+
+  * Precio automático.
+  * Precio manual.
+
+Cuando se crea un pedido con un producto de precio manual, el pedido debe guardar que ese producto fue vendido con precio manual.
+
+---
+
+# 7. Configuración del negocio
+
+Debe existir una sección llamada “Configuración del negocio”, accesible solo para el dueño/admin principal.
+
+Desde esta sección se deben poder editar los datos generales del negocio:
+
+* Nombre del negocio.
+* Logo del negocio.
+* Nombre del dueño.
+* Teléfono.
+* Email.
+* Dirección.
+* Ciudad.
+* Provincia.
+* CUIT o documento si corresponde.
+* Redes sociales.
+* Texto o descripción corta del negocio.
+* Datos para mostrar en comprobantes, pedidos, catálogo y perfil público.
+
+Estos datos solo pueden ser editados por el dueño del negocio.
+
+El logo y nombre del negocio deben mostrarse en:
+
+* Panel administrativo.
+* Catálogo.
+* PDFs.
+* Comprobantes.
+* Resumen de pedido.
+* Perfil del negocio.
+* Pantalla de cliente si corresponde.
+
+---
+
+# 8. Pedidos
+
+Crear una página de pedidos donde se listen todos los pedidos realizados.
+
+Cada pedido debe tener:
+
+* Número o ID de pedido.
+* Cliente asociado.
+* Fecha.
+* Productos incluidos.
+* Imagen pequeña del producto si corresponde.
+* Cantidad de cada producto.
+* Total del pedido.
+* Monto abonado.
+* Saldo pendiente.
+* Estado de pago:
+
+  * Sin abonar.
+  * Señado.
+  * Pagado.
+* Estado del pedido:
+
+  * Pendiente.
+  * En proceso.
+  * Terminado.
+  * Entregado.
+  * Cancelado.
+* Método de pago si corresponde.
+* Observaciones.
+* Fecha de entrega si corresponde.
+* Cotización del dólar usada al momento de crear el pedido.
+* Precios congelados al momento de venta.
+* Costos internos congelados al momento de venta.
+* Ganancia estimada por producto y total.
+
+Desde esta sección se debe poder:
+
+* Crear pedido.
+* Editar pedido.
+* Cambiar estado de pago.
+* Cambiar estado del pedido.
+* Registrar pago parcial o total.
+* Ver detalle completo del pedido.
+* Descargar PDF para cliente.
+* Descargar PDF interno de balance real de esa venta.
+* Filtrar por cliente, estado, fecha y estado de pago.
+
+Cuando un pedido tenga saldo pendiente, debe impactar automáticamente en la cuenta corriente del cliente.
+
+Cuando un pedido se marque como pagado totalmente, debe salir automáticamente de cuenta corriente.
+
+---
+
+# 9. PDFs por cada pedido
+
+Cada vez que se cree un pedido, el sistema debe generar o permitir generar dos documentos PDF:
+
+## A. PDF para el cliente
+
+Este PDF debe ser visible y descargable para el cliente.
+
+Debe tener formato profesional y mostrar:
+
+* Logo del negocio.
+* Nombre del negocio.
+* Datos del negocio.
+* Número de pedido.
+* Fecha.
+* Datos del cliente.
+* Productos comprados.
+* Imagen pequeña del producto si se puede mostrar prolijo.
+* Cantidad.
+* Precio unitario.
+* Subtotal.
+* Total.
+* Monto abonado.
+* Saldo pendiente.
+* Estado de pago.
+* Estado del pedido.
+* Observaciones públicas si corresponde.
+* Mensaje de agradecimiento o texto configurable.
+
+Este PDF no debe mostrar:
+
+* Costos internos.
+* Ganancias.
+* Precio del filamento.
+* Costos de mantenimiento.
+* Costos eléctricos.
+* Margen real.
+* Datos internos del negocio.
+
+## B. PDF interno del negocio
+
+Este PDF solo puede verlo el dueño/admin y empleados con permiso.
+
+Debe mostrar el balance real de esa venta.
+
+Debe incluir:
+
+* Logo y nombre del negocio.
+* Número de pedido.
+* Fecha.
+* Cliente.
+* Productos vendidos.
+* Imagen pequeña del producto si corresponde.
+* Cantidad.
+* Precio de venta usado.
+* Si fue precio automático o manual.
+* Cotización del dólar usada.
+* Costo de filamento por producto.
+* Costo de insumos.
+* Costo eléctrico.
+* Costo proporcional de mantenimiento.
+* Costo de compra si es producto de reventa.
+* Margen de error aplicado.
+* Costo total real por producto.
+* Ingreso total.
+* Total cobrado.
+* Total pendiente.
+* Ganancia bruta.
+* Ganancia real neta.
+* Método de pago.
+* Estado de pago.
+* Observaciones internas.
+
+Este PDF interno sirve para saber cuánto dejó realmente cada venta.
+
+Debe quedar asociado al pedido.
+
+El cliente nunca debe poder acceder al PDF interno.
+
+---
+
+# 10. Cuenta corriente
+
+Crear una sección de cuenta corriente por cliente.
+
+Esta sección debe mostrar todos los clientes que tienen deuda activa.
+
+Por cada cliente debe verse:
+
+* Nombre del cliente.
+* Total adeudado.
+* Cantidad de pedidos pendientes de pago.
+* Fecha del pedido más antiguo pendiente.
+* Botón para ver detalle.
+* Botón para registrar pago.
+
+Al entrar al detalle de un cliente debe mostrar:
+
+* Todos los pedidos con saldo pendiente.
+* Fecha de cada pedido.
+* Total del pedido.
+* Monto abonado.
+* Saldo restante.
+* Estado de pago.
+* Historial de pagos realizados.
+
+Desde cuenta corriente debo poder registrar un pago general del cliente.
+
+Regla importante para aplicar pagos:
+
+Cuando se registra un pago desde cuenta corriente, el dinero debe aplicarse automáticamente desde el pedido más antiguo hasta el más reciente.
+
+Ejemplo:
+Si un cliente debe $30.000 entre 3 pedidos:
+
+* Pedido 1: debe $8.000.
+* Pedido 2: debe $10.000.
+* Pedido 3: debe $12.000.
+
+Si el cliente paga $15.000:
+
+* Se salda completo el Pedido 1 con $8.000.
+* Los $7.000 restantes se aplican al Pedido 2.
+* El Pedido 1 queda pagado y sale de cuenta corriente.
+* El Pedido 2 queda señado o parcialmente abonado.
+* El Pedido 3 queda pendiente.
+
+Los pedidos saldados completamente deben desaparecer de la cuenta corriente activa, pero deben quedar en el historial.
+
+Debe existir historial de pagos con:
+
+* Fecha.
+* Monto.
+* Cliente.
+* Pedidos afectados.
+* Método de pago.
+* Observación opcional.
+
+---
+
+# 11. Clientes
+
+Crear una sección de clientes.
+
+Los usuarios registrados en la plataforma deben ingresar automáticamente como clientes.
+
+También debo poder agregar clientes manualmente desde el panel de administración.
+
+Datos del cliente:
+
+* Nombre.
+* Apellido.
+* Teléfono.
+* Email.
+* Dirección.
+* Ciudad.
+* Provincia.
+* Código postal.
+* Documento o CUIT si corresponde.
+* Observaciones.
+* Fecha de alta.
+
+Cuando el cliente se registre por su cuenta, pedir los datos básicos necesarios para poder enviar productos.
+
+Cuando yo agregue un cliente manualmente, solo nombre y apellido deben ser obligatorios. El resto de los campos deben ser opcionales.
+
+Cada cliente debe tener una ficha con:
+
+* Datos personales.
+* Pedidos realizados.
+* Total comprado.
+* Total adeudado.
+* Historial de pagos.
+* Observaciones internas.
+
+---
+
+# 12. Inventario
+
+Crear un módulo de inventario completo.
+
+Debe permitir gestionar:
+
+## A. Filamentos
+
+Cada filamento debe tener:
+
+* Marca.
+* Tipo de material: PLA, PETG, ABS, TPU u otros.
+* Color.
+* Código HEX del color.
+* Imagen principal.
+* Imagen opcional de muestra impresa.
+* Peso inicial en gramos.
+* Peso disponible en gramos.
+* Precio por KG en dólares.
+* Proveedor.
+* Fecha de compra.
+* Stock mínimo.
+* Estado.
+
+Los filamentos deben poder asociarse a productos impresos en 3D.
+
+Cuando se vende un producto impreso en 3D, debe descontarse automáticamente el gramaje usado del filamento asociado.
+
+## B. Insumos generales
+
+Ejemplos: imanes, luces LED, tornillos, pegamento, packaging, bolsas, etiquetas, etc.
+
+Cada insumo debe tener:
+
+* Nombre.
+* Categoría.
+* Imagen principal.
+* Galería opcional.
+* Unidad de medida.
+* Stock actual.
+* Stock mínimo.
+* Costo unitario.
+* Proveedor.
+* Observaciones.
+
+Los insumos también deben poder asociarse a productos impresos en 3D.
+
+Cuando se venda un producto que usa insumos, deben descontarse automáticamente.
+
+## C. Productos impresos en 3D
+
+Debe permitir crear y administrar productos fabricados por impresión 3D.
+
+Cada producto debe tener:
+
+* Nombre.
+* Categoría.
+* Imagen principal.
+* Galería de imágenes.
+* Peso en gramos.
+* Tiempo de impresión.
+* Filamento asociado.
+* Insumos asociados.
+* Si es llavero o no.
+* Precio automático calculado.
+* Switch de precio manual.
+* Precio manual minorista si corresponde.
+* Precio mayorista calculado.
+* Costo calculado.
+* Stock disponible si se trabaja con stock.
+* Estado activo/inactivo.
+
+## D. Productos de reventa
+
+Debe permitir crear y administrar productos que se compran y se revenden.
+
+Cada producto de reventa debe tener:
+
+* Nombre.
+* Categoría.
+* Imagen principal.
+* Galería de imágenes.
+* Costo de compra.
+* Precio de venta calculado.
+* Switch de precio manual.
+* Precio manual minorista si corresponde.
+* Precio mayorista si corresponde.
+* Stock disponible.
+* Proveedor.
+* Estado activo/inactivo.
+
+Cuando se vende un producto de reventa, debe descontarse automáticamente el stock.
+
+---
+
+# 13. Movimientos de inventario
+
+Crear una página donde se registren automáticamente todos los movimientos de inventario.
+
+Debe registrar:
+
+* Entrada de stock.
+* Salida por venta.
+* Ajuste manual.
+* Devolución.
+* Corrección de stock.
+* Consumo de filamento.
+* Consumo de insumos.
+
+Cada movimiento debe tener:
+
+* Fecha.
+* Tipo de movimiento.
+* Producto, filamento o insumo afectado.
+* Imagen miniatura del elemento afectado si existe.
+* Cantidad anterior.
+* Cantidad modificada.
+* Cantidad final.
+* Motivo.
+* Usuario que realizó el movimiento si aplica.
+* Pedido asociado si corresponde.
+
+Usar colores según el tipo de movimiento:
+
+* Verde para entradas.
+* Rojo para salidas.
+* Azul para ajustes.
+* Amarillo o naranja para advertencias.
+* Gris para movimientos informativos.
+
+Debe tener filtros por fecha, tipo de movimiento, producto, insumo o filamento.
+
+---
+
+# 14. Configuración de precios
+
+Crear una sección donde pueda configurar todos los parámetros de cálculo de precios.
+
+Debe dividirse en dos partes:
+
+## A. Configuración para productos de impresión 3D
+
+Parámetros configurables:
+
+* Precio del filamento por KG en dólares.
+* Cotización actual del dólar, obtenida por API.
+* Opción de actualización manual de emergencia si falla la API.
+* Precio del KWh.
+* Consumo eléctrico de la impresora en watts.
+* Vida útil estimada de la máquina en horas.
+* Costo estimado en repuestos.
+* Margen de error en porcentaje.
+* Multiplicador minorista para productos que no son llaveros.
+* Multiplicador minorista para productos que son llaveros.
+* Porcentaje de descuento mayorista para productos que no son llaveros.
+* Porcentaje de descuento mayorista para productos que son llaveros.
+* Umbral en gramos para aplicar descuento mayorista en productos que no son llaveros.
+* Umbral en gramos para aplicar descuento mayorista en productos que son llaveros.
+
+El sistema debe calcular automáticamente:
+
+* Costo de filamento usado.
+* Costo eléctrico.
+* Costo proporcional de mantenimiento.
+* Costo de insumos.
+* Margen de error.
+* Costo total real.
+* Precio minorista.
+* Precio mayorista si corresponde.
+* Ganancia estimada.
+
+## B. Configuración para productos de reventa
+
+Parámetros configurables:
+
+* Porcentaje de ganancia sobre costo de compra.
+* Activar o desactivar precio mayorista.
+* Porcentaje de descuento mayorista.
+* Pedido mínimo en dinero para aplicar descuento mayorista.
+
+Si el precio mayorista de reventa está desactivado, no debe calcularse ni mostrarse como disponible.
+
+El sistema debe calcular:
+
+* Precio de venta minorista.
+* Precio mayorista si corresponde.
+* Ganancia real por unidad.
+* Ganancia total según cantidad vendida.
+
+---
+
+# 15. Balance financiero
+
+Crear una página de balance financiero real y precisa.
+
+Debe tener filtros por:
+
+* Día.
+* Semana.
+* Mes.
+* Año.
+* Todo el período.
+* Rango de fechas personalizado.
+
+Debe dividirse en tres secciones:
+
+## A. Balance de impresión 3D
+
+Mostrar:
+
+* Total de ingresos por productos impresos en 3D.
+* Costo total de filamentos consumidos.
+* Costo total de insumos consumidos.
+* Costo total de mantenimiento proporcional.
+* Costo total de consumo eléctrico.
+* Total de productos señados.
+* Total pendiente por cobrar.
+* Total efectivamente cobrado.
+* Ganancia bruta.
+* Ganancia real neta.
+
+La ganancia real debe calcularse restando todos los costos reales asociados.
+
+## B. Balance de productos de reventa
+
+Mostrar:
+
+* Total de ingresos por productos de reventa.
+* Costo total de compra de productos vendidos.
+* Total pendiente por cobrar.
+* Total efectivamente cobrado.
+* Ganancia bruta.
+* Ganancia real.
+
+## C. Balance general
+
+Mostrar:
+
+* Ingresos totales.
+* Costos totales.
+* Total cobrado.
+* Total pendiente de cobro.
+* Total señado.
+* Ganancia total real.
+* Cantidad de pedidos.
+* Ticket promedio.
+* Producto más vendido.
+* Producto con mayor ganancia.
+* Cliente con mayor compra.
+* Cliente con mayor deuda.
+
+Debe ser muy importante diferenciar:
+
+* Total vendido.
+* Total cobrado.
+* Total pendiente de cobro.
+* Ganancia estimada.
+* Ganancia real.
+
+---
+
+# 16. PDF de balance financiero
+
+En la página de balance debe existir una opción para generar PDF del balance actual.
+
+El PDF debe generarse según el filtro o categoría seleccionada.
+
+Ejemplos:
+
+* Si estoy viendo balance del día, el PDF debe ser del día.
+* Si estoy viendo balance semanal, el PDF debe ser de la semana.
+* Si estoy viendo balance mensual, el PDF debe ser del mes.
+* Si estoy viendo balance anual, el PDF debe ser del año.
+* Si estoy viendo todo el período, el PDF debe ser de todo el período.
+* Si estoy viendo un rango personalizado, el PDF debe respetar ese rango.
+
+El PDF de balance debe incluir:
+
+* Logo del negocio.
+* Nombre del negocio.
+* Fecha de generación.
+* Período analizado.
+* Resumen general.
+* Balance de impresión 3D.
+* Balance de reventa.
+* Balance general.
+* Total cobrado.
+* Total pendiente.
+* Costos totales.
+* Ganancia bruta.
+* Ganancia real.
+* Productos más vendidos.
+* Productos con mayor ganancia.
+* Clientes con mayor deuda.
+* Métodos de pago.
+* Observaciones si corresponde.
+
+Este PDF solo puede verlo el dueño/admin y empleados con permiso.
+
+El cliente nunca debe tener acceso al PDF de balance.
+
+---
+
+# 17. Sistema de roles y permisos
+
+Implementar un sistema de roles desde el inicio.
+
+Roles principales:
+
+1. Dueño / Admin principal.
+2. Empleado.
+3. Cliente.
+
+---
+
+## Rol: Dueño / Admin principal
+
+El dueño tiene acceso total a toda la aplicación.
+
+Puede:
+
+* Ver dashboard completo.
+* Crear, editar y eliminar o desactivar productos.
+* Subir, editar y eliminar imágenes.
+* Ver y modificar catálogo.
+* Ver todos los pedidos.
+* Crear pedidos manualmente.
+* Editar pedidos.
+* Cambiar estados de pedido.
+* Registrar pagos.
+* Ver cuenta corriente de todos los clientes.
+* Ver balance completo.
+* Ver ganancias y costos.
+* Configurar precios.
+* Configurar cotización del dólar.
+* Editar datos del negocio.
+* Gestionar inventario.
+* Ver movimientos de inventario.
+* Abrir y cerrar caja.
+* Ver historial de cajas.
+* Crear empleados.
+* Asignar permisos a empleados.
+* Desactivar empleados.
+* Ver reportes generales.
+* Descargar PDFs internos.
+* Descargar PDFs de balance.
+* Ver productos con precio manual.
+
+El dueño es el único usuario que puede modificar la configuración general del negocio y los parámetros principales de precios.
+
+---
+
+## Rol: Cliente
+
+El cliente solo tiene acceso a su propia cuenta.
+
+Puede:
+
+* Ver catálogo.
+* Ver imágenes de productos.
+* Comprar productos o realizar pedidos.
+* Ver sus propios pedidos.
+* Ver el estado de sus pedidos.
+* Ver su propia cuenta corriente.
+* Ver cuánto debe.
+* Ver pagos realizados.
+* Ver saldo pendiente.
+* Descargar su PDF de pedido/factura.
+* Actualizar sus datos personales.
+* Consultar historial de compras.
+
+Regla de seguridad importante:
+
+Un cliente nunca debe poder ver:
+
+* Cuenta corriente de otros clientes.
+* Pedidos de otros clientes.
+* Balance del negocio.
+* PDFs internos.
+* PDFs de balance.
+* Costos internos.
+* Ganancias.
+* Inventario interno.
+* Configuración de precios.
+* Datos administrativos.
+* Información de empleados.
+* Dashboard del dueño.
+* Identificativos de precio manual.
+
+Cada consulta de cliente debe estar filtrada por su propio ID de usuario.
+
+---
+
+## Rol: Empleado
+
+El dueño debe poder crear empleados y asignarles permisos.
+
+Los empleados pueden tener permisos configurables.
+
+Permisos posibles:
+
+* Ver pedidos.
+* Crear pedidos.
+* Editar pedidos.
+* Cambiar estado de pedidos.
+* Registrar pagos.
+* Ver clientes.
+* Crear clientes.
+* Editar clientes.
+* Ver catálogo.
+* Crear productos.
+* Editar productos.
+* Subir imágenes.
+* Editar imágenes.
+* Eliminar imágenes.
+* Ver inventario.
+* Modificar inventario.
+* Ver movimientos de inventario.
+* Abrir caja.
+* Cerrar caja.
+* Ver caja actual.
+* Ver historial de caja.
+* Ver balance.
+* Ver ganancias.
+* Ver configuración de precios.
+* Ver PDFs internos.
+* Descargar PDFs internos.
+* Descargar PDFs de balance.
+* Ver productos con precio manual.
+
+El sistema debe permitir que el dueño active o desactive permisos por empleado.
+
+Si un empleado no tiene permiso para una sección, esa sección no debe mostrarse en el menú y tampoco debe poder acceder por URL directa.
+
+---
+
+# 18. Caja por turno
+
+Agregar un módulo de caja.
+
+La caja debe permitir abrir y cerrar caja por turno.
+
+Solo el dueño o empleados con permiso pueden abrir y cerrar caja.
+
+## Abrir caja
+
+Al abrir caja se debe registrar:
+
+* Fecha y hora de apertura.
+* Usuario que abrió la caja.
+* Monto inicial en efectivo.
+* Observación opcional.
+* Estado de caja: abierta.
+
+No puede haber dos cajas abiertas al mismo tiempo para el mismo negocio, salvo que se implemente multi-sucursal en el futuro.
+
+Si ya hay una caja abierta, el sistema debe avisar y no permitir abrir otra.
+
+## Movimientos de caja
+
+Durante el turno, la caja debe registrar automáticamente los movimientos relacionados a pagos.
+
+Cada movimiento debe tener:
+
+* Fecha y hora.
+* Tipo de movimiento:
+
+  * Ingreso por venta.
+  * Pago de cuenta corriente.
+  * Seña.
+  * Egreso manual.
+  * Ingreso manual.
+  * Ajuste.
+* Monto.
+* Método de pago:
+
+  * Efectivo.
+  * Transferencia.
+  * Mercado Pago.
+  * Tarjeta.
+  * Otro.
+* Pedido asociado si corresponde.
+* Cliente asociado si corresponde.
+* Usuario que registró el movimiento.
+* Observación opcional.
+
+Cuando se registre un pago de pedido o cuenta corriente, debe impactar también en la caja abierta.
+
+Si no hay caja abierta, el sistema debe mostrar una advertencia antes de registrar pagos presenciales.
+
+## Cerrar caja
+
+Al cerrar caja se debe mostrar un resumen del turno:
+
+* Fecha y hora de apertura.
+* Fecha y hora de cierre.
+* Usuario que abrió.
+* Usuario que cerró.
+* Monto inicial.
+* Total de ingresos.
+* Total de egresos.
+* Total esperado en caja.
+* Total declarado al cierre.
+* Diferencia de caja.
+* Detalle por método de pago:
+
+  * Efectivo.
+  * Transferencia.
+  * Mercado Pago.
+  * Tarjeta.
+  * Otro.
+* Cantidad de pedidos cobrados.
+* Pagos de cuenta corriente registrados.
+* Observaciones de cierre.
+
+El usuario debe ingresar el monto real contado al cierre.
+
+El sistema debe calcular automáticamente si hay:
+
+* Caja correcta.
+* Sobrante.
+* Faltante.
+
+El cierre de caja debe quedar guardado en historial y no debe poder modificarse fácilmente. Si se permite corrección, debe quedar registrada como ajuste con motivo y usuario responsable.
+
+---
+
+# 19. Historial de caja
+
+Crear una sección para ver cajas anteriores.
+
+Debe permitir filtrar por:
+
+* Fecha.
+* Usuario.
+* Estado.
+* Método de pago.
+* Diferencias de caja.
+* Rango de fechas.
+
+Cada caja cerrada debe mostrar:
+
+* Resumen del turno.
+* Movimientos asociados.
+* Diferencia final.
+* Usuario responsable.
+
+El dueño puede ver todo el historial.
+
+Los empleados solo pueden ver el historial si tienen permiso.
+
+---
+
+# 20. Relación entre caja, pagos, pedidos y cuenta corriente
+
+Reglas importantes:
+
+* Todo pago registrado debe crear un movimiento de caja si hay caja abierta.
+* Todo pago debe actualizar el pedido correspondiente.
+* Todo pago parcial debe actualizar la cuenta corriente.
+* Todo pago total debe quitar el pedido de cuenta corriente activa.
+* Los pagos deben quedar en historial aunque el pedido ya esté pagado.
+* La caja no calcula ganancias, solo movimientos de dinero.
+* El balance financiero sí calcula ingresos, costos y ganancias reales.
+* Caja y balance deben estar relacionados, pero no son lo mismo.
+
+Diferencia importante:
+
+* Caja muestra cuánto dinero entró y salió en un turno.
+* Balance muestra rentabilidad, costos, ingresos y ganancias reales.
+
+---
+
+# 21. Seguridad de datos
+
+Implementar validaciones de permisos en frontend y en la lógica de datos.
+
+No alcanza con ocultar botones. También debe validarse que cada rol solo pueda acceder a la información permitida.
+
+Especialmente:
+
+* Clientes solo ven sus propios pedidos y su propia cuenta corriente.
+* Clientes solo pueden descargar sus propios PDFs de pedido.
+* Clientes nunca pueden descargar PDFs internos.
+* Empleados solo ven lo que el dueño les permite.
+* Solo el dueño puede cambiar configuración del negocio, precios, cotización del dólar y permisos.
+* Solo el dueño puede ver toda la información financiera completa si no habilita permisos a empleados.
+* Solo usuarios autorizados pueden subir, editar o eliminar imágenes.
+
+---
+
+# 22. Menú según rol
+
+El menú debe cambiar según el rol del usuario.
+
+Menú del dueño:
+
+* Dashboard.
+* Catálogo.
+* Pedidos.
+* Clientes.
+* Cuenta corriente.
+* Inventario.
+* Movimientos de inventario.
+* Caja.
+* Balance.
+* Configuración de precios.
+* Configuración del negocio.
+* Empleados y permisos.
+
+Menú del empleado:
+
+Mostrar solo las secciones habilitadas por el dueño.
+
+Menú del cliente:
+
+* Catálogo.
+* Mis pedidos.
+* Mi cuenta corriente.
+* Mis pagos.
+* Mi perfil.
+
+---
+
+# 23. Estados del sistema
+
+## Estado de pago
+
+* Sin abonar.
+* Señado.
+* Pagado.
+
+Reglas:
+
+* Si monto abonado es 0, el estado debe ser Sin abonar.
+* Si monto abonado es mayor a 0 pero menor al total, el estado debe ser Señado.
+* Si monto abonado es igual o mayor al total, el estado debe ser Pagado.
+
+## Estado del pedido
+
+* Pendiente.
+* En proceso.
+* Terminado.
+* Entregado.
+* Cancelado.
+
+---
+
+# 24. Requisitos técnicos
+
+Crear una estructura de proyecto ordenada, escalable y fácil de mantener.
+
+Separar correctamente:
+
+* Modelos de datos.
+* Servicios.
+* Pantallas.
+* Componentes reutilizables.
+* Funciones de cálculo.
+* Estado global si corresponde.
+* Reglas de negocio.
+* Servicios de PDF.
+* Servicios de cotización del dólar.
+* Servicios de permisos.
+* Servicios de caja.
+* Servicios de balance.
+* Servicios de carga, edición y eliminación de imágenes.
+
+El objetivo es tener una plataforma profesional, funcional y preparada para escalar.
+
+
+** importante 1, no dejes datos de muestra, solo debe ser datos reales, no quiero en ninguna seccion de la app datos que sean simulados o de prueba **
+
+** Importante 2, el proyecto va a usar firebase, ya hay un proyecto creado, solo queda vincularlo **
+
+** Importante 3, este proyecto debe iniciar directamente en catalogo para invitados, los que se registren pueden hacer compras, el owner va directo al panel de admin, los clientes al catalogo, los roles son owner, cliente, empleado **

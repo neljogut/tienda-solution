@@ -32,7 +32,7 @@ class AccountsScreen extends ConsumerWidget {
               : 'Cuenta corriente',
           subtitle: clientMode
               ? 'Deudas, saldos pendientes e historial de pagos propios.'
-              : 'Clientes con deuda activa y aplicacion automatica de pagos desde el pedido mas antiguo.',
+              : 'Clientes con deuda activa y aplicación automática de pagos desde el pedido más antiguo.',
           actions: [
             if (!clientMode)
               FilledButton.icon(
@@ -42,19 +42,45 @@ class AccountsScreen extends ConsumerWidget {
               ),
           ],
           children: [
-            if (customers.isEmpty)
-              SizedBox(
-                height: 380,
-                child: EmptyState(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: paymentsOnly
-                      ? 'No hay pagos registrados'
-                      : 'No hay deuda activa',
-                  message: clientMode
-                      ? 'Los pedidos con saldo pendiente y pagos confirmados apareceran aca.'
-                      : 'Cuando un pedido quede con saldo, se listara automaticamente en cuenta corriente.',
-                ),
+            HubSectionCard(
+              title: paymentsOnly ? 'Historial de pagos' : 'Deuda activa',
+              icon: paymentsOnly
+                  ? Icons.payments_outlined
+                  : Icons.account_balance_wallet_rounded,
+              child: customers.isEmpty
+                  ? SizedBox(
+                      height: 300,
+                      child: EmptyState(
+                        icon: Icons.account_balance_wallet_outlined,
+                        title: paymentsOnly
+                            ? 'No hay pagos registrados'
+                            : 'No hay deuda activa',
+                        message: clientMode
+                            ? 'Los pedidos con saldo pendiente y pagos confirmados aparecerán acá.'
+                            : 'Cuando un pedido quede con saldo, se listará automáticamente en cuenta corriente.',
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final customer in customers)
+                          ListTile(
+                            leading: const Icon(Icons.person_outline),
+                            title: Text(customer.fullName),
+                            subtitle: Text(
+                              '${customer.pendingOrders} pedidos pendientes',
+                            ),
+                            trailing: Text('\$ ${customer.totalDebt}'),
+                          ),
+                      ],
+                    ),
+            ),
+            const HubSectionCard(
+              title: 'Regla de imputación',
+              icon: Icons.route_rounded,
+              child: Text(
+                'Cada pago general se aplica automáticamente desde el pedido más antiguo hasta el más reciente.',
               ),
+            ),
           ],
         );
       },

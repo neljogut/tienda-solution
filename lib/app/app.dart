@@ -22,11 +22,22 @@ import 'app_shell.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   final user = ref.watch(currentUserProvider);
   return GoRouter(
-    initialLocation: '/catalog',
+    initialLocation: '/dashboard',
     redirect: (context, state) {
-      if ((user.role == UserRole.owner || user.role == UserRole.employee) &&
-          state.uri.path == '/catalog') {
-        return '/dashboard';
+      final path = state.uri.path;
+      if ((user.role == UserRole.guest || user.role == UserRole.client) &&
+          (path == '/dashboard' ||
+              path == '/orders' ||
+              path == '/clients' ||
+              path == '/accounts' ||
+              path == '/inventory' ||
+              path == '/inventory-movements' ||
+              path == '/cash' ||
+              path == '/balance' ||
+              path == '/pricing' ||
+              path == '/business' ||
+              path == '/staff')) {
+        return '/catalog';
       }
       return null;
     },

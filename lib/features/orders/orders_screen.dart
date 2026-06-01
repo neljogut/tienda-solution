@@ -6,6 +6,7 @@ import '../../core/data/providers.dart';
 import '../../core/models/enums.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/module_page.dart';
+import '../../core/widgets/responsive_grid.dart';
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key, this.clientMode = false});
@@ -36,7 +37,7 @@ class OrdersScreen extends ConsumerWidget {
             if (!clientMode)
               FilledButton.icon(
                 onPressed: null,
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add_shopping_cart_rounded),
                 label: const Text('Crear pedido para cliente'),
               ),
           ],
@@ -56,55 +57,85 @@ class OrdersScreen extends ConsumerWidget {
                 FilterChip(label: Text('Pagado'), onSelected: null),
               ],
             ),
-            if (orders.isEmpty)
-              SizedBox(
-                height: 380,
-                child: EmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: clientMode
-                      ? 'Todavia no tenes pedidos'
-                      : 'Todavia no hay pedidos',
-                  message: clientMode
-                      ? 'Cuando hagas una compra desde el catalogo, el pedido aparecera aca.'
-                      : 'Owner o empleados autorizados pueden crear pedidos para clientes y registrar pagos iniciales.',
-                ),
-              )
-            else
-              Card(
-                color: Colors.white,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Pedido')),
-                      DataColumn(label: Text('Cliente')),
-                      DataColumn(label: Text('Fecha')),
-                      DataColumn(label: Text('Total')),
-                      DataColumn(label: Text('Abonado')),
-                      DataColumn(label: Text('Saldo')),
-                      DataColumn(label: Text('Estado')),
-                    ],
-                    rows: [
-                      for (final order in orders)
-                        DataRow(
-                          cells: [
-                            DataCell(Text(order.number)),
-                            DataCell(Text(order.customerName)),
-                            DataCell(
-                              Text(
-                                DateFormat(
-                                  'dd/MM/yyyy',
-                                ).format(order.createdAt),
-                              ),
+            HubSectionCard(
+              title: clientMode ? 'Pedidos del cliente' : 'Bandeja de pedidos',
+              icon: Icons.receipt_long_rounded,
+              child: orders.isEmpty
+                  ? SizedBox(
+                      height: 300,
+                      child: EmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        title: clientMode
+                            ? 'Todavia no tenes pedidos'
+                            : 'Todavia no hay pedidos',
+                        message: clientMode
+                            ? 'Cuando hagas una compra desde el catalogo, el pedido aparecera aca.'
+                            : 'Owner o empleados autorizados pueden crear pedidos para clientes y registrar pagos iniciales.',
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Pedido')),
+                          DataColumn(label: Text('Cliente')),
+                          DataColumn(label: Text('Fecha')),
+                          DataColumn(label: Text('Total')),
+                          DataColumn(label: Text('Abonado')),
+                          DataColumn(label: Text('Saldo')),
+                          DataColumn(label: Text('Estado')),
+                        ],
+                        rows: [
+                          for (final order in orders)
+                            DataRow(
+                              cells: [
+                                DataCell(Text(order.number)),
+                                DataCell(Text(order.customerName)),
+                                DataCell(
+                                  Text(
+                                    DateFormat(
+                                      'dd/MM/yyyy',
+                                    ).format(order.createdAt),
+                                  ),
+                                ),
+                                DataCell(Text(currency.format(order.total))),
+                                DataCell(Text(currency.format(order.paid))),
+                                DataCell(Text(currency.format(order.pending))),
+                                DataCell(Text(order.paymentStatus.label)),
+                              ],
                             ),
-                            DataCell(Text(currency.format(order.total))),
-                            DataCell(Text(currency.format(order.paid))),
-                            DataCell(Text(currency.format(order.pending))),
-                            DataCell(Text(order.paymentStatus.label)),
-                          ],
-                        ),
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
+            ),
+            if (!clientMode)
+              const HubSectionCard(
+                title: 'Flujo de creación',
+                icon: Icons.account_tree_rounded,
+                child: ResponsiveGrid(
+                  minTileWidth: 230,
+                  children: [
+                    InfoCard(
+                      title: '1. Seleccionar cliente',
+                      value: 'Cliente',
+                      icon: Icons.person_search_rounded,
+                    ),
+                    InfoCard(
+                      title: '2. Agregar productos',
+                      value: 'Catalogo',
+                      icon: Icons.inventory_2_rounded,
+                    ),
+                    InfoCard(
+                      title: '3. Registrar seña',
+                      value: 'Pago',
+                      icon: Icons.payments_outlined,
+                    ),
+                    InfoCard(
+                      title: '4. Congelar precio',
+                      value: 'Snapshot',
+                      icon: Icons.lock_clock_rounded,
+                    ),
+                  ],
                 ),
               ),
           ],

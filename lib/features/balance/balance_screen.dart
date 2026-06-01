@@ -12,7 +12,7 @@ class BalanceScreen extends StatelessWidget {
     return ModulePage(
       title: 'Balance financiero',
       subtitle:
-          'Rentabilidad real por impresion 3D, reventa y balance general segun periodo.',
+          'Rentabilidad real por impresión 3D, reventa y balance general según período.',
       actions: [
         FilledButton.icon(
           onPressed: null,
@@ -20,20 +20,20 @@ class BalanceScreen extends StatelessWidget {
           label: const Text('Generar PDF'),
         ),
       ],
-      children: [
-        const Wrap(
+      children: const [
+        Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilterChip(label: Text('Dia'), onSelected: null),
+            FilterChip(label: Text('Día'), onSelected: null),
             FilterChip(label: Text('Semana'), onSelected: null),
             FilterChip(label: Text('Mes'), onSelected: null, selected: true),
-            FilterChip(label: Text('Ano'), onSelected: null),
+            FilterChip(label: Text('Año'), onSelected: null),
             FilterChip(label: Text('Todo'), onSelected: null),
             FilterChip(label: Text('Rango'), onSelected: null),
           ],
         ),
-        const ResponsiveGrid(
+        ResponsiveGrid(
           minTileWidth: 240,
           children: [
             InfoCard(
@@ -45,31 +45,57 @@ class BalanceScreen extends StatelessWidget {
               title: 'Total cobrado',
               value: r'$ 0',
               icon: Icons.payments_outlined,
+              color: Color(0xFF34D399),
             ),
             InfoCard(
               title: 'Pendiente',
               value: r'$ 0',
-              icon: Icons.pending_actions,
-              color: Colors.orange,
+              icon: Icons.pending_actions_rounded,
+              color: Color(0xFFF59E0B),
             ),
             InfoCard(
               title: 'Ganancia real',
               value: r'$ 0',
-              icon: Icons.trending_up,
-              color: Colors.green,
+              icon: Icons.trending_up_rounded,
+              color: Color(0xFF60A5FA),
             ),
           ],
         ),
-        const SizedBox(
-          height: 320,
-          child: EmptyState(
-            icon: Icons.analytics_outlined,
-            title: 'Balance preparado para datos reales',
-            message:
-                'Los reportes usaran los snapshots congelados de pedidos para no recalcular ventas historicas.',
+        HubSectionCard(
+          title: 'Balance impresión 3D',
+          icon: Icons.view_in_ar_rounded,
+          child: _BalanceEmptyLine(),
+        ),
+        HubSectionCard(
+          title: 'Balance reventa',
+          icon: Icons.sell_rounded,
+          child: _BalanceEmptyLine(),
+        ),
+        HubSectionCard(
+          title: 'Reporte',
+          icon: Icons.analytics_outlined,
+          child: SizedBox(
+            height: 260,
+            child: EmptyState(
+              icon: Icons.analytics_outlined,
+              title: 'Balance preparado para datos reales',
+              message:
+                  'Los reportes usarán los snapshots congelados de pedidos para no recalcular ventas históricas.',
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BalanceEmptyLine extends StatelessWidget {
+  const _BalanceEmptyLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      'Se completará automáticamente con ingresos, costos, pendientes y ganancia real.',
     );
   }
 }

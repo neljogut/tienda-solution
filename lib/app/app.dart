@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/data/providers.dart';
+import '../core/models/enums.dart';
 import '../features/balance/balance_screen.dart';
 import '../features/cash/cash_screen.dart';
 import '../features/catalog/catalog_screen.dart';
@@ -18,8 +20,16 @@ import '../features/staff/staff_screen.dart';
 import 'app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final user = ref.watch(currentUserProvider);
   return GoRouter(
     initialLocation: '/catalog',
+    redirect: (context, state) {
+      if ((user.role == UserRole.owner || user.role == UserRole.employee) &&
+          state.uri.path == '/catalog') {
+        return '/dashboard';
+      }
+      return null;
+    },
     routes: [
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),

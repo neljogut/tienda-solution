@@ -9,7 +9,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: DualgiApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Catalogo'), findsWidgets);
-    expect(find.text('Todavia no hay productos publicados'), findsOneWidget);
+    expect(find.text('Catálogo Dualgi 3D'), findsOneWidget);
+    expect(find.text('Buscar por nombre o categoría'), findsOneWidget);
   });
 }

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, addDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../firebase';
-import type { Product } from '../../types/product';
+import type { Product, FilamentLine, SupplyLine } from '../../types/product';
+import type { Filament, Supply } from '../../types/inventory';
 import type { Category } from '../../types/category';
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../../types/settings';
 import {
@@ -26,6 +27,8 @@ export const ProductForm: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string>('');
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filaments, setFilaments] = useState<Filament[]>([]);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
   const [settings3d, setSettings3d] = useState<PricingSettings3D | null>(null);
   const [settingsResale, setSettingsResale] = useState<PricingSettingsResale | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
@@ -45,6 +48,9 @@ export const ProductForm: React.FC = () => {
     purchaseCost: 0,
     stock: 0,
     priceTiers: [],
+    filamentLines: [] as FilamentLine[],
+    supplyIds: [] as SupplyLine[],
+    filamentIds: [] as string[],
   });
 
   const [calculated, setCalculated] = useState({
@@ -57,8 +63,20 @@ export const ProductForm: React.FC = () => {
     const loadInitialData = async () => {
       try {
         // Fetch categories
-        const catSnap = await getDocs(query(collection(db, 'categories')));
+        const [catSnap, invSnap] = await Promise.all([
+          getDocs(query(collection(db, 'categories'))),
+          getDocs(query(collection(db, 'inventory'))),
+        ]);
         setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
+        const fils: Filament[] = [];
+        const sups: Supply[] = [];
+        invSnap.docs.forEach((d) => {
+          const data = d.data();
+          if (data.type === 'filament') fils.push({ id: d.id, ...data } as Filament);
+          if (data.type === 'supply') sups.push({ id: d.id, ...data } as Supply);
+        });
+        setFilaments(fils);
+        setSupplies(sups);
 
         // Fetch settings
         const s3dSnap = await getDoc(doc(db, 'settings/pricing3d'));
@@ -77,7 +95,19 @@ export const ProductForm: React.FC = () => {
           const docSnap = await getDoc(doc(db, 'products', id));
           if (docSnap.exists()) {
             const data = docSnap.data() as Product;
-            setFormData(data);
+            const normalized = { ...data } as any;
+            if (data.type === '3d') {
+              if (!normalized.filamentLines?.length && normalized.filamentIds?.length) {
+                const perFil = (normalized.weightGrams || 0) / normalized.filamentIds.length;
+                normalized.filamentLines = normalized.filamentIds.map((id: string) => ({
+                  supplyId: id,
+                  grams: perFil,
+                }));
+              }
+              normalized.filamentLines = normalized.filamentLines ?? [];
+              normalized.supplyIds = normalized.supplyIds ?? [];
+            }
+            setFormData(normalized);
             setImagePreview(data.mainImage || '');
           }
         }
@@ -113,13 +143,20 @@ export const ProductForm: React.FC = () => {
     return flatten(null, 0);
   }, [categories]);
 
+  const inventoryMap = useMemo(() => {
+    const map = new Map<string, { type?: string; priceUsdKg?: number; unitCostArs?: number }>();
+    filaments.forEach((f) => map.set(f.id, { type: 'filament', priceUsdKg: f.priceUsdKg }));
+    supplies.forEach((s) => map.set(s.id, { type: 'supply', unitCostArs: s.unitCostArs }));
+    return map;
+  }, [filaments, supplies]);
+
   useEffect(() => {
     if (formData.type === '3d') {
       if (!settings3d) return;
       const rateData = { currentUsdToArs: exchangeRate, lastUpdate: '', provider: '' };
-      const cost = calculate3DCost(formData, settings3d, rateData);
-      const retail = calculate3DRetailPrice(formData, settings3d, rateData);
-      const wholesale = calculate3DWholesalePrice(formData, settings3d, rateData);
+      const cost = calculate3DCost(formData, settings3d, rateData, inventoryMap);
+      const retail = calculate3DRetailPrice(formData, settings3d, rateData, inventoryMap);
+      const wholesale = calculate3DWholesalePrice(formData, settings3d, rateData, inventoryMap);
       setCalculated({ cost, retail, wholesale });
     } else if (formData.type === 'resale') {
       if (!settingsResale) return;
@@ -128,7 +165,7 @@ export const ProductForm: React.FC = () => {
       const wholesale = calculateResaleWholesalePrice(cost, settingsResale);
       setCalculated({ cost, retail, wholesale });
     }
-  }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, settings3d, settingsResale, exchangeRate]);
+  }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, formData.filamentLines, formData.supplyIds, settings3d, settingsResale, exchangeRate, inventoryMap]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -198,6 +235,16 @@ export const ProductForm: React.FC = () => {
         calculatedRetailPrice: calculated.retail,
         calculatedWholesalePrice: calculated.wholesale,
       };
+
+      if (productToSave.type === '3d') {
+        productToSave.filamentLines = (productToSave.filamentLines ?? []).filter(
+          (l: FilamentLine) => l.supplyId && l.grams > 0
+        );
+        productToSave.supplyIds = (productToSave.supplyIds ?? []).filter(
+          (l: SupplyLine) => l.supplyId && l.quantity > 0
+        );
+        productToSave.filamentIds = productToSave.filamentLines.map((l: FilamentLine) => l.supplyId);
+      }
 
       // Sanitize fields
       if (productToSave.weightGrams === '') productToSave.weightGrams = 0;
@@ -342,6 +389,129 @@ export const ProductForm: React.FC = () => {
                     className="w-4 h-4"
                   />
                   <label htmlFor="isKeychain" className="text-sm text-slate-700">Es un Llavero (aplica multiplicador especial)</label>
+                </div>
+
+                <div className="col-span-2 space-y-3 pt-2 border-t border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-slate-700">Filamentos asociados</label>
+                    <button
+                      type="button"
+                      className="btn-secondary !py-1 !px-2 text-xs flex items-center gap-1"
+                      onClick={() => setFormData({
+                        ...formData,
+                        filamentLines: [...(formData.filamentLines || []), { supplyId: '', grams: 0 }],
+                      })}
+                    >
+                      <Plus size={12} /> Agregar
+                    </button>
+                  </div>
+                  {(formData.filamentLines?.length ?? 0) === 0 && (
+                    <p className="text-xs text-slate-500">Sin filamentos vinculados. Se estima costo por peso total.</p>
+                  )}
+                  {formData.filamentLines?.map((line: FilamentLine, idx: number) => (
+                    <div key={idx} className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <select
+                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                          value={line.supplyId}
+                          onChange={(e) => {
+                            const next = [...formData.filamentLines];
+                            next[idx] = { ...next[idx], supplyId: e.target.value };
+                            setFormData({ ...formData, filamentLines: next });
+                          }}
+                        >
+                          <option value="">Seleccionar filamento...</option>
+                          {filaments.map((f) => (
+                            <option key={f.id} value={f.id}>{f.brand} · {f.material} · {f.color}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-24">
+                        <NumericInput
+                          allowDecimals
+                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                          value={line.grams}
+                          onChange={(val) => {
+                            const next = [...formData.filamentLines];
+                            next[idx] = { ...next[idx], grams: val === '' ? 0 : Number(val) };
+                            setFormData({ ...formData, filamentLines: next });
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 pb-2">g</span>
+                      <button
+                        type="button"
+                        className="text-red-500 p-2"
+                        onClick={() => setFormData({
+                          ...formData,
+                          filamentLines: formData.filamentLines.filter((_: FilamentLine, i: number) => i !== idx),
+                        })}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="col-span-2 space-y-3 pt-2 border-t border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-slate-700">Insumos asociados</label>
+                    <button
+                      type="button"
+                      className="btn-secondary !py-1 !px-2 text-xs flex items-center gap-1"
+                      onClick={() => setFormData({
+                        ...formData,
+                        supplyIds: [...(formData.supplyIds || []), { supplyId: '', quantity: 1 }],
+                      })}
+                    >
+                      <Plus size={12} /> Agregar
+                    </button>
+                  </div>
+                  {(formData.supplyIds?.length ?? 0) === 0 && (
+                    <p className="text-xs text-slate-500">Sin insumos vinculados (tapas, luces, etc.).</p>
+                  )}
+                  {formData.supplyIds?.map((line: SupplyLine, idx: number) => (
+                    <div key={idx} className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <select
+                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                          value={line.supplyId}
+                          onChange={(e) => {
+                            const next = [...formData.supplyIds];
+                            next[idx] = { ...next[idx], supplyId: e.target.value };
+                            setFormData({ ...formData, supplyIds: next });
+                          }}
+                        >
+                          <option value="">Seleccionar insumo...</option>
+                          {supplies.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-20">
+                        <NumericInput
+                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                          value={line.quantity}
+                          onChange={(val) => {
+                            const next = [...formData.supplyIds];
+                            next[idx] = { ...next[idx], quantity: val === '' ? 1 : Number(val) };
+                            setFormData({ ...formData, supplyIds: next });
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 pb-2">u.</span>
+                      <button
+                        type="button"
+                        className="text-red-500 p-2"
+                        onClick={() => setFormData({
+                          ...formData,
+                          supplyIds: formData.supplyIds.filter((_: SupplyLine, i: number) => i !== idx),
+                        })}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (

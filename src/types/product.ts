@@ -34,13 +34,25 @@ export interface BaseProduct {
   updatedAt?: string;
 }
 
+export interface FilamentLine {
+  supplyId: string;
+  grams: number;
+}
+
+export interface SupplyLine {
+  supplyId: string;
+  quantity: number;
+}
+
 export interface Product3D extends BaseProduct {
   type: '3d';
   weightGrams: number;
   printTimeMinutes: number;
   isKeychain: boolean;
+  /** @deprecated Usar filamentLines (gramos por filamento) */
   filamentIds: string[];
-  supplyIds: { supplyId: string; quantity: number }[];
+  filamentLines: FilamentLine[];
+  supplyIds: SupplyLine[];
 }
 
 export interface ProductResale extends BaseProduct {

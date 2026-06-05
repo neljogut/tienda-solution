@@ -288,34 +288,41 @@ export const NewOrder: React.FC = () => {
           if (product.type === '3d') {
             const prod3d = product as any;
 
-            // Deduct Filaments
-            if (prod3d.filamentIds && prod3d.filamentIds.length > 0) {
-              const weightPerFilament = (prod3d.weightGrams * qty) / prod3d.filamentIds.length;
-              for (const filamentId of prod3d.filamentIds) {
-                const filRef = doc(db, 'inventory', filamentId);
-                const filSnap = await getDoc(filRef);
-                if (filSnap.exists()) {
-                  const filData = filSnap.data();
-                  const prevWeight = filData.availableWeightGrams || 0;
-                  const newWeight = Math.max(0, prevWeight - weightPerFilament);
+            // Deduct Filaments (gramos exactos por línea si están definidos)
+            const filamentLines = prod3d.filamentLines?.length
+              ? prod3d.filamentLines
+              : (prod3d.filamentIds ?? []).map((filamentId: string) => ({
+                  supplyId: filamentId,
+                  grams: (prod3d.weightGrams * qty) / Math.max(1, prod3d.filamentIds.length),
+                }));
 
-                  batch.update(filRef, { availableWeightGrams: newWeight });
+            for (const line of filamentLines) {
+              const filamentId = line.supplyId;
+              const weightToDeduct = (line.grams || 0) * qty;
+              if (!filamentId || weightToDeduct <= 0) continue;
 
-                  // Log filament consumption
-                  const filMov = {
-                    date: new Date().toISOString(),
-                    movementType: 'consumption',
-                    itemId: filamentId,
-                    itemType: 'filament',
-                    previousQuantity: prevWeight,
-                    modifiedQuantity: -weightPerFilament,
-                    finalQuantity: newWeight,
-                    reason: `Consumo de filamento por impresión de ${qty}x "${item.name}" en Pedido #${orderNumber}`,
-                    userId,
-                    orderId
-                  };
-                  await addDoc(collection(db, 'inventory_movements'), filMov);
-                }
+              const filRef = doc(db, 'inventory', filamentId);
+              const filSnap = await getDoc(filRef);
+              if (filSnap.exists()) {
+                const filData = filSnap.data();
+                const prevWeight = filData.availableWeightGrams || 0;
+                const newWeight = Math.max(0, prevWeight - weightToDeduct);
+
+                batch.update(filRef, { availableWeightGrams: newWeight });
+
+                const filMov = {
+                  date: new Date().toISOString(),
+                  movementType: 'consumption',
+                  itemId: filamentId,
+                  itemType: 'filament',
+                  previousQuantity: prevWeight,
+                  modifiedQuantity: -weightToDeduct,
+                  finalQuantity: newWeight,
+                  reason: `Consumo de filamento por impresión de ${qty}x "${item.name}" en Pedido #${orderNumber}`,
+                  userId,
+                  orderId
+                };
+                await addDoc(collection(db, 'inventory_movements'), filMov);
               }
             }
 

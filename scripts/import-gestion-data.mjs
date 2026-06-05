@@ -171,10 +171,65 @@ function resolveCategoryId(category, subcategory) {
   return { id: fallback, name: category || 'Sin categoría' };
 }
 
-function mapProduct(raw, config) {
+const DEFAULT_EXCHANGE_RATE = 1200;
+
+function filamentPricePerKgArs(insumo, config) {
+  if (insumo?.filamentCustomPricePerKg != null && insumo.filamentCustomPricePerKg > 0) {
+    return insumo.filamentCustomPricePerKg;
+  }
+  return Number(config?.pricePerKg) || 20000;
+}
+
+function computeLegacyProductCost(raw, config, insumoMap) {
+  let filamentCost = 0;
+  const lines = raw.filamentLines ?? [];
+  if (lines.length > 0) {
+    for (const line of lines) {
+      const insumo = insumoMap.get(line.supplyId);
+      const pricePerKg = filamentPricePerKgArs(insumo, config);
+      filamentCost += (Number(line.grams) || 0) / 1000 * pricePerKg;
+    }
+  } else {
+    const grams = Number(raw.gramsFilament) || 0;
+    filamentCost = (grams / 1000) * (Number(config?.pricePerKg) || 20000);
+  }
+
+  let suppliesCost = 0;
+  for (const line of raw.insumoLines ?? []) {
+    const insumo = insumoMap.get(line.supplyId);
+    suppliesCost += (Number(line.amount) || 1) * (Number(insumo?.price) || 0);
+  }
+
+  const timeHours = Number(raw.printingTimeHours) || 0;
+  const electricity = timeHours * (Number(config?.consumptionWatts) || 120) / 1000 * (Number(config?.priceKwh) || 140);
+  const maintenance = timeHours * (Number(config?.repairCost) || 150000) / (Number(config?.machineLifeHours) || 4320);
+  const subtotal = filamentCost + suppliesCost + electricity + maintenance;
+  const margin = Number(config?.errorMargin) || 8;
+  return Math.round(subtotal * (1 + margin / 100));
+}
+
+function mapProduct(raw, config, insumoMap) {
   const { id: categoryId, name: categoryName } = resolveCategoryId(raw.category, raw.subcategory);
   const is3d = raw.productKind !== 'reventa';
   const thresholdKeychain = config?.thresholdKeychainGrams ?? 600;
+
+  const filamentLines = (raw.filamentLines ?? [])
+    .map((l) => ({
+      supplyId: l.supplyId,
+      grams: Number(l.grams) || 0,
+    }))
+    .filter((l) => l.supplyId);
+
+  const supplyIds = (raw.insumoLines ?? [])
+    .map((l) => ({
+      supplyId: l.supplyId,
+      quantity: Number(l.amount) || 1,
+    }))
+    .filter((l) => l.supplyId);
+
+  const calculatedCost = is3d
+    ? computeLegacyProductCost(raw, config, insumoMap)
+    : Number(raw.purchaseCost) || 0;
 
   const base = {
     id: raw.id,
@@ -190,7 +245,7 @@ function mapProduct(raw, config) {
     manualRetailPrice: Number(raw.priceRetail) || 0,
     calculatedRetailPrice: Number(raw.priceRetail) || 0,
     calculatedWholesalePrice: Number(raw.priceWholesale) || 0,
-    calculatedCost: Number(raw.purchaseCost) || 0,
+    calculatedCost,
     createdAt: iso(raw.createdAt),
     updatedAt: iso(raw.updatedAt),
   };
@@ -209,11 +264,9 @@ function mapProduct(raw, config) {
       weightGrams: Number(raw.gramsFilament) || 0,
       printTimeMinutes: Math.round((Number(raw.printingTimeHours) || 0) * 60),
       isKeychain: (Number(raw.gramsFilament) || 0) > 0 && (Number(raw.gramsFilament) || 0) <= thresholdKeychain,
-      filamentIds: (raw.filamentLines ?? []).map((l) => l.supplyId).filter(Boolean),
-      supplyIds: (raw.insumoLines ?? []).map((l) => ({
-        supplyId: l.supplyId,
-        quantity: Number(l.amount) || 1,
-      })),
+      filamentIds: filamentLines.map((l) => l.supplyId),
+      filamentLines,
+      supplyIds,
     };
   }
 
@@ -228,7 +281,8 @@ function subcategoryOrParent(catName, sub, parent) {
   return sub ? `${parent} › ${sub}` : catName;
 }
 
-function mapFilament(raw) {
+function mapFilament(raw, config, exchangeRate = DEFAULT_EXCHANGE_RATE) {
+  const priceArsPerKg = filamentPricePerKgArs(raw, config);
   return {
     id: raw.id,
     type: 'filament',
@@ -239,7 +293,7 @@ function mapFilament(raw) {
     mainImage: raw.imageUrl || undefined,
     initialWeightGrams: Number(raw.stock) || 0,
     availableWeightGrams: Number(raw.stock) || 0,
-    priceUsdKg: 0,
+    priceUsdKg: Number((priceArsPerKg / exchangeRate).toFixed(2)),
     provider: '',
     purchaseDate: iso(raw.purchaseDate ?? raw.createdAt),
     minStockGrams: Number(raw.minimumStock) || 0,
@@ -357,9 +411,10 @@ function mapCashSession(raw) {
   };
 }
 
-function mapPricing3d(config) {
+function mapPricing3d(config, exchangeRate = DEFAULT_EXCHANGE_RATE) {
+  const pricePerKgArs = Number(config?.pricePerKg) || 20000;
   return {
-    filamentPriceUsdKg: 9.68,
+    filamentPriceUsdKg: Number((pricePerKgArs / exchangeRate).toFixed(2)),
     kwhPriceArs: Number(config.priceKwh) || 140,
     printerWatts: Number(config.consumptionWatts) || 120,
     printerLifespanHours: Number(config.machineLifeHours) || 4320,
@@ -532,13 +587,14 @@ async function main() {
   }
 
   const insumos = await readCollection('insumos');
+  const insumoMap = new Map(insumos.map((i) => [i.id, i]));
   const filamentos = insumos.filter((i) => i.type === 'filament');
   const supplies = insumos.filter((i) => i.type === 'insumo');
 
   if (shouldRun('inventory')) {
     console.log('📦 Inventario (filamentos + insumos)');
     const inventory = [
-      ...filamentos.map(mapFilament),
+      ...filamentos.map((f) => mapFilament(f, configCalc)),
       ...supplies.map(mapSupply),
     ];
     await commitBatches(db, 'inventory', inventory, 'inventory');
@@ -546,7 +602,10 @@ async function main() {
 
   if (shouldRun('products')) {
     console.log('🛍️  Productos');
-    const productos = (await readCollection('productos')).map((p) => mapProduct(p, configCalc));
+    const productos = (await readCollection('productos')).map((p) => mapProduct(p, configCalc, insumoMap));
+    const withMaterials = productos.filter((p) => p.type === '3d' && ((p.filamentLines?.length) || (p.supplyIds?.length)));
+    const withCost = productos.filter((p) => (p.calculatedCost || 0) > 0);
+    console.log(`    Con filamentos/insumos: ${withMaterials.length} | Con costo > 0: ${withCost.length}`);
     await commitBatches(db, 'products', productos, 'products');
   }
 

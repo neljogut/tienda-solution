@@ -1,0 +1,29 @@
+{
+  "id": "6bca3005-3616-4820-ba07-dd94683a508d",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:07:09.111Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "stock": 9380,
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Celeste Cielo",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:11:01.318Z"
+  },
+  "filamentColor": "#8FD3F4",
+  "isDraft": false,
+  "description": "PLA · Filar · Celeste Cielo",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

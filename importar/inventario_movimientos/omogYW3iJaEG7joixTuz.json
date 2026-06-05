@@ -1,0 +1,47 @@
+{
+  "id": "omogYW3iJaEG7joixTuz",
+  "orderId": "b05659d3-362d-42ff-96e5-46e53c1156dd",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "type": "stockReturn",
+  "lines": [
+    {
+      "unit": "g",
+      "delta": 64.73,
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "category": "filament"
+    },
+    {
+      "unit": "g",
+      "delta": 124.02,
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "category": "filament"
+    },
+    {
+      "unit": "g",
+      "delta": 19.310000000000002,
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "category": "filament"
+    },
+    {
+      "unit": "u",
+      "delta": 1,
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "category": "insumo"
+    },
+    {
+      "unit": "u.",
+      "delta": 1,
+      "refId": "01f1c31b-311e-4f52-9b21-5bbbd2bfbc4f",
+      "label": "Chop River Plate medio litro",
+      "category": "productPrint3d"
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-26T11:52:38.625Z"
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "id": "bSicqxu6eZp4Cok8udEV",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -2162.39,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -947.91,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -228,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -247,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -107.54,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -102.03,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -86.45,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -36.86,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -34.96,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "delta": -19,
+      "unit": "u."
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "01f1c31b-311e-4f52-9b21-5bbbd2bfbc4f",
+      "label": "Chop River Plate medio litro",
+      "delta": -19,
+      "unit": "u."
+    }
+  ],
+  "orderId": "bff1584b-bba0-468d-b03e-07047f81bec0",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T06:14:43.701Z"
+  }
+}

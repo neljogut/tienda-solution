@@ -1,0 +1,243 @@
+{
+  "id": "backfill_sale_b886038b-26a6-4340-86f8-c41d0514c0c3",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -5.51,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -6.13,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -153.65,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -0.66,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -2.45,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -6.23,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -3.15,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "label": "47094941-2873-464a-acc7-6b663d9be54c",
+      "delta": -3.48,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -18.02,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -2.1,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -6.44,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -1.38,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "78bc6a56-eec8-4653-8672-9fbbc0df05ea",
+      "label": "Club Atletico Independiente",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "delta": -3.8,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -1.67,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "delta": -26.35,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "a9736f96-9944-48b2-aa16-43f736265aa6",
+      "label": "a9736f96-9944-48b2-aa16-43f736265aa6",
+      "delta": -111.29,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -4.2,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -21.17,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "label": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "delta": -11.59,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "label": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "delta": -2.5,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "a1d546c7-f9a0-4851-9201-e2b99c3eaed2",
+      "label": "Un Poco de Chisme",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "delta": -302.14,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "label": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "delta": -61.16,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "delta": -2,
+      "unit": "u."
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "c5da4e57-f450-410c-8c62-84d9e60149a3",
+      "label": "Chop Boca Junior medio litro",
+      "delta": -2,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -14.54,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -122,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -63.53,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "01f1c31b-311e-4f52-9b21-5bbbd2bfbc4f",
+      "label": "Chop River Plate medio litro",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "b886038b-26a6-4340-86f8-c41d0514c0c3",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-04T23:00:16.868Z"
+  }
+}

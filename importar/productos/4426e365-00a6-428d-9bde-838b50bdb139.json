@@ -1,0 +1,39 @@
+{
+  "id": "4426e365-00a6-428d-9bde-838b50bdb139",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20251228-09A8",
+  "isDraft": false,
+  "description": "Dale un toque único, divertido y original a tus espacios con esta maceta inspirada en Bob Patiño, ideal para amantes del diseño, la cultura pop y la decoración diferente.\n\nFabricada mediante impresión 3D, esta maceta combina un acabado llamativo con un diseño expresivo que cobra vida al colocarle plantas tipo hojas finas y alargadas, que simulan perfectamente su característico “cabello”.\nIdeal para suculentas, plantas ornamentales o plantas decorativas de hojas estilizadas (no incluye planta).\n\nPerfecta para:\n\nHogar\n\nOficina\n\nEscritorio\n\nRegalos originales\n\nColeccionistas y fans\n\nCaracterísticas:\n\n✔️ Material: Plástico resistente (impresión 3D)\n\n✔️ Diseño decorativo tipo busto\n\n✔️ Uso interior\n\n✔️ Ideal para plantas pequeñas o medianas\n\n✔️ Producto artesanal, impreso bajo pedido\n\nUna pieza que no pasa desapercibida y convierte cualquier planta en el centro de atención 🌿\nSumá personalidad y humor a tu espacio con esta maceta única.",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-12-28T20:18:06.171Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 16.1667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766954098/dualgi3d/products/kckywldh0xger1tw1qoc.png",
+  "minimumStock": null,
+  "priceRetail": 32580,
+  "stock": 2,
+  "gramsFilament": 461,
+  "purchaseCost": 0,
+  "priceKeychain": 43430,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766954098/dualgi3d/products/kckywldh0xger1tw1qoc.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766954099/dualgi3d/products/xfgumjefixbsfsrmehen.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766954102/dualgi3d/products/per9gndo85ncagcu5ffh.png"
+  ],
+  "name": "🪴 Maceta Bob Patiño – Diseño Decorativo",
+  "category": "Macetas",
+  "subcategory": null,
+  "priceWholesale": 27690,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

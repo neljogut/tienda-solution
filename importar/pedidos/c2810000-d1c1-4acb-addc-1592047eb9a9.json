@@ -1,0 +1,65 @@
+{
+  "id": "c2810000-d1c1-4acb-addc-1592047eb9a9",
+  "productStockDeducted": true,
+  "clientEmail": "",
+  "clientName": "Dante Renova",
+  "items": [
+    {
+      "unitPrice": 8000,
+      "productCode": "PROD-20260520-FE7B",
+      "isCustomLine": false,
+      "productId": "72887086-a77d-4028-b401-56a32266dce2",
+      "productKind": "print3d",
+      "productImage": "https://i.imgur.com/Fnjj3rx.jpeg",
+      "supplyUsage": [
+        {
+          "kind": "filament",
+          "amountPerUnit": 5,
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95"
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "amountPerUnit": 43,
+          "kind": "filament"
+        },
+        {
+          "kind": "filament",
+          "amountPerUnit": 45,
+          "supplyId": "47094941-2873-464a-acc7-6b663d9be54c"
+        },
+        {
+          "kind": "filament",
+          "amountPerUnit": 1,
+          "supplyId": "02a850a2-9f28-4c66-88a5-c39f9f3b919e"
+        }
+      ],
+      "productName": "Box con cajon FIFA World Cup 2026",
+      "totalPrice": 8000,
+      "quantity": 1
+    }
+  ],
+  "paymentMethod": "cash",
+  "totalAmount": 8000,
+  "ledgerKind": "catalogSale",
+  "suppliesRestoredToStock": {},
+  "productsRestoredToStock": {},
+  "clientAddress": "",
+  "notes": null,
+  "clientPhone": "3413617514",
+  "suppliesDeducted": true,
+  "clientId": "eevNliBZax1YzRhuZ4Te",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-26T18:01:28.791Z"
+  },
+  "amountPaid": 8000,
+  "paymentBreakdownByMethod": {
+    "cash": 8000
+  },
+  "paymentStatus": "paid",
+  "status": "delivered",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-27T09:26:47.749Z"
+  }
+}

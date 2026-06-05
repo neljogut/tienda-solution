@@ -1,0 +1,37 @@
+{
+  "id": "ead90821-a5e2-4897-aad4-bd8abd4060d4",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260221-5E28",
+  "isDraft": false,
+  "description": "Clips para Lapiz, boligrafos, mascota del mundial 2026\n\nAdorno para lápiz impreso en 3D inspirado en Sayu, una de las mascotas oficiales del Mundial 2026.\n\nIdeal para decorar lápices de forma divertida y original. Se coloca fácilmente en la parte superior del lápiz, manteniéndose firme sin necesidad de pegamento ni modificaciones.\n\nFabricado con material resistente y colores sólidos integrados.\n\n✔ Compatible con lápices estándar\n✔ Liviano y duradero\n✔ No requiere pegamento\n✔ Colores uniformes\n✔ No daña el lápiz\n✔ Reutilizable",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-21T22:09:38.873Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 0.916667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771711611/dualgi3d/products/pbkrfytgnxlrapomoe87.png",
+  "minimumStock": null,
+  "priceRetail": 810,
+  "stock": 100,
+  "gramsFilament": 10,
+  "purchaseCost": 0,
+  "priceKeychain": 1070,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771711611/dualgi3d/products/pbkrfytgnxlrapomoe87.png"
+  ],
+  "name": "Adorno para Lápiz Sayu Mascota Mundial 2026",
+  "category": "Souvenirs",
+  "subcategory": null,
+  "priceWholesale": 690,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

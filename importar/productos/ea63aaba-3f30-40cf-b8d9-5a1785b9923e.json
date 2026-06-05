@@ -1,0 +1,54 @@
+{
+  "id": "ea63aaba-3f30-40cf-b8d9-5a1785b9923e",
+  "resaleScanCode": "",
+  "insumoLines": [
+    {
+      "amount": 1,
+      "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3"
+    }
+  ],
+  "code": "PROD-20260216-5285",
+  "isDraft": false,
+  "description": "Disfrutá tus bebidas con estilo con nuestras jarras personalizadas impresas en 3D. Diseñadas para combinar resistencia, estética y personalización total, cada jarra incluye un vaso interior de aluminio que ayuda a conservar mejor la temperatura de tu bebida.\n\nFabricadas mediante impresión 3D de alta calidad, estas jarras ofrecen terminaciones sólidas y un diseño único que podés adaptar completamente a tu gusto: logos, nombres, colores o temáticas especiales.\n\nCaracterísticas\n\n✔ Capacidad aproximada: 500 ml\n✔ Vaso interior de aluminio incluido\n✔ Exterior fabricado con impresión 3D de alta precisión\n✔ Personalización completa (colores, textos, diseños, escudos, etc.)\n✔ Ideales para regalos, eventos, coleccionismo o uso personal\n✔ Diseño robusto y llamativo\n\nConvertí una jarra común en una pieza única hecha especialmente para vos.",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-16T14:58:53.504Z"
+  },
+  "filamentLines": [
+    {
+      "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "grams": 124.69
+    },
+    {
+      "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "grams": 67.17
+    }
+  ],
+  "printingTimeHours": 5.9,
+  "visibleEnTiendaPublica": false,
+  "imageUrl": null,
+  "minimumStock": null,
+  "priceRetail": 18000,
+  "stock": 9,
+  "gramsFilament": 191.86,
+  "purchaseCost": 0,
+  "priceKeychain": 19400,
+  "manualPricing": true,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771256113/dualgi3d/products/tgtloptbajblnjyuy8ff.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771256124/dualgi3d/products/xmsn2lzl818cmtqrm0od.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771256125/dualgi3d/products/ezezhacmnyzo3yu0vdtc.jpg"
+  ],
+  "name": "Chop Rosario Central  medio litro",
+  "category": "Jarras Chopperas",
+  "subcategory": "500cm3",
+  "priceWholesale": 13500,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:09:09.021Z"
+  }
+}

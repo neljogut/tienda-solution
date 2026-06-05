@@ -1,0 +1,53 @@
+{
+  "id": "43bb95f5-37f1-4f1d-aee2-52d6f593e11c",
+  "code": "PROD-20260529-9EEC",
+  "name": "Rosario Central",
+  "description": "Jarra de chop 500cm3, tipo camiseta con logos y sponsor",
+  "imageUrl": null,
+  "imageUrls": [
+    "https://i.imgur.com/p7NKAZi.png",
+    "https://i.imgur.com/IqB4PiA.jpeg",
+    "https://i.imgur.com/iDz7YMd.png",
+    "https://i.imgur.com/qGg7gmr.jpeg"
+  ],
+  "printingTimeHours": 8.083333333333334,
+  "gramsFilament": 190.15,
+  "filamentLines": [
+    {
+      "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "grams": 116.54
+    },
+    {
+      "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "grams": 71.61
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 2
+    }
+  ],
+  "insumoLines": [],
+  "category": "Jarras Chopperas",
+  "subcategory": "500cm3",
+  "priceRetail": 18000,
+  "priceWholesale": 15300,
+  "priceKeychain": 18230,
+  "manualPricing": true,
+  "minimumStock": null,
+  "productKind": "print3d",
+  "purchaseCost": 0,
+  "resaleMarkupPercentOnCost": null,
+  "resaleWholesaleDiscountPercent": null,
+  "quantityTiers": [],
+  "resaleScanCode": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-30T01:31:10.277Z"
+  },
+  "isDraft": false,
+  "stock": 9,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-31T21:45:55.849Z"
+  }
+}

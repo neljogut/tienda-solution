@@ -1,0 +1,19 @@
+{
+  "id": "ThXmY88IMYTaWGxq0bF6",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "7a5b5054-fecd-4f4e-bf04-6b67c9570c5c",
+      "label": "PETG Amarillo Radiante",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:34:58.190Z"
+  }
+}

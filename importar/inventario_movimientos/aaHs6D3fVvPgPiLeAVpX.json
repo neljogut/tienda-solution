@@ -1,0 +1,19 @@
+{
+  "id": "aaHs6D3fVvPgPiLeAVpX",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "381eebb2-e724-4884-832e-a8abb6d2a7ce",
+      "label": "PETG Coral",
+      "delta": 4000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:35:18.702Z"
+  }
+}

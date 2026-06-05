@@ -1,0 +1,29 @@
+{
+  "id": "aedf3723-b11d-4799-bc9c-fdd6191f4751",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:48:53.456Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Verde Manzana",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:50:59.702Z"
+  },
+  "stock": 5993,
+  "filamentColor": "#8AC926",
+  "isDraft": false,
+  "description": "PLA · Filar · Verde Manzana",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

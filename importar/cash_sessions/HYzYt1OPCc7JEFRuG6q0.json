@@ -1,0 +1,35 @@
+{
+  "id": "HYzYt1OPCc7JEFRuG6q0",
+  "openingFloat": 0,
+  "openedByUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "openedByLabel": "Maximiliano Paladini",
+  "openedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-11T06:19:08.230Z"
+  },
+  "atCloseIngressSalesByMethod": {
+    "bankTransfer": 250000,
+    "creditCard": 0,
+    "cash": 388000
+  },
+  "expectedCashAtClose": 388000,
+  "variance": -388000,
+  "closingCountedCash": 0,
+  "atCloseCommercialPaymentOutByMethod": {
+    "bankTransfer": 0,
+    "creditCard": 0,
+    "cash": 0
+  },
+  "closedByUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "closedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:20:46.365Z"
+  },
+  "closedByLabel": "Maximiliano Paladini",
+  "atCloseManualMovementNet": 0,
+  "status": "closed",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:20:46.365Z"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "id": "backfill_sale_3c104919-f8fd-4483-a71c-1e67c477a9a0",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -95.96,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "label": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "32a3be33-e375-421f-9806-c826354bfd45",
+      "label": "32a3be33-e375-421f-9806-c826354bfd45",
+      "delta": -66.4,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a9736f96-9944-48b2-aa16-43f736265aa6",
+      "label": "a9736f96-9944-48b2-aa16-43f736265aa6",
+      "delta": -155.07,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "5e8aa7bc-23ff-4004-9b8a-3dbe5c074d1d",
+      "label": "Light Box Sara Nails",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "3c104919-f8fd-4483-a71c-1e67c477a9a0",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-11T17:11:57.260Z"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "BZeT3P6O1H8UNH5sjXOR",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "PLA Negro Azabache",
+      "delta": -5,
+      "unit": "g"
+    }
+  ],
+  "reason": "Regalo Cadena Jona",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T02:06:21.916Z"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "id": "backfill_sale_b40197d1-6225-4320-88b0-6940853dfbd2",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "delta": -0.61,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "label": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -199.45,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -0.8,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -68.33,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "ae1996b4-2a9c-4298-8151-9ba5a829e8ec",
+      "label": "Satoru Gojo – Light Box Anime Jujutsu Kaisen  LED RGB",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "b40197d1-6225-4320-88b0-6940853dfbd2",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-08T22:15:25.500Z"
+  }
+}

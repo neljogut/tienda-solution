@@ -1,0 +1,28 @@
+{
+  "id": "026126e5-e969-4733-b98d-ddf7f4b5739f",
+  "description": "Luz Neon con transformador de 12 volts",
+  "price": 14800,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-26T22:09:11.305Z"
+  },
+  "type": "insumo",
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774563030/dualgi3d/supplies/jypibrg7cezqhqfmo6ld.jpg",
+  "imageUrls": [],
+  "stock": 0,
+  "minimumStock": 10,
+  "subtype": null,
+  "filamentColor": null,
+  "filamentIconId": null,
+  "filamentColorName": null,
+  "filamentCustomPricePerKg": null,
+  "brand": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-26T22:11:12.085Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-29T03:19:50.174Z"
+  }
+}

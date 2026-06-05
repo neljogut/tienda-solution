@@ -1,0 +1,64 @@
+{
+  "id": "b9236a21-d0f6-4561-9aeb-b270d904b0e4",
+  "clientId": "737b044c-9adb-47f0-9e51-c7041aba6e98",
+  "clientName": "Emiliano Vergara",
+  "clientEmail": "emi.vergara75@gmail.com",
+  "clientPhone": "3476653380",
+  "clientAddress": "Av. San Martin 1441, San Lorenzo, Santa Fe, 2200",
+  "items": [
+    {
+      "productId": "c59035ac-b0d2-4b27-a2fa-460114fe53e6",
+      "productName": "Venom & Spider Man  Fusion",
+      "productCode": "PROD-20260327-D18A",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662965/dualgi3d/products/fn52yveqdahpkuxggsfo.jpg",
+      "quantity": 1,
+      "unitPrice": 150000,
+      "totalPrice": 150000,
+      "supplyUsage": [
+        {
+          "supplyId": "978ffaab-acf1-4b40-a618-bd64302e468f",
+          "kind": "filament",
+          "amountPerUnit": 5.51
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 167.49
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 951.84
+        },
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 194.64
+        }
+      ]
+    }
+  ],
+  "totalAmount": 150000,
+  "paymentStatus": "paid",
+  "paymentMethod": "bankTransfer",
+  "amountPaid": 150000,
+  "paymentBreakdownByMethod": {
+    "cash": 0,
+    "bankTransfer": 150000,
+    "creditCard": 0
+  },
+  "status": "delivered",
+  "notes": null,
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": false,
+  "productsRestoredToStock": {},
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T02:11:55.203Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T02:11:55.537Z"
+  }
+}

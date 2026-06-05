@@ -1,0 +1,29 @@
+{
+  "id": "e2071b52-a3ed-41ba-ae8b-a58798f27573",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:47:26.012Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "stock": null,
+  "subtype": "PETG",
+  "filamentIconId": "spool",
+  "filamentColorName": "Rojo Carmesí",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:47:54.738Z"
+  },
+  "filamentColor": "#C2182B",
+  "isDraft": false,
+  "description": "PETG · Filar · Rojo Carmesí",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

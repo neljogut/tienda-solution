@@ -1,0 +1,19 @@
+{
+  "id": "8rPrExAUmtNIvgVWXYRI",
+  "fullName": "Alejandro Arias",
+  "email": "",
+  "phone": "3476339705",
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-04T00:59:20.668Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-04T00:59:19.768Z"
+  }
+}

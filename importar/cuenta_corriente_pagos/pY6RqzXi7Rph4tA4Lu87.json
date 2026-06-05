@@ -1,0 +1,16 @@
+{
+  "id": "pY6RqzXi7Rph4tA4Lu87",
+  "method": "cash",
+  "clientName": "Jonatan Marcelli Renova",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T18:14:34.494Z"
+  },
+  "mode": "fifo",
+  "clientId": "qDyc5cWCsjkrYoCtIuOi",
+  "note": null,
+  "totalAmount": 6000,
+  "allocations": {
+    "3f5e26a3-4d41-4dc2-9ea4-d0d48ae8829b": 6000
+  }
+}

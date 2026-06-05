@@ -1,0 +1,19 @@
+{
+  "id": "54915945-0276-4087-9b06-085d75b52a63",
+  "fullName": "Fernando",
+  "email": "ferbmx14@gmail.com",
+  "phone": "34765658599",
+  "address": "Italia 477 - San Lorenzo",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2025-11-07T08:06:48.447Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "notes": null,
+  "isWholesale": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-27T23:57:45.365Z"
+  }
+}

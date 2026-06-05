@@ -1,0 +1,57 @@
+{
+  "id": "72887086-a77d-4028-b401-56a32266dce2",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260520-FE7B",
+  "isDraft": false,
+  "description": "Organizá y protegé tus figuritas del Mundial 2026 con esta caja organizadora impresa en 3D, diseñada especialmente para coleccionistas. Cuenta con un diseño inspirado en la Copa del Mundo, combinando colores negro, dorado y blanco, con detalles en relieve que le dan una terminación llamativa y premium.\n\nSu bandeja deslizable permite guardar, separar y acceder fácilmente a las figuritas, manteniéndolas ordenadas y protegidas. Ideal para tener tus repetidas, especiales o favoritas siempre a mano.\n\nCaracterísticas:\n\nCaja organizadora para figuritas/stickers.\nDiseño temático Mundial 2026.\nBandeja deslizable.\nDetalles en relieve.\nImpresa en 3D.\nColores: negro, dorado, blanco y verde.\nIdeal para coleccionistas, chicos y fanáticos del fútbol.\n\nPerfecta para guardar tus figuritas del álbum, mantenerlas ordenadas y darle un toque único a tu colección.",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:10:51.682Z"
+  },
+  "filamentLines": [
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 5
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 43
+    },
+    {
+      "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "grams": 45
+    },
+    {
+      "supplyId": "02a850a2-9f28-4c66-88a5-c39f9f3b919e",
+      "grams": 1
+    }
+  ],
+  "printingTimeHours": 4.866666666666667,
+  "imageUrl": null,
+  "minimumStock": null,
+  "priceRetail": 8000,
+  "gramsFilament": 94,
+  "purchaseCost": 0,
+  "priceKeychain": 9210,
+  "manualPricing": true,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://i.imgur.com/Fnjj3rx.jpeg",
+    "https://i.imgur.com/qDy9xuh.jpeg",
+    "https://i.imgur.com/9r68vjv.jpeg",
+    "https://i.imgur.com/zINrrji.png"
+  ],
+  "name": "Box con cajon FIFA World Cup 2026",
+  "category": "Mundial Fifa World Cup 2026",
+  "subcategory": "Box figuritas",
+  "priceWholesale": 6000,
+  "quantityTiers": [],
+  "stock": 86,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-03T10:31:02.332Z"
+  }
+}

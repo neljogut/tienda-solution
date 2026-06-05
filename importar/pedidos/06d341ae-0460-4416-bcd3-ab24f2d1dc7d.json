@@ -1,0 +1,69 @@
+{
+  "id": "06d341ae-0460-4416-bcd3-ab24f2d1dc7d",
+  "clientId": "2a29f42e-1744-46aa-a3fa-4c4ed7c38551",
+  "clientName": "Marcelo Paladini",
+  "clientEmail": "marcelo@gmail.com",
+  "clientPhone": "",
+  "clientAddress": "",
+  "items": [
+    {
+      "productId": "358e1aad-b3c8-49c6-bad5-380750632495",
+      "productName": "Logo Volvo - Caja de Luz Neon",
+      "productCode": "PROD-20260326-9771",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774628348/dualgi3d/products/fjkjsa1kidpyzdxjleyl.jpg",
+      "quantity": 1,
+      "unitPrice": 40000,
+      "totalPrice": 40000,
+      "supplyUsage": [
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 48.8
+        },
+        {
+          "supplyId": "026126e5-e969-4733-b98d-ddf7f4b5739f",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        },
+        {
+          "supplyId": "978ffaab-acf1-4b40-a618-bd64302e468f",
+          "kind": "filament",
+          "amountPerUnit": 60.33
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 165.67
+        },
+        {
+          "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+          "kind": "filament",
+          "amountPerUnit": 6.54
+        }
+      ]
+    }
+  ],
+  "totalAmount": 40000,
+  "paymentStatus": "paid",
+  "paymentMethod": "cash",
+  "amountPaid": 40000,
+  "paymentBreakdownByMethod": {
+    "cash": 40000,
+    "bankTransfer": 0,
+    "creditCard": 0
+  },
+  "status": "delivered",
+  "notes": null,
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": false,
+  "productsRestoredToStock": {},
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T01:18:53.584Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T01:18:53.822Z"
+  }
+}

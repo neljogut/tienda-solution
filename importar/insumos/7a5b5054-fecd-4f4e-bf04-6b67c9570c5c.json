@@ -1,0 +1,29 @@
+{
+  "id": "7a5b5054-fecd-4f4e-bf04-6b67c9570c5c",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:14:39.163Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PETG",
+  "filamentIconId": "spool",
+  "filamentColorName": "Amarillo Radiante",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:15:23.213Z"
+  },
+  "filamentColor": "#FFD21A",
+  "isDraft": false,
+  "description": "PETG · Filar · Amarillo Radiante",
+  "stock": 4462,
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

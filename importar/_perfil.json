@@ -1,0 +1,26 @@
+{
+  "id": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "address": {
+    "altura": "477",
+    "ciudad": "San Lorenzo",
+    "calle": "Laureano Lopez",
+    "provincia": "Santa Fe"
+  },
+  "ownerName": "Maximiliano Paladini",
+  "businessName": "DuAlGi 3D",
+  "userId": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "businessLogoUrl": "https://i.imgur.com/U7kSqjs.png",
+  "businessNameKey": "dualgi 3d",
+  "catalogSearchHitsVenue": "grid_filtered",
+  "hubGuidedTourCompletedVersion": 5,
+  "preferredLanding": "business_hub",
+  "tiendaSlug": "dualgi3d",
+  "tiendaMpConfigured": true,
+  "tiendaPublicaActiva": true,
+  "hubThemeId": "ember_magenta",
+  "orderCreationsMonotonic": 57,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T21:19:41.399Z"
+  }
+}

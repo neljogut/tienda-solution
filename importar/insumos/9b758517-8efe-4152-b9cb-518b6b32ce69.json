@@ -1,0 +1,28 @@
+{
+  "id": "9b758517-8efe-4152-b9cb-518b6b32ce69",
+  "description": "Imanes de neodimio 8x2mm super potentes",
+  "price": 550,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2025-12-17T07:34:21.121Z"
+  },
+  "type": "insumo",
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1765956894/dualgi3d/supplies/zvpiuoywzipyqxewyvez.png",
+  "imageUrls": [],
+  "stock": 40,
+  "minimumStock": null,
+  "subtype": null,
+  "filamentColor": null,
+  "filamentIconId": null,
+  "filamentColorName": null,
+  "filamentCustomPricePerKg": null,
+  "brand": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-12-17T07:36:24.563Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-10T03:00:57.122Z"
+  }
+}

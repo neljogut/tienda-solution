@@ -1,0 +1,47 @@
+{
+  "id": "backfill_sale_b9236a21-d0f6-4561-9aeb-b270d904b0e4",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "978ffaab-acf1-4b40-a618-bd64302e468f",
+      "label": "978ffaab-acf1-4b40-a618-bd64302e468f",
+      "delta": -5.51,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -167.49,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -951.84,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -194.64,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "c59035ac-b0d2-4b27-a2fa-460114fe53e6",
+      "label": "Venom & Spider Man  Fusion",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "b9236a21-d0f6-4561-9aeb-b270d904b0e4",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T02:11:55.203Z"
+  }
+}

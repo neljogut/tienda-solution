@@ -1,0 +1,19 @@
+{
+  "id": "prXnE9RXDaGxxjoFLH0N",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "363c3ef7-ac99-46de-be84-8d06261164f0",
+      "label": "PETG · Filar · Azul Boreal",
+      "delta": -128,
+      "unit": "g"
+    }
+  ],
+  "reason": "Rodillos para soporte de AMS",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:44:36.938Z"
+  }
+}

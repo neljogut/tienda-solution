@@ -1,0 +1,19 @@
+{
+  "id": "wnvpijpk2gsP8o685sXp",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "PLA Azul Francia",
+      "delta": 2000.1800000000003,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:49:43.615Z"
+  }
+}

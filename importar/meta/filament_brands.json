@@ -1,0 +1,12 @@
+{
+  "id": "filament_brands",
+  "brands": [
+    "Filar",
+    "Elegoo",
+    "Printalot"
+  ],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-14T02:28:54.957Z"
+  }
+}

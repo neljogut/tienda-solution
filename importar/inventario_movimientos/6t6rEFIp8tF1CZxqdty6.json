@@ -1,0 +1,19 @@
+{
+  "id": "6t6rEFIp8tF1CZxqdty6",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "9688d4f0-8d55-4cbd-acdf-f2131520bf2f",
+      "label": "PETG · Filar · Magenta",
+      "delta": -128,
+      "unit": "g"
+    }
+  ],
+  "reason": "Rodillos para soporte de AMS",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:43:53.755Z"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "WIUGSFQ1NLMZAJdpH29u",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "fFH105vWIyFxLi4fx8y6",
+      "label": "PLA · Filar · Blanco Mate",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T02:17:50.937Z"
+  }
+}

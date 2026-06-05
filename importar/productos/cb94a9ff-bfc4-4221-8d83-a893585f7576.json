@@ -1,0 +1,40 @@
+{
+  "id": "cb94a9ff-bfc4-4221-8d83-a893585f7576",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20251221-BC58",
+  "isDraft": false,
+  "description": "Sumá a tu colección una de las naves más icónicas de Star Wars.\nEste X-Wing Kit Card está impreso en 3D, cuidadosamente ensamblado y listo para exhibir. Ideal para fans, coleccionistas y regalos geek.\n\n🛠️ Características del producto\n\n✔ Modelo X-Wing a escala 1:60\n✔ Impreso en 3D en alta calidad\n✔ Alas móviles (se pueden abrir y cerrar)\n✔ Ensamblado sin tornillos (encastre preciso)\n✔ Incluye base de exhibición con logo Rebelde\n✔ Diseño detallado y resistente, pensado para decoración\n\n📏 Medidas aproximadas\n\n📐 Tamaño ideal para escritorio, estantería o vitrina\n(las medidas pueden variar mínimamente según material y configuración de impresión)\n\n🧵 Material\n\n🟡 PLA de alta calidad\n🟡 Terminación prolija, lista para exhibir\n🟡 Opción de color personalizado (consultar disponibilidad)\n\n🎁 Ideal para\n\n✨ Fanáticos de Star Wars\n✨ Coleccionistas\n✨ Regalos originales\n✨ Decoración geek / escritorio gamer",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-12-22T00:53:52.070Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 11.9833,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766364584/dualgi3d/products/cxcgxrz3vy8jyz4uxa1v.png",
+  "minimumStock": null,
+  "priceRetail": 14580,
+  "stock": 99,
+  "gramsFilament": 194,
+  "purchaseCost": 0,
+  "priceKeychain": 19430,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766364584/dualgi3d/products/cxcgxrz3vy8jyz4uxa1v.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766364586/dualgi3d/products/v3g4v3cojuxrs4karvzp.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766364588/dualgi3d/products/bekipeuj1cah16lqdqmk.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766364592/dualgi3d/products/oswwuxtjk81evkpiwhfq.png"
+  ],
+  "name": "Star Wars - X-Wing Kit Card / Nave Rebelde Impresa en 3D 🚀",
+  "category": "Juguetes / Decoración",
+  "subcategory": "Star Wars",
+  "priceWholesale": 12390,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "S3lDRzh7xtm5o66XVDjA",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "customLine",
+      "refId": "",
+      "label": "Programacion",
+      "delta": 0,
+      "unit": ""
+    }
+  ],
+  "orderId": "584b8fdc-92b2-4d67-a3c6-0f6bc72c7f4c",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T04:02:58.929Z"
+  }
+}

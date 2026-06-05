@@ -1,0 +1,44 @@
+{
+  "id": "b2c8b921-0178-4377-a176-068f11971525",
+  "resaleScanCode": "",
+  "insumoLines": [
+    {
+      "amount": 1,
+      "supplyId": "a8699143-8913-476b-a6c4-2172a61d3501"
+    }
+  ],
+  "code": "PROD-20260221-5AAA",
+  "isDraft": false,
+  "description": "No te quedes sin el tuyo!!!! Todos aman estos tiernos personajes\n\nVaso Modelo Milkshake\n\nRealizado en Impresion 3D Incluye tapa + Vasito polimero + sorbete plastico\n\nCapacidad: 300 ml\n\nEs ideal para bebidas frias, Batidos, Ice tea, Jugos, Gaseosas, Frape, chocolatada, etc\n\nNo apto para lavavajillas\n\nNo apto para ser lavado con agua caliente\n\nNo se recomienda utilizarlo apra bebidas calientes ya que este deforma el material\n\n--IMPORTANTE: No tiene cierre hermético, debe usarse de modo VERTICAL, si se inclina podría derramarse el líquido\n\n- Variedad de modelos disponibles, elegi el tuyo!!",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-21T15:58:55.820Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 5.63333,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771689517/dualgi3d/products/ws7kkol17icwd3m1vg1c.jpg",
+  "minimumStock": null,
+  "priceRetail": 13340,
+  "stock": 10,
+  "gramsFilament": 182,
+  "purchaseCost": 0,
+  "priceKeychain": 17580,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771689517/dualgi3d/products/ws7kkol17icwd3m1vg1c.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771689527/dualgi3d/products/hii9pgti8avmnl15kzj8.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771689529/dualgi3d/products/nctgjlzu2tbsyrcwztdv.jpg"
+  ],
+  "name": "Guerreras K-POP - Rumi",
+  "category": "Milkshake",
+  "subcategory": null,
+  "priceWholesale": 11340,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

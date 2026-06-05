@@ -1,0 +1,19 @@
+{
+  "id": "l1CWygF2XmsX4qeHIqqD",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "32a3be33-e375-421f-9806-c826354bfd45",
+      "label": "PLA Rosa Amaranto",
+      "delta": -5,
+      "unit": "g"
+    }
+  ],
+  "reason": "Rrgalo Cadena Jona",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T02:05:46.553Z"
+  }
+}

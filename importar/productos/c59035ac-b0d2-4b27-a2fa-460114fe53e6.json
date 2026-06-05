@@ -1,0 +1,63 @@
+{
+  "id": "c59035ac-b0d2-4b27-a2fa-460114fe53e6",
+  "code": "PROD-20260327-D18A",
+  "name": "Venom & Spider Man  Fusion",
+  "description": "Dale vida a tu espacio con esta increíble pieza de Spider-Man y Venom, una combinación épica que captura la esencia del enfrentamiento entre ambos personajes icónicos.\n\nEste diseño está impreso en 3D en alta calidad, utilizando múltiples colores para lograr un acabado visual impactante, con gran nivel de detalle en cada línea y contraste. Inspirado en el estilo artístico tipo “filament painting”, crea un efecto único que resalta desde cualquier ángulo.\n\nIdeal para fans de Marvel, coleccionistas o para decorar tu habitación, escritorio o setup gamer.\n\n🔧 Características:\n✔️ Impresión 3D de alta precisión\n✔️ Diseño multicolor (sin necesidad de pintura)\n✔️ Detalles nítidos y acabado prolijo\n✔️ Material: PLA de alta calidad\n✔️ Liviano y resistente\n✔️ Listo para colocar en tu lugar favorito\n\n📏 Medidas:\nTamaño aproximado: 50cms x 50cms x 50cms\nEscalable según preferencia\n\nIdeal para:\nDecoración geek / gamer\nRegalo para fans de Spider-Man o Venom\nColeccionistas de figuras y arte 3D\n\n💥 Convertí cualquier espacio en algo único con esta pieza exclusiva hecha en impresión 3D.",
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662965/dualgi3d/products/fn52yveqdahpkuxggsfo.jpg",
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662965/dualgi3d/products/fn52yveqdahpkuxggsfo.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662967/dualgi3d/products/wibknqdbzudspjyn7nb4.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662969/dualgi3d/products/z4j0ztdxjasgdsmg0xze.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662971/dualgi3d/products/kdjrnl2slzpeki9pepmf.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662972/dualgi3d/products/lqmno9vvoajnx3zbz7or.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662974/dualgi3d/products/owyxrm4glb8tialp5pac.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662975/dualgi3d/products/ardduois0nccl2agt2jz.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662976/dualgi3d/products/aaffaerg0zqhjxs7crqv.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662977/dualgi3d/products/l0ye8aw21j8amz0vx8qx.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774662979/dualgi3d/products/btl7snndmfyx2xtgjiqo.jpg"
+  ],
+  "printingTimeHours": 64.4333,
+  "gramsFilament": 1319.48,
+  "filamentLines": [
+    {
+      "supplyId": "978ffaab-acf1-4b40-a618-bd64302e468f",
+      "grams": 5.51
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 167.49
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 951.84
+    },
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 194.64
+    }
+  ],
+  "insumoLines": [],
+  "category": "Juguetes / Decoración",
+  "subcategory": "Marvel",
+  "priceRetail": 128300,
+  "priceWholesale": 101400,
+  "priceKeychain": 128300,
+  "manualPricing": true,
+  "stock": 29,
+  "minimumStock": null,
+  "productKind": "print3d",
+  "purchaseCost": 0,
+  "resaleMarkupPercentOnCost": null,
+  "resaleWholesaleDiscountPercent": null,
+  "quantityTiers": [],
+  "resaleScanCode": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T02:09:26.752Z"
+  },
+  "visibleEnTiendaPublica": true,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-10T05:28:51.268Z"
+  }
+}

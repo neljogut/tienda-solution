@@ -1,0 +1,222 @@
+{
+  "id": "b886038b-26a6-4340-86f8-c41d0514c0c3",
+  "clientId": "9f02d8df-5702-4922-8cf3-8556555e44a0",
+  "clientName": "Fernanda Janzen",
+  "clientEmail": "fer_solcito@hotmail.com",
+  "clientPhone": "3476505210",
+  "clientAddress": "Rioja 554 - Puerto Gneral San Martin",
+  "items": [
+    {
+      "productId": "78bc6a56-eec8-4653-8672-9fbbc0df05ea",
+      "productName": "Club Atletico Independiente",
+      "productCode": "PROD-20260404-92FB",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343451/dualgi3d/products/ghxazdictxh4ks4qz3y1.png",
+      "quantity": 1,
+      "unitPrice": 14200,
+      "totalPrice": 14200,
+      "supplyUsage": [
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 5.51
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 6.13
+        },
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 153.65
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 0.66
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 2.45
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 6.23
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 3.15
+        },
+        {
+          "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+          "kind": "filament",
+          "amountPerUnit": 3.48
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 18.02
+        },
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 2.1
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 6.44
+        },
+        {
+          "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        },
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 1.38
+        }
+      ]
+    },
+    {
+      "productId": "a1d546c7-f9a0-4851-9201-e2b99c3eaed2",
+      "productName": "Un Poco de Chisme",
+      "productCode": "PROD-20260404-E13A",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775342598/dualgi3d/products/jnjkvj4ucjgzjcgup6kd.png",
+      "quantity": 1,
+      "unitPrice": 14200,
+      "totalPrice": 14200,
+      "supplyUsage": [
+        {
+          "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+          "kind": "filament",
+          "amountPerUnit": 3.8
+        },
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 1.67
+        },
+        {
+          "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+          "kind": "filament",
+          "amountPerUnit": 26.35
+        },
+        {
+          "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        },
+        {
+          "supplyId": "a9736f96-9944-48b2-aa16-43f736265aa6",
+          "kind": "filament",
+          "amountPerUnit": 111.29
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 4.2
+        },
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 21.17
+        },
+        {
+          "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+          "kind": "filament",
+          "amountPerUnit": 11.59
+        },
+        {
+          "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+          "kind": "filament",
+          "amountPerUnit": 2.5
+        }
+      ]
+    },
+    {
+      "productId": "c5da4e57-f450-410c-8c62-84d9e60149a3",
+      "productName": "Chop Boca Junior medio litro",
+      "productCode": "PROD-20260216-FA13",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771256142/dualgi3d/products/z4sawl2valgfxrxxcohd.jpg",
+      "quantity": 2,
+      "unitPrice": 14200,
+      "totalPrice": 28400,
+      "supplyUsage": [
+        {
+          "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+          "kind": "filament",
+          "amountPerUnit": 151.07
+        },
+        {
+          "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+          "kind": "filament",
+          "amountPerUnit": 30.58
+        },
+        {
+          "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        }
+      ]
+    },
+    {
+      "productId": "01f1c31b-311e-4f52-9b21-5bbbd2bfbc4f",
+      "productName": "Chop River Plate medio litro",
+      "productCode": "PROD-20260216-5D70",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771256170/dualgi3d/products/rp4pbsigampak4cn0xfw.jpg",
+      "quantity": 1,
+      "unitPrice": 14200,
+      "totalPrice": 14200,
+      "supplyUsage": [
+        {
+          "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+          "kind": "filament",
+          "amountPerUnit": 14.54
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 122
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 63.53
+        },
+        {
+          "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        }
+      ]
+    }
+  ],
+  "totalAmount": 71000,
+  "paymentStatus": "paid",
+  "paymentMethod": "cash",
+  "amountPaid": 71000,
+  "paymentBreakdownByMethod": {
+    "cash": 71000,
+    "bankTransfer": 0,
+    "creditCard": 0
+  },
+  "status": "delivered",
+  "notes": null,
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": false,
+  "productsRestoredToStock": {},
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-04T23:00:16.868Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-04T23:00:17.376Z"
+  }
+}

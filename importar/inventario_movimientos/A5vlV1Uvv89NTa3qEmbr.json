@@ -1,0 +1,19 @@
+{
+  "id": "A5vlV1Uvv89NTa3qEmbr",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "PLA Rojo de Carreras",
+      "delta": -33,
+      "unit": "g"
+    }
+  ],
+  "reason": "Regalo Cubo Infinito para David Becerra",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T02:02:37.200Z"
+  }
+}

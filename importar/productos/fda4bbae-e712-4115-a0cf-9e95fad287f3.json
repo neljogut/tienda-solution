@@ -1,0 +1,47 @@
+{
+  "id": "fda4bbae-e712-4115-a0cf-9e95fad287f3",
+  "code": "PROD-20260422-FEA2",
+  "name": "Rodillos Escama de dragon Antiestrés Articulados",
+  "description": "Relajate y entretenete con los Dragon Scale Fidget Rollers, un accesorio antiestrés impreso en 3D con un increíble diseño inspirado en escamas de dragón. Su textura especial y sistema de rodillos giratorios brindan una sensación única al moverlo entre los dedos.\n\nIdeal para descargar ansiedad, mejorar la concentración o simplemente disfrutar de un objeto original y llamativo. Compacto, liviano y perfecto para llevar a todos lados.\n\n✅ Impreso en 3D de alta calidad\n✅ Rodillos giratorios con movimiento suave\n✅ Textura tipo escamas de dragón\n✅ Ideal para estrés, ansiedad y foco\n✅ Tamaño práctico para bolsillo o escritorio\n✅ Excelente regalo geek o coleccionable\n\nUn fidget diferente, moderno y muy adictivo, pensado para quienes aman los gadgets originales.",
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1776905508/dualgi3d/products/di6miknvtxqzcvyfy7l2.png",
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1776905508/dualgi3d/products/di6miknvtxqzcvyfy7l2.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1776905522/dualgi3d/products/xdoirnefh56wj8ylgxml.png"
+  ],
+  "printingTimeHours": 2.83333,
+  "gramsFilament": 43,
+  "filamentLines": [
+    {
+      "supplyId": "90f578ed-e1a4-4fa1-9df7-162f396fcbbb",
+      "grams": 29
+    },
+    {
+      "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "grams": 14
+    }
+  ],
+  "insumoLines": [],
+  "category": "Fidget antiestress",
+  "subcategory": null,
+  "priceRetail": 4300,
+  "priceWholesale": 3400,
+  "priceKeychain": 4300,
+  "manualPricing": true,
+  "stock": 10,
+  "minimumStock": null,
+  "productKind": "print3d",
+  "purchaseCost": 0,
+  "resaleMarkupPercentOnCost": null,
+  "resaleWholesaleDiscountPercent": null,
+  "quantityTiers": [],
+  "resaleScanCode": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-23T00:45:23.230Z"
+  },
+  "visibleEnTiendaPublica": true,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-10T05:28:51.268Z"
+  }
+}

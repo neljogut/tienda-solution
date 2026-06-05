@@ -1,0 +1,19 @@
+{
+  "id": "ZmJnbUio654d9CykNyaQ",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "7a5b5054-fecd-4f4e-bf04-6b67c9570c5c",
+      "label": "PETG · Filar · Amarillo Radiante",
+      "delta": -128,
+      "unit": "g"
+    }
+  ],
+  "reason": "Rodillos para soporte de AMS",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:43:24.585Z"
+  }
+}

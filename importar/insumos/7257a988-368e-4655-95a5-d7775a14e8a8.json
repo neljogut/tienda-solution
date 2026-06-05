@@ -1,0 +1,29 @@
+{
+  "id": "7257a988-368e-4655-95a5-d7775a14e8a8",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-31T21:30:03.320Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Carpincho",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-31T21:30:54.461Z"
+  },
+  "stock": 5257,
+  "filamentColor": "#9A6B45",
+  "isDraft": false,
+  "description": "PLA · Filar · Carpincho",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

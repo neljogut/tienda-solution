@@ -1,0 +1,30 @@
+{
+  "id": "06277fdb-ca0b-4db8-956d-a4bdba7730bc",
+  "description": "Cadenita Oro",
+  "price": 100,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-10T09:20:06.134Z"
+  },
+  "type": "insumo",
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1773134436/dualgi3d/supplies/wu3gjzdabqb8ibcucpy8.png",
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1773134436/dualgi3d/supplies/wu3gjzdabqb8ibcucpy8.png"
+  ],
+  "stock": 158,
+  "minimumStock": 200,
+  "subtype": null,
+  "filamentColor": null,
+  "filamentIconId": null,
+  "filamentColorName": null,
+  "filamentCustomPricePerKg": null,
+  "brand": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-10T09:20:42.960Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-10T09:20:42.960Z"
+  }
+}

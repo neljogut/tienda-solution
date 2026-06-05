@@ -1,0 +1,16 @@
+{
+  "id": "0CSmvH42OvQBxxgj4x27",
+  "mode": "fifo",
+  "totalAmount": 25000,
+  "note": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-07T18:11:39.027Z"
+  },
+  "clientId": "wqJgjrYI5JpRFed9Uzlc",
+  "method": "cash",
+  "allocations": {
+    "a85740d0-29b2-43f6-b757-076141032daa": 25000
+  },
+  "clientName": "Lucio Renova"
+}

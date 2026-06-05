@@ -1,0 +1,19 @@
+{
+  "id": "eevNliBZax1YzRhuZ4Te",
+  "fullName": "Dante Renova",
+  "email": "",
+  "phone": "3413617514",
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:14:21.798Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:14:21.602Z"
+  }
+}

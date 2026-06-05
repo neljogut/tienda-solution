@@ -1,0 +1,29 @@
+{
+  "id": "ed673010-eea1-4957-b3e7-703801b90e85",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T20:59:53.849Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Dorado",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:01:19.792Z"
+  },
+  "stock": 5000,
+  "filamentColor": "#D7A62F",
+  "isDraft": false,
+  "description": "PLA · Filar · Dorado",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

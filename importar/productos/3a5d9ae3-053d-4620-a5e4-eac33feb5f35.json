@@ -1,0 +1,40 @@
+{
+  "id": "3a5d9ae3-053d-4620-a5e4-eac33feb5f35",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260225-0AD2",
+  "isDraft": false,
+  "description": "¡Presentamos Invencible Dummy 13 1.0, el muñeco articulado definitivo para fans, artistas y coleccionistas!\nEsta figura impresa en alta calidad 3D, inspirada en el famoso estilo de los personajes de Invencible, es ideal para exhibición, poses dinámicas, referencias artísticas o simplemente como pieza de colección.\n\n⭐ Características principales:\n\nTotalmente articulado: Ajusta fácilmente la figura en múltiples poses gracias a sus articulaciones móviles.\n\nAlta calidad de impresión 3D: Impresión detallada y resistente, perfecta para uso continuo sin deterioro.\n\nDimensiones ideales: Tamaño óptimo para estanterías, mesas de dibujo o vitrinas de colección.\n\nExcelente para artistas: Útil como modelo de referencia para estudios de figura humana y poses dinámicas.\n\nDiseño original y estilizado: Replica con estilo el mítico Dummy 13 de Invencible.",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-25T22:57:47.805Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 17.4333,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772060280/dualgi3d/products/lpxhhdvpy5rzfmsisltu.png",
+  "minimumStock": null,
+  "priceRetail": 18660,
+  "stock": 9,
+  "gramsFilament": 243,
+  "purchaseCost": 0,
+  "priceKeychain": 24880,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772060280/dualgi3d/products/lpxhhdvpy5rzfmsisltu.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772060283/dualgi3d/products/sj6mengfnibkqdy4jdrd.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772060286/dualgi3d/products/voxkxzizujdx90519vhy.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772060290/dualgi3d/products/tqav7iuugzmm9uchdczb.png"
+  ],
+  "name": "Figura Articulada Invencible Dummy 13 1.0",
+  "category": "Dummy´s",
+  "subcategory": null,
+  "priceWholesale": 15860,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

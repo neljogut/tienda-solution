@@ -1,0 +1,47 @@
+{
+  "id": "cUFKQ0p0EghME9dhShL4",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -5,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -43,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "label": "47094941-2873-464a-acc7-6b663d9be54c",
+      "delta": -45,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "02a850a2-9f28-4c66-88a5-c39f9f3b919e",
+      "label": "02a850a2-9f28-4c66-88a5-c39f9f3b919e",
+      "delta": -1,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "72887086-a77d-4028-b401-56a32266dce2",
+      "label": "Box con cajon FIFA World Cup 2026",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "3f5e26a3-4d41-4dc2-9ea4-d0d48ae8829b",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T22:36:22.752Z"
+  }
+}

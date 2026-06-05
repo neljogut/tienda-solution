@@ -1,0 +1,29 @@
+{
+  "id": "02a850a2-9f28-4c66-88a5-c39f9f3b919e",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:46:06.255Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Verde Filar",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:46:57.391Z"
+  },
+  "filamentColor": "#0D4220",
+  "isDraft": false,
+  "description": "PLA · Filar · Verde Filar",
+  "stock": 6666,
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

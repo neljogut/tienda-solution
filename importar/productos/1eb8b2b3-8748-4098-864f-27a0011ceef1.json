@@ -1,0 +1,46 @@
+{
+  "id": "1eb8b2b3-8748-4098-864f-27a0011ceef1",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260311-4FAB",
+  "isDraft": false,
+  "description": "Tuquero para cigarrillos",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-12T00:41:14.504Z"
+  },
+  "filamentLines": [
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 2
+    },
+    {
+      "supplyId": "32a3be33-e375-421f-9806-c826354bfd45",
+      "grams": 13
+    }
+  ],
+  "printingTimeHours": 1.9666666666666668,
+  "imageUrl": null,
+  "minimumStock": null,
+  "priceRetail": 1310,
+  "stock": 50,
+  "gramsFilament": 15,
+  "purchaseCost": 0,
+  "priceKeychain": 1740,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1773276064/dualgi3d/products/zdjilzojoxd4qqvpd2lk.png"
+  ],
+  "name": "Majin Boo",
+  "category": "420",
+  "subcategory": "Tuqueros",
+  "priceWholesale": 1110,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

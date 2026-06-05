@@ -1,0 +1,19 @@
+{
+  "id": "a4HGqCIQFRYEnZ3Zk1Zx",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "label": "PLA Oro",
+      "delta": -8,
+      "unit": "g"
+    }
+  ],
+  "reason": "Regalo cadena Jona",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T02:05:13.901Z"
+  }
+}

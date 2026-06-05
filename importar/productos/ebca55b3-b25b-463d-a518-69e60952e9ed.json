@@ -1,0 +1,62 @@
+{
+  "id": "ebca55b3-b25b-463d-a518-69e60952e9ed",
+  "code": "PROD-20260529-47F9",
+  "name": "AFA",
+  "description": "Chop de la seleccion argentina de 500cm3, con vaso de aluminio logos y sponsor",
+  "imageUrl": null,
+  "imageUrls": [
+    "https://i.imgur.com/XQQag2r.jpeg",
+    "https://i.imgur.com/labJgMd.png",
+    "https://i.imgur.com/lxMi1Sy.jpeg",
+    "https://i.imgur.com/CrVPHLI.png"
+  ],
+  "printingTimeHours": 7.833333333333333,
+  "gramsFilament": 189.02,
+  "filamentLines": [
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 40.02
+    },
+    {
+      "supplyId": "6bca3005-3616-4820-ba07-dd94683a508d",
+      "grams": 57
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 90
+    },
+    {
+      "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "grams": 2
+    }
+  ],
+  "insumoLines": [
+    {
+      "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "amount": 1
+    }
+  ],
+  "category": "Jarras Chopperas",
+  "subcategory": "500cm3",
+  "priceRetail": 18000,
+  "priceWholesale": 15300,
+  "priceKeychain": 18080,
+  "manualPricing": true,
+  "stock": 10,
+  "minimumStock": null,
+  "productKind": "print3d",
+  "purchaseCost": 0,
+  "resaleMarkupPercentOnCost": null,
+  "resaleWholesaleDiscountPercent": null,
+  "quantityTiers": [],
+  "resaleScanCode": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-30T02:18:29.517Z"
+  },
+  "isDraft": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-30T02:19:44.846Z"
+  }
+}

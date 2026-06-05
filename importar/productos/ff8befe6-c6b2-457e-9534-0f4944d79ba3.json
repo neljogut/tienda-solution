@@ -1,0 +1,39 @@
+{
+  "id": "ff8befe6-c6b2-457e-9534-0f4944d79ba3",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260225-116F",
+  "isDraft": false,
+  "description": "Llevá a tu colección al siguiente nivel con esta figura articulada de Gojo Satoru versión Shinjuku, inspirada en su icónica aparición en Jujutsu Kaisen.\n\nEste modelo está basado en el sistema Dummy 13, lo que permite una excelente movilidad y una gran variedad de poses dinámicas, ideal tanto para exhibición como para fotografía o animación stop-motion.\n\nFabricada mediante impresión 3D de alta calidad, cada figura cuenta con múltiples puntos de articulación en brazos, piernas, torso y cabeza, permitiendo recrear escenas de combate o poses características del personaje con total estabilidad.\n\nModelo totalmente articulado\n\nSistema Dummy 13 de alta movilidad\n\nImpresión 3D de precisión\n\nIdeal para coleccionistas, decoración o fotografía\n\nPermite poses dinámicas sin necesidad de soportes\n\nDiseño inspirado en Gojo Satoru (Shinjuku Arc)",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-25T22:26:29.072Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 13.6667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772058405/dualgi3d/products/p4pi0d7a59ew07jssqbj.png",
+  "minimumStock": null,
+  "priceRetail": 18030,
+  "stock": 9,
+  "gramsFilament": 243,
+  "purchaseCost": 0,
+  "priceKeychain": 24040,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772058405/dualgi3d/products/p4pi0d7a59ew07jssqbj.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772058416/dualgi3d/products/wso4ajsnqv2iqk0xgq6y.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772058419/dualgi3d/products/euspc0qve1jkxyemfaky.png"
+  ],
+  "name": "Figura Articulada Satoru Gojo  Dummy 13",
+  "category": "Dummy´s",
+  "subcategory": null,
+  "priceWholesale": 15330,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

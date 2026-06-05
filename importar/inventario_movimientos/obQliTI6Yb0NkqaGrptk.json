@@ -1,0 +1,19 @@
+{
+  "id": "obQliTI6Yb0NkqaGrptk",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "74f0cc75-187a-47ce-b03c-4247664adb39",
+      "label": "PETG Blanco Antartida",
+      "delta": 4000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:36:51.045Z"
+  }
+}

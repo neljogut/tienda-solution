@@ -1,0 +1,59 @@
+{
+  "id": "e4ff3acf-4085-4453-9dbc-f27540e705e5",
+  "clientId": "607f43c8-859e-463b-8662-b0ce047562cd",
+  "clientName": "Alexander Butti",
+  "clientEmail": "Alexander@gmail.com",
+  "clientPhone": "3476303668",
+  "clientAddress": "",
+  "items": [
+    {
+      "productId": "ea63aaba-3f30-40cf-b8d9-5a1785b9923e",
+      "productName": "Chop Rosario Central  medio litro",
+      "productCode": "PROD-20260216-5285",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771256113/dualgi3d/products/tgtloptbajblnjyuy8ff.jpg",
+      "quantity": 2,
+      "unitPrice": 18000,
+      "totalPrice": 36000,
+      "supplyUsage": [
+        {
+          "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+          "kind": "filament",
+          "amountPerUnit": 124.69
+        },
+        {
+          "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+          "kind": "filament",
+          "amountPerUnit": 67.17
+        },
+        {
+          "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        }
+      ]
+    }
+  ],
+  "totalAmount": 36000,
+  "paymentStatus": "paid",
+  "paymentMethod": "bankTransfer",
+  "amountPaid": 36000,
+  "paymentBreakdownByMethod": {
+    "cash": 0,
+    "bankTransfer": 36000,
+    "creditCard": 0
+  },
+  "status": "delivered",
+  "notes": null,
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": false,
+  "productsRestoredToStock": {},
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-31T21:04:01.778Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-31T21:04:02.319Z"
+  }
+}

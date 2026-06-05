@@ -1,0 +1,29 @@
+{
+  "id": "47094941-2873-464a-acc7-6b663d9be54c",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:37:06.036Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Oro",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:38:33.405Z"
+  },
+  "filamentColor": "#C9971E",
+  "isDraft": false,
+  "description": "PLA · Filar · Oro",
+  "minimumStock": 4000,
+  "stock": 5999,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T21:19:41.399Z"
+  }
+}

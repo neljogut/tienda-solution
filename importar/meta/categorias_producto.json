@@ -1,0 +1,100 @@
+{
+  "id": "categorias_producto",
+  "customCategories": [
+    "Cosplay",
+    "Despolvillador de yerba",
+    "Dummy´s",
+    "Fidget antiestress",
+    "GyM",
+    "Jarras Chopperas",
+    "Juguetes / Decoración",
+    "LightBox",
+    "Macetas",
+    "Mates",
+    "Milkshake",
+    "Mundial Fifa World Cup 2026",
+    "Soportes",
+    "Souvenirs"
+  ],
+  "subcategoriesByParent": {
+    "420": [
+      "Tuqueros"
+    ],
+    "Jarras Chopperas": [
+      "500cm3",
+      "650cm3"
+    ],
+    "Juguetes / Decoración": [
+      "Marvel",
+      "Star Wars"
+    ],
+    "LightBox": [
+      "Animé",
+      "Clubes",
+      "Emprendimientos",
+      "Logos Vehiculos"
+    ],
+    "Mundial Fifa World Cup 2026": [
+      "Box figuritas"
+    ],
+    "Soportes": [
+      "Celulares"
+    ]
+  },
+  "customCategoriesReventa": [
+    "Filamentos"
+  ],
+  "subcategoriesReventaByParent": {
+    "Filamentos": [
+      "FILAR"
+    ],
+    "Filamentos>FILAR": [
+      "PLA"
+    ]
+  },
+  "quantityTiersByCategoryPathPrint3d": {},
+  "quantityTiersByCategoryPathReventa": {
+    "Filamentos": [
+      {
+        "minUnits": 3,
+        "maxUnits": 5,
+        "unitPriceRetail": 15000,
+        "unitPriceWholesale": null
+      },
+      {
+        "minUnits": 6,
+        "maxUnits": null,
+        "unitPriceRetail": 14000,
+        "unitPriceWholesale": null
+      }
+    ],
+    "Filamentos>FILAR": [
+      {
+        "minUnits": 3,
+        "maxUnits": 5,
+        "unitPriceRetail": 15000,
+        "unitPriceWholesale": null
+      },
+      {
+        "minUnits": 6,
+        "maxUnits": null,
+        "unitPriceRetail": 14000,
+        "unitPriceWholesale": null
+      }
+    ],
+    "Filamentos>FILAR>PLA": [
+      {
+        "minUnits": 3,
+        "maxUnits": 5,
+        "unitPriceRetail": 15000,
+        "unitPriceWholesale": null
+      },
+      {
+        "minUnits": 6,
+        "maxUnits": null,
+        "unitPriceRetail": 14000,
+        "unitPriceWholesale": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "9688d4f0-8d55-4cbd-acdf-f2131520bf2f",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:44:28.455Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PETG",
+  "filamentIconId": "spool",
+  "filamentColorName": "Magenta",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:44:52.412Z"
+  },
+  "filamentColor": "#C2187A",
+  "isDraft": false,
+  "description": "PETG · Filar · Magenta",
+  "stock": 3432,
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

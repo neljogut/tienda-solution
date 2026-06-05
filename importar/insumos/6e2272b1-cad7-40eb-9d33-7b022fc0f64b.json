@@ -1,0 +1,29 @@
+{
+  "id": "6e2272b1-cad7-40eb-9d33-7b022fc0f64b",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:20:13.469Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "stock": 8058,
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Tabaco",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:23:19.255Z"
+  },
+  "filamentColor": "#7A4A2A",
+  "isDraft": false,
+  "description": "PLA · Filar · Tabaco",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

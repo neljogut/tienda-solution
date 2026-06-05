@@ -1,0 +1,40 @@
+{
+  "id": "da4e003e-2417-48f6-81fd-e80e0421cee4",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20251228-7488",
+  "isDraft": false,
+  "description": "Nave Sar Wars tipo kit para armar",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-12-28T18:12:12.560Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 9.86667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766945558/dualgi3d/products/djzcy9vbiu7g3zmv0m8t.jpg",
+  "minimumStock": null,
+  "priceRetail": 12860,
+  "stock": 99,
+  "gramsFilament": 173,
+  "purchaseCost": 0,
+  "priceKeychain": 17150,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766945558/dualgi3d/products/djzcy9vbiu7g3zmv0m8t.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766945559/dualgi3d/products/ea4hgg2rijq1wsu0b4vq.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766945561/dualgi3d/products/laikdg43kblnyhsiln0s.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766945567/dualgi3d/products/sf3zwy7gorx8vxng541y.jpg"
+  ],
+  "name": "Tarjeta kit bombardero TIE - Star Wars",
+  "category": "Juguetes / Decoración",
+  "subcategory": "Star Wars",
+  "priceWholesale": 10930,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

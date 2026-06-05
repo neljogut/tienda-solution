@@ -1,0 +1,47 @@
+{
+  "id": "backfill_sale_fb870603-66b7-4d90-8da3-9e2819bed6f8",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "label": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "delta": -9.02,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -105.67,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -205.16,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "label": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "ffd12970-7edd-4a44-beec-84bbfeaad780",
+      "label": "LightBox CARP Arroyo Seco",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "fb870603-66b7-4d90-8da3-9e2819bed6f8",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-29T01:51:46.956Z"
+  }
+}

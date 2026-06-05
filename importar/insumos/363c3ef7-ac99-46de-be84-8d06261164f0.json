@@ -1,0 +1,29 @@
+{
+  "id": "363c3ef7-ac99-46de-be84-8d06261164f0",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:18:18.251Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PETG",
+  "filamentIconId": "spool",
+  "filamentColorName": "Azul Boreal",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:18:43.868Z"
+  },
+  "filamentColor": "#1F5FA8",
+  "isDraft": false,
+  "description": "PETG · Filar · Azul Boreal",
+  "stock": 3462,
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

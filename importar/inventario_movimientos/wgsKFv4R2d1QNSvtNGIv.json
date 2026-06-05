@@ -1,0 +1,19 @@
+{
+  "id": "wgsKFv4R2d1QNSvtNGIv",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "87183d46-e31a-4315-b294-2174083831e5",
+      "label": "PLA Bronce",
+      "delta": 4000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T02:31:32.194Z"
+  }
+}

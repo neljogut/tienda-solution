@@ -1,0 +1,29 @@
+{
+  "id": "ed3d7ced-e570-4281-ba33-df79fb76a050",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:23:21.844Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "stock": 5995,
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Cobre",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:26:44.895Z"
+  },
+  "filamentColor": "#B7653C",
+  "isDraft": false,
+  "description": "PLA · Filar · Cobre",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

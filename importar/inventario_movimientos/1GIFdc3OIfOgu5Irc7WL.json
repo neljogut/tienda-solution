@@ -1,0 +1,19 @@
+{
+  "id": "1GIFdc3OIfOgu5Irc7WL",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "7257a988-368e-4655-95a5-d7775a14e8a8",
+      "label": "PLA Carpincho",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:50:30.557Z"
+  }
+}

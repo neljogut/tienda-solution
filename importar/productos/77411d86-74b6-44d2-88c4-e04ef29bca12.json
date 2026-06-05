@@ -1,0 +1,56 @@
+{
+  "id": "77411d86-74b6-44d2-88c4-e04ef29bca12",
+  "code": "PROD-20260604-2E3F",
+  "name": "Mate Botín Futbolero – Diseño Premium para Fanáticos del Fútbol",
+  "description": "Llevá tu pasión por el fútbol también al momento del mate. Este mate con diseño de botín combina estilo, originalidad y una terminación muy llamativa, ideal para fanáticos, jugadores, coleccionistas o para regalar.\n\nSu diseño en negro y blanco, con detalles tipo costura y base inspirada en tapones de botín, lo convierte en una pieza distinta que se destaca al instante. Perfecto para usar todos los días, decorar tu espacio futbolero o sorprender con un regalo original",
+  "imageUrl": null,
+  "imageUrls": [
+    "https://i.imgur.com/gn71Ktm.jpeg",
+    "https://i.imgur.com/a8U4Ffb.jpeg"
+  ],
+  "printingTimeHours": 3.8833333333333333,
+  "gramsFilament": 89,
+  "filamentLines": [
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 18
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 70
+    },
+    {
+      "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "grams": 1
+    }
+  ],
+  "insumoLines": [
+    {
+      "supplyId": "15a753d7-d949-4ab5-8f65-c0ab3c9c7967",
+      "amount": 1
+    }
+  ],
+  "category": "Mates",
+  "subcategory": null,
+  "priceRetail": 7500,
+  "priceWholesale": 6380,
+  "priceKeychain": 9560,
+  "manualPricing": true,
+  "minimumStock": null,
+  "productKind": "print3d",
+  "purchaseCost": 0,
+  "resaleMarkupPercentOnCost": null,
+  "resaleWholesaleDiscountPercent": null,
+  "quantityTiers": [],
+  "resaleScanCode": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T21:02:50.236Z"
+  },
+  "isDraft": false,
+  "stock": 8,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T21:20:03.315Z"
+  }
+}

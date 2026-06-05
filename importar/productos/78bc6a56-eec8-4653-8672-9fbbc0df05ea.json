@@ -1,0 +1,101 @@
+{
+  "id": "78bc6a56-eec8-4653-8672-9fbbc0df05ea",
+  "resaleScanCode": "",
+  "insumoLines": [
+    {
+      "amount": 1,
+      "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3"
+    }
+  ],
+  "code": "PROD-20260404-92FB",
+  "isDraft": false,
+  "description": "Jarra de chop version rey de copas con con mango tallado, escudo, diablo, e iniciales en el piso de la jarra",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-04T22:58:15.404Z"
+  },
+  "filamentLines": [
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 5.51
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 6.13
+    },
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 153.65
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 0.66
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 2.45
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 6.23
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 3.15
+    },
+    {
+      "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "grams": 3.48
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 18.02
+    },
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 2.1
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 6.44
+    },
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 1.38
+    }
+  ],
+  "printingTimeHours": 7.133333333333334,
+  "visibleEnTiendaPublica": false,
+  "imageUrl": null,
+  "minimumStock": null,
+  "priceRetail": 18000,
+  "stock": 50,
+  "gramsFilament": 209.2,
+  "purchaseCost": 0,
+  "priceKeychain": 21200,
+  "manualPricing": true,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343451/dualgi3d/products/ghxazdictxh4ks4qz3y1.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343452/dualgi3d/products/qlkzndhskfirrf7vehsj.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343453/dualgi3d/products/w8uopijz00yemgxjuud1.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343453/dualgi3d/products/bdkl0zdyt83ee4zfnhvi.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343454/dualgi3d/products/yolnytuxljmqbbo5g34r.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343455/dualgi3d/products/chcolgfjb9yuhoapmlnh.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343456/dualgi3d/products/mvrneeetvmeindoveoua.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343456/dualgi3d/products/wakdxvkedj2na0dvnzkf.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343457/dualgi3d/products/aebhwrrpij5vb3ga97zv.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775343458/dualgi3d/products/ikchpbikicoqyfozw78e.png"
+  ],
+  "name": "Club Atletico Independiente",
+  "category": "Jarras Chopperas",
+  "subcategory": "500cm3",
+  "priceWholesale": 13500,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:09:20.562Z"
+  }
+}

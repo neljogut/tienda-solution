@@ -1,0 +1,16 @@
+{
+  "id": "vTMjSLcxn7tCpGKdtbQw",
+  "mode": "fifo",
+  "totalAmount": 40000,
+  "note": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-07T18:11:50.640Z"
+  },
+  "clientId": "2eec7255-ee03-4e57-b11d-5c0a144378d7",
+  "method": "cash",
+  "allocations": {
+    "21c96a5e-c5ef-4afa-871d-749a7054b583": 40000
+  },
+  "clientName": "Alexis Esquivel"
+}

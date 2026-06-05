@@ -1,0 +1,20 @@
+{
+  "id": "XV9UYMfT6wT3OoTu6HFX",
+  "emailNorm": "elpalax88@gmail.com",
+  "role": "cashier",
+  "createdByUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T06:19:19.718Z"
+  },
+  "claimedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T06:21:05.254Z"
+  },
+  "staffUid": "XJLgUycJIKaRVXc57kVwd2WROyf2",
+  "status": "disabled",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T21:03:29.084Z"
+  }
+}

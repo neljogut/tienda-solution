@@ -1,0 +1,65 @@
+{
+  "id": "18518624-9f3b-492a-8280-7341372b4d07",
+  "notes": null,
+  "ledgerKind": "catalogSale",
+  "suppliesDeducted": true,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T00:08:05.238Z"
+  },
+  "clientEmail": "",
+  "clientAddress": "",
+  "suppliesRestoredToStock": {},
+  "clientId": "gOyJ0nDZw7EWbsHhTIwL",
+  "clientPhone": "3413492800",
+  "clientName": "Diego Martin Castaño",
+  "productStockDeducted": true,
+  "paymentMethod": "cash",
+  "productsRestoredToStock": {},
+  "totalAmount": 36000,
+  "items": [
+    {
+      "supplyUsage": [
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "amountPerUnit": 5,
+          "kind": "filament"
+        },
+        {
+          "amountPerUnit": 43,
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament"
+        },
+        {
+          "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+          "amountPerUnit": 45,
+          "kind": "filament"
+        },
+        {
+          "kind": "filament",
+          "supplyId": "02a850a2-9f28-4c66-88a5-c39f9f3b919e",
+          "amountPerUnit": 1
+        }
+      ],
+      "productCode": "PROD-20260520-FE7B",
+      "isCustomLine": false,
+      "productKind": "print3d",
+      "totalPrice": 36000,
+      "quantity": 6,
+      "productImage": "https://i.imgur.com/Fnjj3rx.jpeg",
+      "unitPrice": 6000,
+      "productName": "Box con cajon FIFA World Cup 2026",
+      "productId": "72887086-a77d-4028-b401-56a32266dce2"
+    }
+  ],
+  "paymentStatus": "paid",
+  "amountPaid": 36000,
+  "paymentBreakdownByMethod": {
+    "cash": 36000
+  },
+  "status": "delivered",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:05:49.931Z"
+  }
+}

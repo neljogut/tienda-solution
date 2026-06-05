@@ -1,0 +1,60 @@
+{
+  "id": "a01f69c0-636c-4b5b-9720-1aaa54fa06a9",
+  "clientName": "Alejandro Arias",
+  "clientId": "8rPrExAUmtNIvgVWXYRI",
+  "clientPhone": "3476339705",
+  "clientEmail": "",
+  "notes": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-31T21:45:54.636Z"
+  },
+  "totalAmount": 18000,
+  "productsRestoredToStock": {},
+  "suppliesRestoredToStock": {},
+  "clientAddress": "",
+  "paymentMethod": "cash",
+  "ledgerKind": "catalogSale",
+  "items": [
+    {
+      "productKind": "print3d",
+      "isCustomLine": false,
+      "quantity": 1,
+      "productImage": "https://i.imgur.com/p7NKAZi.png",
+      "productCode": "PROD-20260529-9EEC",
+      "totalPrice": 18000,
+      "productId": "43bb95f5-37f1-4f1d-aee2-52d6f593e11c",
+      "supplyUsage": [
+        {
+          "kind": "filament",
+          "amountPerUnit": 116.54,
+          "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66"
+        },
+        {
+          "kind": "filament",
+          "amountPerUnit": 71.61,
+          "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d"
+        },
+        {
+          "kind": "filament",
+          "amountPerUnit": 2,
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95"
+        }
+      ],
+      "productName": "Rosario Central",
+      "unitPrice": 18000
+    }
+  ],
+  "suppliesDeducted": true,
+  "productStockDeducted": true,
+  "amountPaid": 18000,
+  "paymentBreakdownByMethod": {
+    "cash": 18000
+  },
+  "paymentStatus": "paid",
+  "status": "delivered",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-01T10:47:27.613Z"
+  }
+}

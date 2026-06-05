@@ -1,0 +1,29 @@
+{
+  "id": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+  "description": "Vaso Alumino 500mll",
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-02-22T17:59:55.599Z"
+  },
+  "type": "insumo",
+  "imageUrls": [],
+  "subtype": null,
+  "filamentColor": null,
+  "filamentIconId": null,
+  "filamentColorName": null,
+  "filamentCustomPricePerKg": null,
+  "brand": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-22T18:01:19.137Z"
+  },
+  "price": 1535,
+  "imageUrl": "https://i.imgur.com/r0QDcNE.png",
+  "isDraft": false,
+  "minimumStock": 30,
+  "stock": 99,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-28T00:04:30.022Z"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "id": "0e5vSkT3vfCPjY5FkSbu",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -18,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -70,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "47094941-2873-464a-acc7-6b663d9be54c",
+      "label": "47094941-2873-464a-acc7-6b663d9be54c",
+      "delta": -1,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "15a753d7-d949-4ab5-8f65-c0ab3c9c7967",
+      "label": "15a753d7-d949-4ab5-8f65-c0ab3c9c7967",
+      "delta": -1,
+      "unit": "u."
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "77411d86-74b6-44d2-88c4-e04ef29bca12",
+      "label": "Mate Botín Futbolero – Diseño Premium para Fanáticos del Fútbol",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "ff84caa8-9f60-429e-858e-ac1015b39888",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T21:19:41.579Z"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "7b0deb19-d18c-48ed-a096-fee5dbf54b59",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20251221-772E",
+  "isDraft": false,
+  "description": "Traé un pedazo de historia prehistórica a tu hogar o espacio de trabajo con este increíble cráneo de T-Rex impreso en 3D, perfecto para fanáticos de los dinosaurios, coleccionistas y amantes de piezas únicas de decoración.\n\n🔥 Características destacadas\n\n✔ Diseño realista: recrea el emblemático cráneo del Tyrannosaurus Rex con detalles sorprendentes. \nMaker World\n\n✔ Impreso en 3D de alta calidad: acabado prolijo y sólido, listo para exhibir. \nMaker World\n\n✔ Pieza de impacto: ideal como centro de mesa, estantería o pieza decorativa temática. \nMaker World\n\n✔ Tamaño y presencia: tamaño apreciable que llama la atención (impresión basada en configuración estándar de ~170 mm de largo). \nMaker World\n\n📏 Medidas aproximadas\n\n➡ Dimensiones orientativas: ~170 mm de largo (pueden variar según versión y escala de impresión). \nMaker World\n\n🧱 Material y terminación\n\n🎨 Material: PLA de alta resistencia — aspecto sólido y duradero.\n🖌️ Acabado: color estándar o con opción de pintura personalizada (consultar disponibilidad).\n\n🎁 Ideal para\n\n✨ Amantes de los dinosaurios\n✨ Decoración geek o científica\n✨ Colecciones temáticas\n✨ Regalos originales",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-12-22T01:07:40.936Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 11.0833,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766365018/dualgi3d/products/bs7atlkbegjkwegujifl.png",
+  "minimumStock": null,
+  "priceRetail": 17150,
+  "stock": 30,
+  "gramsFilament": 236,
+  "purchaseCost": 0,
+  "priceKeychain": 22860,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766365018/dualgi3d/products/bs7atlkbegjkwegujifl.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1766365020/dualgi3d/products/b7jafccu6lw0achpuodj.png"
+  ],
+  "name": "🦖 Cráneo de T-Rex — Decoración Premium",
+  "category": "Juguetes / Decoración",
+  "subcategory": null,
+  "priceWholesale": 14580,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

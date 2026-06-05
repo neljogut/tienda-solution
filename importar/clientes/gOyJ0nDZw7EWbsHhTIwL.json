@@ -1,0 +1,19 @@
+{
+  "id": "gOyJ0nDZw7EWbsHhTIwL",
+  "fullName": "Diego Martin Castaño",
+  "email": "",
+  "phone": "3413492800",
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:16:38.384Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:16:38.168Z"
+  }
+}

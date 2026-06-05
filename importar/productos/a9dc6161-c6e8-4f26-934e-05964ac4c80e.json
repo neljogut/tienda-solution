@@ -1,0 +1,45 @@
+{
+  "id": "a9dc6161-c6e8-4f26-934e-05964ac4c80e",
+  "resaleScanCode": "",
+  "insumoLines": [
+    {
+      "amount": 1,
+      "supplyId": "a8699143-8913-476b-a6c4-2172a61d3501"
+    }
+  ],
+  "code": "PROD-20251122-08EF",
+  "isDraft": false,
+  "description": "Elegante y con mucho estilo, Clutch se luce en este vaso de milkshake de 300 ml, creado mediante impresión 3D de alta calidad.\nIncluye polímero interno para lograr el efecto visual del batido y viene acompañado de un sorbete reutilizable.\n\nCaracterísticas:\n\nCapacidad: 300 ml\n\nVaso fabricado en impresión 3D\n\nLleva polímero interno decorativo tipo milkshake\n\nIncluye sorbete reutilizable\n\nDiseño exclusivo de Clutch\n\nLiviano, duradero y de fácil lavado\n\nPerfecto para bebidas frías, licuados y milkshakes",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-11-22T17:24:23.408Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 6.26667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833398/dualgi3d/products/evle62cybiaxnu9fc2wl.png",
+  "minimumStock": null,
+  "priceRetail": 15520,
+  "stock": 100,
+  "gramsFilament": 214,
+  "purchaseCost": 0,
+  "priceKeychain": 20490,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833398/dualgi3d/products/evle62cybiaxnu9fc2wl.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833401/dualgi3d/products/v3oojtmzbtceil4jqtyc.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833403/dualgi3d/products/p2aciioa9m0rkft6xih2.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833406/dualgi3d/products/m3qhsswumfdfuypwpfz6.png"
+  ],
+  "name": "Clutch – Mascotas del Mundial – 300 ml",
+  "category": "Milkshake",
+  "subcategory": null,
+  "priceWholesale": 13190,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

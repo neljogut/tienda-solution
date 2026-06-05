@@ -1,0 +1,58 @@
+{
+  "id": "ffd12970-7edd-4a44-beec-84bbfeaad780",
+  "code": "PROD-20260328-BE3E",
+  "name": "LightBox CARP Arroyo Seco",
+  "description": "LightBox \"Caja Luminosa\" con Luz Led RGB, control Remoto, y transformador de 12 volts",
+  "imageUrl": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774748927/dualgi3d/products/qj2q4ob5s0ac6piwvd6j.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774748951/dualgi3d/products/crz5fhb2zzygff8wckjo.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774748961/dualgi3d/products/nhw8wy7eh9nxolijwfwo.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774748972/dualgi3d/products/j5bkjvqrf9kc1vtnp8db.png"
+  ],
+  "printingTimeHours": 8.35,
+  "gramsFilament": 319.85,
+  "filamentLines": [
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 9.02
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 105.67
+    },
+    {
+      "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "grams": 205.16
+    }
+  ],
+  "insumoLines": [
+    {
+      "supplyId": "f9a23eac-0a02-493a-8435-2722a789e172",
+      "amount": 1
+    }
+  ],
+  "category": "LightBox",
+  "subcategory": "Clubes",
+  "priceRetail": 40000,
+  "priceWholesale": 31600,
+  "priceKeychain": 44300,
+  "manualPricing": true,
+  "stock": 29,
+  "minimumStock": null,
+  "productKind": "print3d",
+  "purchaseCost": 0,
+  "resaleMarkupPercentOnCost": null,
+  "resaleWholesaleDiscountPercent": null,
+  "quantityTiers": [],
+  "resaleScanCode": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-29T01:34:59.840Z"
+  },
+  "isDraft": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-11T18:03:57.648Z"
+  }
+}

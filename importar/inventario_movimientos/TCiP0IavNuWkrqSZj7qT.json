@@ -1,0 +1,19 @@
+{
+  "id": "TCiP0IavNuWkrqSZj7qT",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "a9f7fd6d-3a32-449e-b723-fe23b4cf2082",
+      "label": "PLA Chocolate Mate",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-10T20:51:49.352Z"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "c837f2bd-ea0f-4112-b32b-eb67029ab0dd",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260225-B4DB",
+  "isDraft": false,
+  "description": "Llevá a tu colección al poderoso Omni-Man con esta figura articulada basada en el sistema Dummy 13, completamente impresa en 3D y lista para exhibir o posar como más te guste.\n\nEste modelo está diseñado con múltiples puntos de articulación que permiten recrear poses dinámicas de combate o vuelo, ideal tanto para fans del universo Invincible como para coleccionistas de figuras de acción. Su estructura modular le brinda gran movilidad sin perder estabilidad, e incluye base de soporte para exposición en el aire.\n\nFabricado mediante impresión 3D de alta precisión, cada pieza es ensamblada cuidadosamente para garantizar firmeza en las uniones y durabilidad en el uso. El diseño respeta la estética clásica del personaje, convirtiéndolo en una excelente opción para decoración, colección o regalo.\n\n🔹 Figura completamente articulada\n🔹 Incluye base de soporte para poses aéreas\n🔹 Impresión 3D de alta calidad\n🔹 Ideal para colección o exhibición\n🔹 Diseño inspirado en el personaje Omni-Man\n🔹 Producto físico – No es archivo digital",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-25T22:41:17.579Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 20.1,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772059290/dualgi3d/products/dqvrslwbirbqkntr2nrn.png",
+  "minimumStock": null,
+  "priceRetail": 26110,
+  "stock": 9,
+  "gramsFilament": 351,
+  "purchaseCost": 0,
+  "priceKeychain": 34810,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772059290/dualgi3d/products/dqvrslwbirbqkntr2nrn.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1772059293/dualgi3d/products/xn397zzbqgvewl7tn7gy.png"
+  ],
+  "name": "Figura Articulada Dummy 13 Omni-Man",
+  "category": "Dummy´s",
+  "subcategory": null,
+  "priceWholesale": 22190,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

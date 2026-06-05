@@ -1,0 +1,19 @@
+{
+  "id": "tEqep4q6k7q6MrNtz1tq",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "a3530386-05ff-45a0-85a7-6c018da896c3",
+      "label": "PLA Titanio",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:52:12.976Z"
+  }
+}

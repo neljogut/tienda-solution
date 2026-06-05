@@ -1,0 +1,19 @@
+{
+  "id": "53c26c7e-7864-44fc-b974-e73a5c6e2241",
+  "fullName": "Noelia",
+  "email": "noeliaotero01@gmail.com",
+  "phone": "3415860519",
+  "address": "Rioja 1175, FRAY LUIS BELTRAN, Santa Fe",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-01-02T18:02:44.660Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-27T04:54:39.750Z"
+  }
+}

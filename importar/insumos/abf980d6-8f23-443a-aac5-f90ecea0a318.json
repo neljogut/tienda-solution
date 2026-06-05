@@ -1,0 +1,29 @@
+{
+  "id": "abf980d6-8f23-443a-aac5-f90ecea0a318",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T06:55:56.045Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Naranja Tigre",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T07:01:10.466Z"
+  },
+  "stock": 5214,
+  "filamentColor": "#F36B21",
+  "isDraft": false,
+  "description": "PLA · Filar · Naranja Tigre",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

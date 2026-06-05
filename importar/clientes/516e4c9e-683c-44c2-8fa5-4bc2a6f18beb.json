@@ -1,0 +1,19 @@
+{
+  "id": "516e4c9e-683c-44c2-8fa5-4bc2a6f18beb",
+  "fullName": "Carmen Silva",
+  "email": "carmensilva@74.com",
+  "phone": "3476209931",
+  "address": "Pasaje 2 1068, Puerto General San Martín, Santa Fe, 2202",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2025-12-18T14:25:44.337Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-27T04:54:39.750Z"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "30871287-a664-40e2-be56-c88aa1fe1c78",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20251229-317E",
+  "isDraft": false,
+  "description": "Revive una de las máquinas de guerra más icónicas del universo Star Wars con este espectacular AT-AT Walker, inspirado en el legendario vehículo imperial visto en El Imperio Contraataca.\nEste modelo 3D tipo Kit Card (frameless) está diseñado para ser impreso y armado, ofreciendo una experiencia única tanto para fans de la saga como para amantes del modelismo y la impresión 3D.\n\nEl diseño presenta un sistema de encastres precisos, sin necesidad de pegamento, permitiendo un armado limpio y entretenido. Una vez ensamblado, el AT-AT luce imponente y detallado, ideal para exhibir en estanterías, escritorios o colecciones temáticas.\n\nCaracterísticas del producto:\n\n🛠️ Modelo AT-AT para armado manual\n\n🖨️ Impreso en 3D con materiales de alta calidad (PLA)\n\n📐 Diseño frameless, más limpio y prolijo\n\n🧩 Piezas con encastre, fácil montaje\n\n🎁 Ideal para coleccionistas, fans de Star Wars y regalos originales\n\n🖤 Excelente como objeto decorativo o pieza de exhibición\n\nUn producto que combina diseño, nostalgia y tecnología, perfecto para quienes buscan algo diferente y hecho con detalle.\n\n📦 Producto impreso bajo pedido\n📲 Consultas y pedidos por redes sociales o tienda online",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-12-30T01:37:45.089Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 9.3,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1767058407/dualgi3d/products/n0zfasw27iqfxrizb53r.jpg",
+  "minimumStock": null,
+  "priceRetail": 11150,
+  "stock": 30,
+  "gramsFilament": 148,
+  "purchaseCost": 0,
+  "priceKeychain": 14860,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1767058407/dualgi3d/products/n0zfasw27iqfxrizb53r.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1767058408/dualgi3d/products/xmyvuzzvsnxcdi8yx5ax.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1767058409/dualgi3d/products/m7nmsitdgpuqdlu4r3kt.jpg",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1767058410/dualgi3d/products/cjomw8qdo1etbi5rkved.jpg"
+  ],
+  "name": "AT-AT Walker – Star Wars | Modelo Impreso en 3D para Armado",
+  "category": "Juguetes / Decoración",
+  "subcategory": "Star Wars",
+  "priceWholesale": 9480,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "4be93b40-dad5-48d5-95bd-22d47ec662a4",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:56:23.173Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Uva Mate",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:56:43.581Z"
+  },
+  "stock": 6000,
+  "filamentColor": "#4D2B68",
+  "isDraft": false,
+  "description": "PLA · Filar · Uva Mate",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "f97972ff-9b86-478f-8384-e3b2963d3315",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:38:50.673Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PETG",
+  "filamentIconId": "spool",
+  "filamentColorName": "Cian",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:39:37.094Z"
+  },
+  "stock": 2000,
+  "filamentColor": "#00A9D6",
+  "isDraft": false,
+  "description": "PETG · Filar · Cian",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

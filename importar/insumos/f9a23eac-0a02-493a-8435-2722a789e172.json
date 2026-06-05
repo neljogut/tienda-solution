@@ -1,0 +1,28 @@
+{
+  "id": "f9a23eac-0a02-493a-8435-2722a789e172",
+  "description": "Luces Led RGB con control remoto, transformador y controlador",
+  "price": 14800,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-27T16:08:27.049Z"
+  },
+  "type": "insumo",
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774627751/dualgi3d/supplies/yklirebvy9qnrov5x6xt.png",
+  "imageUrls": [],
+  "minimumStock": 10,
+  "subtype": null,
+  "filamentColor": null,
+  "filamentIconId": null,
+  "filamentColorName": null,
+  "filamentCustomPricePerKg": null,
+  "brand": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-27T16:09:18.240Z"
+  },
+  "stock": 11,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-04T00:39:40.868Z"
+  }
+}

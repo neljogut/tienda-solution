@@ -1,0 +1,48 @@
+{
+  "id": "97bcb5d1-9cb2-40e6-a381-59e9cc341482",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260521-F1F2",
+  "isDraft": false,
+  "description": "",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T23:48:55.555Z"
+  },
+  "filamentLines": [
+    {
+      "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "grams": 12
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 6
+    },
+    {
+      "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "grams": 3
+    }
+  ],
+  "printingTimeHours": 1.25,
+  "imageUrl": null,
+  "minimumStock": null,
+  "priceRetail": 1570,
+  "stock": 50,
+  "gramsFilament": 21,
+  "purchaseCost": 0,
+  "priceKeychain": 2100,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [],
+  "name": "Porta celular articulado",
+  "category": "Soportes",
+  "subcategory": "Celulares",
+  "priceWholesale": 1340,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

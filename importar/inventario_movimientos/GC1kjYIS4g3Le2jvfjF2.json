@@ -1,0 +1,19 @@
+{
+  "id": "GC1kjYIS4g3Le2jvfjF2",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "customLine",
+      "refId": "",
+      "label": "test caja",
+      "delta": 0,
+      "unit": ""
+    }
+  ],
+  "orderId": "c5f7d605-df99-4f67-b06f-a04db2bf40f2",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T05:42:07.102Z"
+  }
+}

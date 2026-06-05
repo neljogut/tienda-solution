@@ -1,0 +1,80 @@
+{
+  "id": "a1d546c7-f9a0-4851-9201-e2b99c3eaed2",
+  "resaleScanCode": "",
+  "insumoLines": [
+    {
+      "amount": 1,
+      "supplyId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3"
+    }
+  ],
+  "code": "PROD-20260404-E13A",
+  "isDraft": false,
+  "description": "Jarra un poco de chisme con vaso de aluminio de 500cm3",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-04T22:43:54.136Z"
+  },
+  "filamentLines": [
+    {
+      "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "grams": 3.8
+    },
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 1.67
+    },
+    {
+      "supplyId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "grams": 26.35
+    },
+    {
+      "supplyId": "a9736f96-9944-48b2-aa16-43f736265aa6",
+      "grams": 111.29
+    },
+    {
+      "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "grams": 4.2
+    },
+    {
+      "supplyId": "25e7e2ed-9129-4dd5-956d-c4b71de20dd4",
+      "grams": 21.17
+    },
+    {
+      "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "grams": 11.59
+    },
+    {
+      "supplyId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "grams": 2.5
+    }
+  ],
+  "printingTimeHours": 5.5,
+  "visibleEnTiendaPublica": false,
+  "imageUrl": null,
+  "minimumStock": null,
+  "priceRetail": 18000,
+  "stock": 9,
+  "gramsFilament": 182.57000000000002,
+  "purchaseCost": 0,
+  "priceKeychain": 18500,
+  "manualPricing": true,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775342598/dualgi3d/products/jnjkvj4ucjgzjcgup6kd.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775342599/dualgi3d/products/sse42rxxkoetoi1ztke2.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775342624/dualgi3d/products/ood2eet9cssf4n1ariih.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775342625/dualgi3d/products/vfrlaybhlmew2itacrkn.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1775342626/dualgi3d/products/ejcycscpm4mpxvmni4cd.png"
+  ],
+  "name": "Un Poco de Chisme",
+  "category": "Jarras Chopperas",
+  "subcategory": "500cm3",
+  "priceWholesale": 13500,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:09:29.674Z"
+  }
+}

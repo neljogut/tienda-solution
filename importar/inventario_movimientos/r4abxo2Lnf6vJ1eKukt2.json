@@ -1,0 +1,19 @@
+{
+  "id": "r4abxo2Lnf6vJ1eKukt2",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "978ffaab-acf1-4b40-a618-bd64302e468f",
+      "label": "PLA Gris Ceniza",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:51:09.108Z"
+  }
+}

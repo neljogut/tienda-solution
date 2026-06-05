@@ -1,0 +1,19 @@
+{
+  "id": "nfxO3syDR3CvP1IC1C5l",
+  "fullName": "Martin Ibañez",
+  "email": "",
+  "phone": "3476608852",
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:13:37.470Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-20T23:13:37.894Z"
+  }
+}

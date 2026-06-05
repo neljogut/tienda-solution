@@ -1,0 +1,20 @@
+{
+  "id": "hf3433SCQnoyvggoPbDF",
+  "origenTiendaPublica": false,
+  "address": null,
+  "notes": null,
+  "phone": "",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T22:42:12.456Z"
+  },
+  "fullName": "Cristian Avila Renova",
+  "totalOrders": 0,
+  "email": "",
+  "status": "activo",
+  "isWholesale": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T22:42:12.526Z"
+  }
+}

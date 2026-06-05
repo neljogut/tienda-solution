@@ -1,0 +1,19 @@
+{
+  "id": "qDyc5cWCsjkrYoCtIuOi",
+  "fullName": "Jonatan Marcelli Renova",
+  "email": "",
+  "phone": "3416111192",
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T22:36:16.637Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T22:36:16.428Z"
+  }
+}

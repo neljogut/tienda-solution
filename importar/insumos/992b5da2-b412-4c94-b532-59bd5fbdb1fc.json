@@ -1,0 +1,29 @@
+{
+  "id": "992b5da2-b412-4c94-b532-59bd5fbdb1fc",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:12:19.985Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PETG",
+  "filamentIconId": "spool",
+  "filamentColorName": "Amarillo Lima",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T21:13:17.198Z"
+  },
+  "stock": 4000,
+  "isDraft": false,
+  "description": "PETG · Filar · Amarillo Lima",
+  "filamentColor": "#D6E829",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

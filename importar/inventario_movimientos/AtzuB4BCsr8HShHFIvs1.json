@@ -1,0 +1,47 @@
+{
+  "id": "AtzuB4BCsr8HShHFIvs1",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "90f578ed-e1a4-4fa1-9df7-162f396fcbbb",
+      "label": "90f578ed-e1a4-4fa1-9df7-162f396fcbbb",
+      "delta": -149,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "abf980d6-8f23-443a-aac5-f90ecea0a318",
+      "label": "abf980d6-8f23-443a-aac5-f90ecea0a318",
+      "delta": -76.6,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "label": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+      "delta": -0.71,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "label": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+      "delta": -2.08,
+      "unit": "g"
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "88735e94-1a00-4338-8bb9-58562612d5b1",
+      "label": "La Juntada de los Artistas",
+      "delta": -1,
+      "unit": "u."
+    }
+  ],
+  "orderId": "a85740d0-29b2-43f6-b757-076141032daa",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-06T01:12:05.776Z"
+  }
+}

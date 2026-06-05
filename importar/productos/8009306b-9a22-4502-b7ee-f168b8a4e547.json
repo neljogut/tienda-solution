@@ -1,0 +1,40 @@
+{
+  "id": "8009306b-9a22-4502-b7ee-f168b8a4e547",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260223-C851",
+  "isDraft": false,
+  "description": "Llevá a tu colección una de las superheroínas más icónicas del universo Invincible con esta figura articulada de Atom Eve, impresa en 3D con gran nivel de detalle y totalmente lista para exhibición o personalización.\n\nEste dummy articulado recrea el diseño clásico del personaje, incluyendo sus característicos efectos de energía, permitiendo múltiples poses dinámicas gracias a sus distintos puntos de articulación. Ideal tanto para fans de la serie como para coleccionistas de figuras, ilustradores que necesiten referencias físicas, o amantes de la impresión 3D.\n\nLa figura incluye:\n\n✔️ Múltiples puntos de articulación en brazos, piernas y torso\n✔️ Manos con efectos de energía intercambiables\n✔️ Base de soporte con efecto de poder\n✔️ Posibilidad de colocarla en distintas poses de acción\n✔️ Diseño fiel al personaje original\n\nFabricada mediante impresión 3D en plástico de alta calidad, esta figura combina resistencia con un acabado visual atractivo, siendo perfecta para:\n\n🔹 Exhibición en vitrinas o escritorios\n🔹 Fotografía de producto o dioramas\n🔹 Referencias para dibujo o modelado\n🔹 Regalos para fans del universo Invincible\n\nCada unidad es impresa de forma individual, asegurando una pieza única que podés sumar a tu colección o usar como elemento decorativo.",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-24T00:58:08.790Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 21.5333,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771894451/dualgi3d/products/dhqk05gjmfwecye0jqn8.png",
+  "minimumStock": null,
+  "priceRetail": 30040,
+  "stock": 9,
+  "gramsFilament": 408,
+  "purchaseCost": 0,
+  "priceKeychain": 40050,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771894451/dualgi3d/products/dhqk05gjmfwecye0jqn8.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771894454/dualgi3d/products/xrwuvnumo7fljkanfc31.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771894459/dualgi3d/products/ruyzej1jnurueoofrol9.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771894462/dualgi3d/products/yoctsqq9tfragmvqoimb.png"
+  ],
+  "name": "Figura Articulada Atom Eve – Dummy Coleccionable",
+  "category": "Dummy´s",
+  "subcategory": null,
+  "priceWholesale": 25530,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "clean": "node -e \"['dist', 'node_modules'].forEach(p => require('fs').rmSync(p, { recursive: true, force: true }))\""
+    "clean": "node -e \"['dist', 'node_modules'].forEach(p => require('fs').rmSync(p, { recursive: true, force: true }))\"",
+    "import:data": "node scripts/import-gestion-data.mjs",
+    "import:data:execute": "node scripts/import-gestion-data.mjs --execute"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",
@@ -34,7 +36,9 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-admin": "^13.10.0",
     "globals": "^17.6.0",
+    "google-auth-library": "^10.7.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.2",

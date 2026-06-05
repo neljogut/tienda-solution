@@ -1,0 +1,19 @@
+{
+  "id": "78674188-778c-46bc-8f93-e8c2ddd07476",
+  "fullName": "Karen Rodriguez",
+  "email": "7karenrodriguez@gmail.com",
+  "phone": "3412632694",
+  "address": "Rivadavia 1978, Ibarlucea, Santa Fe, 2142",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2025-12-30T22:18:40.327Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "notes": null,
+  "isWholesale": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-27T23:57:38.442Z"
+  }
+}

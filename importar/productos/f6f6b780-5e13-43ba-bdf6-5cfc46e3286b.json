@@ -1,0 +1,37 @@
+{
+  "id": "f6f6b780-5e13-43ba-bdf6-5cfc46e3286b",
+  "resaleScanCode": "",
+  "insumoLines": [],
+  "code": "PROD-20260221-FDED",
+  "isDraft": false,
+  "description": "Adorno para lápiz impreso en 3D inspirado en el clásico meme de Flork campeón levantando la copa del mundo.\n\nEste accesorio se coloca fácilmente en la parte superior del lápiz, quedando firme sin necesidad de pegamento y sin afectar la escritura. Su diseño liviano lo hace ideal para uso diario en la escuela, oficina o como regalo original para fanáticos del fútbol.\n\nFabricado con colores sólidos integrados en el material, sin pintura ni adhesivos.\n\n✔ Compatible con lápices estándar\n✔ Diseño liviano\n✔ No requiere pegamento\n✔ Colores uniformes\n✔ Reutilizable\n✔ Ideal para regalar",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-02-21T22:13:27.108Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 0.916667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771711998/dualgi3d/products/fievyqacwk1lrghevt3n.png",
+  "minimumStock": null,
+  "priceRetail": 810,
+  "stock": 100,
+  "gramsFilament": 10,
+  "purchaseCost": 0,
+  "priceKeychain": 1070,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1771711998/dualgi3d/products/fievyqacwk1lrghevt3n.png"
+  ],
+  "name": "Adorno para Lápiz Flork Campeón del Mundo",
+  "category": "Souvenirs",
+  "subcategory": null,
+  "priceWholesale": 690,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

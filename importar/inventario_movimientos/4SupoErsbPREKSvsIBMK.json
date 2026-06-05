@@ -1,0 +1,19 @@
+{
+  "id": "4SupoErsbPREKSvsIBMK",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "VJvm6m1n3SxaHvype628",
+      "label": "PLA · Filar · Rosa Mate",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T02:30:29.853Z"
+  }
+}

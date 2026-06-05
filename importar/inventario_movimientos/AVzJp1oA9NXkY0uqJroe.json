@@ -1,0 +1,19 @@
+{
+  "id": "AVzJp1oA9NXkY0uqJroe",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "bc441a80-92ac-4c06-b752-8f1018efd5af",
+      "label": "PLA Marron Mate",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T02:18:55.415Z"
+  }
+}

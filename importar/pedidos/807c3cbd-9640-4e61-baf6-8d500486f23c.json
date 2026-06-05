@@ -1,0 +1,59 @@
+{
+  "id": "807c3cbd-9640-4e61-baf6-8d500486f23c",
+  "clientId": "c541517b-9a0a-4803-abb1-118b1569a714",
+  "clientName": "Gonzalo Vordalt",
+  "clientEmail": "vordalt@gmail.com",
+  "clientPhone": "",
+  "clientAddress": "",
+  "items": [
+    {
+      "productId": "3413f3be-f5bd-4c70-a2f6-b5d02a4e0eab",
+      "productName": "LightBox Club Atletico Union de Arroyo Seco",
+      "productCode": "PROD-20260327-A2D6",
+      "productImage": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1774635970/dualgi3d/products/n7zjevknusgquzalc03x.png",
+      "quantity": 2,
+      "unitPrice": 40000,
+      "totalPrice": 80000,
+      "supplyUsage": [
+        {
+          "supplyId": "f9a23eac-0a02-493a-8435-2722a789e172",
+          "kind": "insumo",
+          "amountPerUnit": 1
+        },
+        {
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "kind": "filament",
+          "amountPerUnit": 85.39
+        },
+        {
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "kind": "filament",
+          "amountPerUnit": 202.21
+        }
+      ]
+    }
+  ],
+  "totalAmount": 80000,
+  "paymentStatus": "paid",
+  "paymentMethod": "cash",
+  "amountPaid": 80000,
+  "paymentBreakdownByMethod": {
+    "cash": 80000,
+    "bankTransfer": 0,
+    "creditCard": 0
+  },
+  "status": "delivered",
+  "notes": null,
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": false,
+  "productsRestoredToStock": {},
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T01:20:37.533Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-28T01:20:37.801Z"
+  }
+}

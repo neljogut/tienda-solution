@@ -1,0 +1,19 @@
+{
+  "id": "xwWrKDjF3CsLQmY2zJRs",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "d5235b90-8182-41e8-b4de-30d300811136",
+      "label": "PLA Manteca",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T01:34:16.673Z"
+  }
+}

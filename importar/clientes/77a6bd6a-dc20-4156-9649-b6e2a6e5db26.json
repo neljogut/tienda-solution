@@ -1,0 +1,19 @@
+{
+  "id": "77a6bd6a-dc20-4156-9649-b6e2a6e5db26",
+  "fullName": "Emiliano",
+  "email": "emi.vergara75@gmail.com",
+  "phone": "3476653380",
+  "address": "Av. San Martin 1441, San Lorenzo, Santa Fe, 2200",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2025-12-22T01:15:05.330Z"
+  },
+  "totalOrders": 0,
+  "status": "activo",
+  "isWholesale": false,
+  "notes": null,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-27T04:54:39.750Z"
+  }
+}

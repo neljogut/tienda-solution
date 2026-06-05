@@ -1,0 +1,29 @@
+{
+  "id": "87183d46-e31a-4315-b294-2174083831e5",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T20:51:27.441Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Bronce",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-04-24T20:52:02.669Z"
+  },
+  "stock": 4000,
+  "filamentColor": "#9B6A3A",
+  "isDraft": false,
+  "description": "PLA · Filar · Bronce",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

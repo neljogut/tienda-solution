@@ -1,0 +1,29 @@
+{
+  "id": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T06:48:41.095Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": "spool",
+  "filamentColorName": "Amarillo Lirio",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-08T06:53:33.365Z"
+  },
+  "filamentColor": "#FFD234",
+  "isDraft": false,
+  "description": "PLA · Filar · Amarillo Lirio",
+  "stock": 5717.46,
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "fH80KhyRQeFCrfI9GaOX",
+  "orderId": "06f24e38-ccc6-4be6-a051-c39db6ee2911",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "type": "stockReturn",
+  "lines": [
+    {
+      "unit": "g",
+      "delta": 30.58,
+      "refId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "label": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "category": "filament"
+    },
+    {
+      "unit": "g",
+      "delta": 151.07,
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "category": "filament"
+    },
+    {
+      "unit": "u",
+      "delta": 1,
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "category": "insumo"
+    },
+    {
+      "unit": "u.",
+      "delta": 1,
+      "refId": "c5da4e57-f450-410c-8c62-84d9e60149a3",
+      "label": "Chop Boca Junior medio litro",
+      "category": "productPrint3d"
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-02T03:31:59.310Z"
+  }
+}

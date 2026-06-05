@@ -1,0 +1,19 @@
+{
+  "id": "wY6k1x0JCXXedmQAsqqL",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "ff58c8cd-9792-4c1f-a851-bf31539c8063",
+      "label": "PLA Violeta Mate",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:52:38.682Z"
+  }
+}

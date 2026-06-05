@@ -1,0 +1,19 @@
+{
+  "id": "NGZoXSrlbd8DoD2Joa5Z",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "7a5b5054-fecd-4f4e-bf04-6b67c9570c5c",
+      "label": "PETG · Filar · Amarillo Radiante",
+      "delta": -390,
+      "unit": "g"
+    }
+  ],
+  "reason": "Impresion de soporte para AMS",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:40:47.087Z"
+  }
+}

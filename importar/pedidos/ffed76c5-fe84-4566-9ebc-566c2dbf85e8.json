@@ -1,0 +1,66 @@
+{
+  "id": "ffed76c5-fe84-4566-9ebc-566c2dbf85e8",
+  "clientId": "lVT75kEhEUnMiLNyFVHh",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T12:46:06.883Z"
+  },
+  "items": [
+    {
+      "productKind": "print3d",
+      "unitPrice": 8000,
+      "isCustomLine": false,
+      "totalPrice": 8000,
+      "productName": "Box con cajon FIFA World Cup 2026",
+      "productCode": "PROD-20260520-FE7B",
+      "supplyUsage": [
+        {
+          "kind": "filament",
+          "supplyId": "495108d9-7b2b-4ea2-b9d6-df1d378b8e95",
+          "amountPerUnit": 5
+        },
+        {
+          "kind": "filament",
+          "supplyId": "a139cdfc-edec-4b5e-a407-4aa9d1affe33",
+          "amountPerUnit": 43
+        },
+        {
+          "kind": "filament",
+          "supplyId": "47094941-2873-464a-acc7-6b663d9be54c",
+          "amountPerUnit": 45
+        },
+        {
+          "kind": "filament",
+          "supplyId": "02a850a2-9f28-4c66-88a5-c39f9f3b919e",
+          "amountPerUnit": 1
+        }
+      ],
+      "productImage": "https://i.imgur.com/Fnjj3rx.jpeg",
+      "quantity": 1,
+      "productId": "72887086-a77d-4028-b401-56a32266dce2"
+    }
+  ],
+  "storeAwaitingMp": false,
+  "ledgerKind": "catalogSale",
+  "paymentMethod": "cash",
+  "productStockDeducted": true,
+  "clientPhone": "3476324842",
+  "clientName": "Vanina Amable",
+  "notes": null,
+  "suppliesRestoredToStock": {},
+  "clientAddress": "",
+  "totalAmount": 8000,
+  "suppliesDeducted": true,
+  "clientEmail": "",
+  "productsRestoredToStock": {},
+  "paymentStatus": "paid",
+  "amountPaid": 8000,
+  "paymentBreakdownByMethod": {
+    "cash": 8000
+  },
+  "status": "delivered",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-29T12:33:04.232Z"
+  }
+}

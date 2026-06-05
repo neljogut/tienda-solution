@@ -1,0 +1,19 @@
+{
+  "id": "4UEuvDXxwJtGQozpmV8a",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "ed673010-eea1-4957-b3e7-703801b90e85",
+      "label": "PLA Dorado",
+      "delta": 1000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:50:52.061Z"
+  }
+}

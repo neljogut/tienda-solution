@@ -1,0 +1,19 @@
+{
+  "id": "uWNiRh6vy9QYRniAMBkY",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "f97972ff-9b86-478f-8384-e3b2963d3315",
+      "label": "PETG Cian",
+      "delta": 2000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:35:46.435Z"
+  }
+}

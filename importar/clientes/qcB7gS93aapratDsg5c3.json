@@ -1,0 +1,19 @@
+{
+  "id": "qcB7gS93aapratDsg5c3",
+  "address": null,
+  "notes": null,
+  "phone": "",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-28T14:07:24.269Z"
+  },
+  "fullName": "Alejandro Zanardi Molinos",
+  "totalOrders": 0,
+  "email": "",
+  "status": "activo",
+  "isWholesale": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-28T14:07:24.497Z"
+  }
+}

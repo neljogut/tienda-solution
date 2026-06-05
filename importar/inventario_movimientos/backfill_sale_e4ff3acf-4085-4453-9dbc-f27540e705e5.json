@@ -1,0 +1,40 @@
+{
+  "id": "backfill_sale_e4ff3acf-4085-4453-9dbc-f27540e705e5",
+  "type": "sale",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "label": "ee0190af-ddfd-4a0c-a6e6-71225cd4108d",
+      "delta": -249.38,
+      "unit": "g"
+    },
+    {
+      "category": "filament",
+      "refId": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "label": "e4a44ebb-71e6-420d-93d6-65a56b27cc66",
+      "delta": -134.34,
+      "unit": "g"
+    },
+    {
+      "category": "insumo",
+      "refId": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "label": "392bfb4a-2990-49c6-afc7-0856d2cd79b3",
+      "delta": -2,
+      "unit": "u."
+    },
+    {
+      "category": "productPrint3d",
+      "refId": "ea63aaba-3f30-40cf-b8d9-5a1785b9923e",
+      "label": "Chop Rosario Central  medio litro",
+      "delta": -2,
+      "unit": "u."
+    }
+  ],
+  "orderId": "e4ff3acf-4085-4453-9dbc-f27540e705e5",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-03-31T21:04:01.778Z"
+  }
+}

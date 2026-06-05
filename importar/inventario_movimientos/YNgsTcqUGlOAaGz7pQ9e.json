@@ -1,0 +1,19 @@
+{
+  "id": "YNgsTcqUGlOAaGz7pQ9e",
+  "type": "manual",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "381eebb2-e724-4884-832e-a8abb6d2a7ce",
+      "label": "PETG · Filar · Coral",
+      "delta": -20,
+      "unit": "g"
+    }
+  ],
+  "reason": "Traba rodillos para soporte de AMS",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-23T23:49:33.477Z"
+  }
+}

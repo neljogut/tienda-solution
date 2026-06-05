@@ -1,0 +1,19 @@
+{
+  "id": "Alr4ovnhkwx7oVvAOQvn",
+  "type": "replenishment",
+  "lines": [
+    {
+      "category": "filament",
+      "refId": "abf980d6-8f23-443a-aac5-f90ecea0a318",
+      "label": "PLA Naranja Tigre",
+      "delta": 2000,
+      "unit": "g"
+    }
+  ],
+  "reason": "Ajuste en inventario",
+  "actorUid": "pNL1eKUrfaYFg3MQtyas7qKSNsz1",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-13T19:51:59.822Z"
+  }
+}

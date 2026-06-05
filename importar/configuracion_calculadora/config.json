@@ -1,0 +1,24 @@
+{
+  "id": "config",
+  "printerId": "manual",
+  "machineLifeHours": 4320,
+  "priceKwh": 140,
+  "consumptionWatts": 120,
+  "wholesaleDiscountPercentGeneral": 15,
+  "reventaDefaultMarkupOnCostPercent": 30,
+  "reventaDefaultWholesaleDiscountPercent": 10,
+  "thresholdKeychainGrams": 600,
+  "errorMargin": 8,
+  "reventaDefaultWholesaleMinAmountPesos": 500000,
+  "wholesaleDiscountPercentKeychain": 10,
+  "repairCost": 150000,
+  "multiplierKeychain": 4,
+  "pricePerKg": 20000,
+  "thresholdWholesaleGrams": 1000,
+  "multiplierWholesale": 2.55,
+  "multiplierRetail": 3,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.302Z"
+  }
+}

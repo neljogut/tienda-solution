@@ -1,0 +1,29 @@
+{
+  "id": "mqCDSftfPtw4TkIBlVZ9",
+  "description": "PLA · Filar · Piel Mate",
+  "price": 0,
+  "purchaseDate": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T02:29:40.701Z"
+  },
+  "type": "filament",
+  "imageUrl": null,
+  "imageUrls": [],
+  "subtype": "PLA",
+  "filamentIconId": null,
+  "filamentColorName": "Piel Mate",
+  "filamentCustomPricePerKg": null,
+  "brand": "Filar",
+  "isDraft": false,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T02:30:13.511Z"
+  },
+  "stock": 5000,
+  "filamentColor": "#DCA483",
+  "minimumStock": 4000,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:52:53.195Z"
+  }
+}

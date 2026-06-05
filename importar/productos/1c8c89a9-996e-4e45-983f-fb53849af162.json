@@ -1,0 +1,45 @@
+{
+  "id": "1c8c89a9-996e-4e45-983f-fb53849af162",
+  "resaleScanCode": "",
+  "insumoLines": [
+    {
+      "amount": 1,
+      "supplyId": "a8699143-8913-476b-a6c4-2172a61d3501"
+    }
+  ],
+  "code": "PROD-20251122-ECFF",
+  "isDraft": false,
+  "description": "Dale un toque adorable a tus bebidas con Sayu, la mascota más dulce del Mundial.\nEste vaso de 300 ml está impreso en 3D con un diseño detallado, e incluye polímero interno que simula el efecto de un verdadero milkshake. Además, viene con sorbete reutilizable.\n\nCaracterísticas:\n\nCapacidad: 300 ml\n\nVaso impreso en tecnología 3D\n\nIncluye polímero interno decorativo\n\nIncluye sorbete reutilizable\n\nDiseño exclusivo de Sayu\n\nLiviano, resistente y fácil de lavar\n\nIdeal para bebidas frías, licuados y milkshakes",
+  "resaleWholesaleDiscountPercent": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2025-11-22T17:18:54.917Z"
+  },
+  "filamentLines": [],
+  "printingTimeHours": 6.26667,
+  "imageUrl": "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833500/dualgi3d/products/ded0fa2dbcx3dggezur7.png",
+  "minimumStock": null,
+  "priceRetail": 15520,
+  "stock": 100,
+  "gramsFilament": 214,
+  "purchaseCost": 0,
+  "priceKeychain": 20490,
+  "manualPricing": false,
+  "productKind": "print3d",
+  "resaleMarkupPercentOnCost": null,
+  "imageUrls": [
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833500/dualgi3d/products/ded0fa2dbcx3dggezur7.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833502/dualgi3d/products/hsfe9pdjfkn0tn2xfr34.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833505/dualgi3d/products/nnojcbexyuwc7pgq3kne.png",
+    "https://res.cloudinary.com/do1uaqpd6/image/upload/v1763833508/dualgi3d/products/phzso3rdjakj82atnohn.png"
+  ],
+  "name": "Sayu – Mascotas del Mundial – 300 ml",
+  "category": "Milkshake",
+  "subcategory": null,
+  "priceWholesale": 13190,
+  "quantityTiers": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-04T20:26:46.950Z"
+  }
+}

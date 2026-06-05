@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, getDocs, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product } from '../../types/product';
 import type { Order } from '../../types/order';
@@ -34,28 +34,29 @@ export const NewOrder: React.FC = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
 
-  // Load products, clients, settings, active cash session
+  // Load products, clients, settings, active cash session in real-time
   useEffect(() => {
-    const fetchInitialData = async () => {
-      // 1. Products
-      const prodSnap = await getDocs(query(collection(db, 'products')));
-      setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+    // 1. Live products listener
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snap) => {
+      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+    });
 
-      // 2. Clients
-      const clientSnap = await getDocs(query(collection(db, 'clients')));
-      setClients(clientSnap.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+    // 2. Live clients listener
+    const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
+      setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+    });
 
-      // 3. Deposit & exchange rate settings
-      const depSnap = await getDoc(doc(db, 'settings/deposit'));
-      if (depSnap.exists()) setDepositSettings(depSnap.data() as DepositSettings);
+    // 3. Live deposit settings listener
+    const unsubDeposit = onSnapshot(doc(db, 'settings', 'deposit'), (snap) => {
+      if (snap.exists()) setDepositSettings(snap.data() as DepositSettings);
+    });
 
-      const xrSnap = await getDoc(doc(db, 'settings/exchangeRate'));
-      if (xrSnap.exists()) setExchangeRate((xrSnap.data() as ExchangeRateData).currentUsdToArs);
-    };
-    
-    fetchInitialData();
+    // 4. Live exchange rate listener
+    const unsubRate = onSnapshot(doc(db, 'settings', 'exchangeRate'), (snap) => {
+      if (snap.exists()) setExchangeRate((snap.data() as ExchangeRateData).currentUsdToArs);
+    });
 
-    // 4. Live active cash session listener
+    // 5. Live active cash session listener
     const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
     const unsubSession = onSnapshot(qSession, (snap) => {
       if (!snap.empty) {
@@ -65,7 +66,13 @@ export const NewOrder: React.FC = () => {
       }
     });
 
-    return () => unsubSession();
+    return () => {
+      unsubProducts();
+      unsubClients();
+      unsubDeposit();
+      unsubRate();
+      unsubSession();
+    };
   }, []);
 
   // Filter products by name

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import type { Order } from '../types/order';
@@ -18,17 +18,22 @@ export const Dashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
 
-
   useEffect(() => {
-    // Fetch exchange rate
-    fetchDollarRate().then(setExchangeRate).catch(console.error);
+    // Fetch exchange rate once on mount to keep it fresh
+    fetchDollarRate().catch(console.error);
+
+    // Listen to exchange rate in real-time
+    const rateUnsub = onSnapshot(doc(db, 'settings', 'exchangeRate'), (snap) => {
+      if (snap.exists()) {
+        setExchangeRate(snap.data() as ExchangeRateData);
+      }
+    });
 
     // Listen to orders
     const ordersUnsub = onSnapshot(collection(db, 'orders'), (snapshot) => {
       const o: Order[] = [];
       snapshot.forEach((doc) => o.push({ id: doc.id, ...doc.data() } as Order));
       setOrders(o);
-
     });
 
     // Listen to products
@@ -38,7 +43,11 @@ export const Dashboard: React.FC = () => {
       setProducts(p);
     });
 
-    return () => { ordersUnsub(); prodsUnsub(); };
+    return () => { 
+      rateUnsub(); 
+      ordersUnsub(); 
+      prodsUnsub(); 
+    };
   }, []);
 
   // Calculate stats from real data

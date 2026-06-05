@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { ExchangeRateData } from '../types/settings';
+import { recalculateAllProductsInFirestore } from './pricingService';
 
 const EXCHANGE_RATE_DOC = 'settings/exchangeRate';
 
@@ -10,15 +11,21 @@ export const fetchDollarRate = async (): Promise<ExchangeRateData> => {
     const response = await fetch('https://dolarapi.com/v1/dolares/oficial');
     if (!response.ok) throw new Error('API failed');
     const data = await response.json();
+    const newRate = data.venta || data.compra || 1000;
 
+    const cached = await getLastSavedRate();
     const rateData: ExchangeRateData = {
-      currentUsdToArs: data.venta || data.compra || 1000,
+      currentUsdToArs: newRate,
       lastUpdate: new Date().toISOString(),
       provider: 'DolarAPI (Oficial)',
     };
 
-    // Save to Firestore as fallback
-    await setDoc(doc(db, EXCHANGE_RATE_DOC), rateData);
+    // Only update and recalculate if the rate is different
+    if (cached.currentUsdToArs !== newRate) {
+      await setDoc(doc(db, EXCHANGE_RATE_DOC), rateData);
+      await recalculateAllProductsInFirestore();
+    }
+
     return rateData;
   } catch (error) {
     console.warn('Dollar API failed, using cached rate:', error);
@@ -46,5 +53,6 @@ export const setManualRate = async (rate: number): Promise<ExchangeRateData> => 
     provider: 'Manual',
   };
   await setDoc(doc(db, EXCHANGE_RATE_DOC), rateData);
+  await recalculateAllProductsInFirestore();
   return rateData;
 };

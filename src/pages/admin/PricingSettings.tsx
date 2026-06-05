@@ -3,6 +3,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { fetchDollarRate, setManualRate } from '../../services/dollarService';
 import { calculate3DPrice } from '../../services/pricing';
+import { recalculateAllProductsInFirestore } from '../../services/pricingService';
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData, DepositSettings } from '../../types/settings';
 import {
   Settings, DollarSign, Printer, Calculator, Percent,
@@ -112,7 +113,11 @@ export const PricingSettings: React.FC = () => {
         setDoc(doc(db, 'settings', 'pricingResale'), cleanResale),
         setDoc(doc(db, 'settings', 'deposit'), cleanDeposit),
       ]);
-      showToast('Configuración guardada exitosamente');
+
+      // Recalcular precios de todos los productos en caliente en Firestore
+      await recalculateAllProductsInFirestore();
+
+      showToast('Configuración guardada y precios actualizados exitosamente');
     } catch (err) {
       console.error('Error saving settings:', err);
       showToast('Error al guardar la configuración');
@@ -153,7 +158,7 @@ export const PricingSettings: React.FC = () => {
     try {
       const data = await fetchDollarRate();
       setExchangeRate(data);
-      showToast('Cotización actualizada desde DolarAPI');
+      showToast('Cotización actualizada y precios recalculados');
     } catch {
       showToast('Error al obtener cotización. Usá el modo manual.');
       setShowManualInput(true);
@@ -170,7 +175,7 @@ export const PricingSettings: React.FC = () => {
       setExchangeRate(data);
       setManualRateInput('');
       setShowManualInput(false);
-      showToast('Cotización manual guardada');
+      showToast('Cotización manual guardada y precios actualizados');
     } catch {
       showToast('Error al guardar cotización manual');
     }

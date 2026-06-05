@@ -1,28 +1,9 @@
-import type { PricingSettings3D, PricingSettingsResale } from '../types/settings';
 import type { Product3D, ProductResale } from '../types/product';
+import type { PricingSettings3D, PricingSettingsResale } from '../types/settings';
+import { default3D, defaultResale } from '../constants/defaults';
 
-// Mock default settings for now, later fetched from Firestore
-export const default3DSettings: PricingSettings3D = {
-  filamentPriceUsdKg: 20,
-  kwhPriceArs: 150,
-  printerWatts: 300,
-  printerLifespanHours: 5000,
-  estimatedSparesCostArs: 50000,
-  errorMarginPercent: 10,
-  multiplierRetailNormal: 3.5,
-  multiplierRetailKeychain: 4.5,
-  wholesaleDiscountPercentNormal: 25,
-  wholesaleDiscountPercentKeychain: 30,
-  wholesaleThresholdGramsNormal: 500,
-  wholesaleThresholdGramsKeychain: 200,
-};
-
-export const defaultResaleSettings: PricingSettingsResale = {
-  profitMarginPercent: 40,
-  enableWholesale: true,
-  wholesaleDiscountPercent: 15,
-  wholesaleMinimumOrderArs: 20000,
-};
+export const default3DSettings = default3D;
+export const defaultResaleSettings = defaultResale;
 
 export const calculate3DPrice = (
   product: Partial<Product3D>, 

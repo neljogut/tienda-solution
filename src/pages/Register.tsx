@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { Loader2, Box } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -11,7 +11,17 @@ export const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [businessSettings, setBusinessSettings] = useState<any>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        setBusinessSettings(snap.data());
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,12 +59,18 @@ export const Register: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="bg-blue-600 p-6 text-center">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto flex items-center justify-center backdrop-blur-md mb-4 shadow-inner">
-            <Box size={32} className="text-white" />
-          </div>
+        <div className="bg-blue-600 p-6 text-center flex flex-col items-center">
+          {businessSettings?.logoUrl ? (
+            <img src={businessSettings.logoUrl} className="w-16 h-16 object-cover rounded-2xl mb-4 shadow-lg border border-white/10" alt="Logo" />
+          ) : (
+            <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto flex items-center justify-center backdrop-blur-md mb-4 shadow-inner">
+              <span className="text-white text-3xl font-black">
+                {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : 'D'}
+              </span>
+            </div>
+          )}
           <h2 className="text-2xl font-bold text-white">Crear Cuenta</h2>
-          <p className="text-blue-100 mt-1">Únete a Dualgi 3D Platform</p>
+          <p className="text-blue-100 mt-1">Únete a {businessSettings?.name || 'Dualgi 3D'}</p>
         </div>
         
         <div className="p-8">

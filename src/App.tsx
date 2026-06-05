@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Catalog } from './pages/Catalog';
@@ -48,6 +50,25 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission }: {
 };
 
 function App() {
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      const data = snap.exists() ? snap.data() : null;
+      
+      // Update Title
+      document.title = data?.name ? `${data.name} Platform` : 'Dualgi 3D Platform';
+      
+      // Update Favicon
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = data?.logoUrl || '/favicon.svg';
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>

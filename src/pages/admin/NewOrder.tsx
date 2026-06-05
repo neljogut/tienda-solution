@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, getDocs, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product } from '../../types/product';
-import type { OrderItem, Order } from '../../types/order';
+import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
 import type { ExchangeRateData, DepositSettings } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
@@ -17,8 +17,8 @@ export const NewOrder: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [cartItems, setCartItems] = useState<OrderItem[]>([]);
-  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [paidAmount, setPaidAmount] = useState<number | ''>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [observationsPublic, setObservationsPublic] = useState('');
   const [observationsInternal, setObservationsInternal] = useState('');
@@ -91,11 +91,11 @@ export const NewOrder: React.FC = () => {
   };
 
   // Recalculate cart item prices whenever the client or items change
-  const recalculateCart = (items: OrderItem[], client: Client | null) => {
+  const recalculateCart = (items: any[], client: Client | null) => {
     return items.map(item => {
       const product = products.find(p => p.id === item.productId);
       if (!product) return item;
-      const unitPrice = calculateItemPrice(product, item.quantity, client);
+      const unitPrice = calculateItemPrice(product, (item.quantity as any) === '' ? 1 : Number(item.quantity), client);
       return {
         ...item,
         unitPrice,
@@ -152,18 +152,18 @@ export const NewOrder: React.FC = () => {
   };
 
   // Update item quantity
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (productId: string, quantity: number | '') => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    if (quantity > product.stock) {
+    if (quantity !== '' && quantity > product.stock) {
       alert(`Stock insuficiente. Disponible: ${product.stock}`);
       return;
     }
 
     setCartItems(prev => {
       let updatedList;
-      if (quantity <= 0) {
+      if (quantity !== '' && quantity <= 0) {
         updatedList = prev.filter(i => i.productId !== productId);
       } else {
         updatedList = prev.map(i => i.productId === productId ? { ...i, quantity } : i);
@@ -173,9 +173,10 @@ export const NewOrder: React.FC = () => {
   };
 
   // Order totals
-  const totalAmount = cartItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-  const totalCost = cartItems.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0);
-  const pendingAmount = Math.max(0, totalAmount - paidAmount);
+  const totalAmount = cartItems.reduce((acc, item) => acc + (item.unitPrice * ((item.quantity as any) === '' ? 0 : Number(item.quantity))), 0);
+  const totalCost = cartItems.reduce((acc, item) => acc + (item.unitCost * ((item.quantity as any) === '' ? 0 : Number(item.quantity))), 0);
+  const paidAmountAmt = paidAmount === '' ? 0 : Number(paidAmount);
+  const pendingAmount = Math.max(0, totalAmount - paidAmountAmt);
 
   // Deposit/Signal requirement calculations
   const requiredDepositPercent = depositSettings?.requiredDepositPercent || 30; // default 30%
@@ -183,21 +184,28 @@ export const NewOrder: React.FC = () => {
   const bypassDeposit = isTrustedClient && (depositSettings?.trustedClientBypassDeposit ?? true);
   
   const minDepositRequired = bypassDeposit ? 0 : Math.ceil(totalAmount * (requiredDepositPercent / 100));
-  const isDepositValid = paidAmount >= minDepositRequired || bypassDeposit;
+  const isDepositValid = paidAmountAmt >= minDepositRequired || bypassDeposit;
 
   // Handle Order Submit
   const handleCreateOrder = async () => {
     if (cartItems.length === 0) return alert("Agrega productos al pedido.");
     if (!selectedClientId) return alert("Selecciona un cliente.");
-    if (paidAmount > totalAmount) return alert("El monto abonado no puede superar el total del pedido.");
+    
+    // Validate that all items have a valid quantity
+    const hasInvalidQty = cartItems.some(item => (item.quantity as any) === '' || item.quantity <= 0);
+    if (hasInvalidQty) {
+      return alert("Por favor, ingresa una cantidad válida (mayor a 0) para todos los productos en el carrito.");
+    }
+
+    if (paidAmountAmt > totalAmount) return alert("El monto abonado no puede superar el total del pedido.");
     
     // Deposit check
-    if (paidAmount < minDepositRequired && !bypassDeposit) {
+    if (paidAmountAmt < minDepositRequired && !bypassDeposit) {
       return alert(`La seña mínima requerida para este pedido es de $${minDepositRequired.toLocaleString('es-AR')} (${requiredDepositPercent}%).`);
     }
 
     // Cash session check if there's a payment
-    if (paidAmount > 0 && !activeSession) {
+    if (paidAmountAmt > 0 && !activeSession) {
       return alert("La caja diaria está cerrada. Abre la caja en la sección de Caja para poder registrar pagos, o establece la seña en $0.");
     }
 
@@ -210,19 +218,21 @@ export const NewOrder: React.FC = () => {
       const orderNumber = snapshot.data().count + 1;
 
       let paymentStatus: Order['paymentStatus'] = 'unpaid';
-      if (paidAmount > 0 && paidAmount < totalAmount) paymentStatus = 'partial';
-      else if (paidAmount >= totalAmount) paymentStatus = 'paid';
+      if (paidAmountAmt > 0 && paidAmountAmt < totalAmount) paymentStatus = 'partial';
+      else if (paidAmountAmt >= totalAmount) paymentStatus = 'paid';
 
       const customerName = activeClient ? `${activeClient.firstName} ${activeClient.lastName}` : 'Cliente Eventual';
+
+      const sanitizedItems = cartItems.map(item => ({ ...item, quantity: Number(item.quantity) }));
 
       const orderData: Omit<Order, 'id'> = {
         orderNumber,
         customerId: selectedClientId,
         customerName,
         date: new Date().toISOString(),
-        items: cartItems,
+        items: sanitizedItems,
         totalAmount,
-        paidAmount,
+        paidAmount: paidAmountAmt,
         pendingAmount,
         paymentStatus,
         orderStatus: 'pending',
@@ -242,12 +252,13 @@ export const NewOrder: React.FC = () => {
       const batch = writeBatch(db);
       const userId = userData?.uid || 'system';
 
-      for (const item of cartItems) {
+      for (const item of sanitizedItems) {
         const prodRef = doc(db, 'products', item.productId);
         const product = products.find(p => p.id === item.productId);
         if (product) {
+          const qty = item.quantity;
           const prevStock = product.stock;
-          const newStock = Math.max(0, prevStock - item.quantity);
+          const newStock = Math.max(0, prevStock - qty);
           batch.update(prodRef, { stock: newStock });
 
           // Log product sale movement
@@ -257,7 +268,7 @@ export const NewOrder: React.FC = () => {
             itemId: item.productId,
             itemType: 'product',
             previousQuantity: prevStock,
-            modifiedQuantity: -item.quantity,
+            modifiedQuantity: -qty,
             finalQuantity: newStock,
             reason: `Venta de producto en Pedido #${orderNumber}`,
             userId,
@@ -271,7 +282,7 @@ export const NewOrder: React.FC = () => {
 
             // Deduct Filaments
             if (prod3d.filamentIds && prod3d.filamentIds.length > 0) {
-              const weightPerFilament = (prod3d.weightGrams * item.quantity) / prod3d.filamentIds.length;
+              const weightPerFilament = (prod3d.weightGrams * qty) / prod3d.filamentIds.length;
               for (const filamentId of prod3d.filamentIds) {
                 const filRef = doc(db, 'inventory', filamentId);
                 const filSnap = await getDoc(filRef);
@@ -291,7 +302,7 @@ export const NewOrder: React.FC = () => {
                     previousQuantity: prevWeight,
                     modifiedQuantity: -weightPerFilament,
                     finalQuantity: newWeight,
-                    reason: `Consumo de filamento por impresión de ${item.quantity}x "${item.name}" en Pedido #${orderNumber}`,
+                    reason: `Consumo de filamento por impresión de ${qty}x "${item.name}" en Pedido #${orderNumber}`,
                     userId,
                     orderId
                   };
@@ -304,7 +315,7 @@ export const NewOrder: React.FC = () => {
             if (prod3d.supplyIds && prod3d.supplyIds.length > 0) {
               for (const supplyObj of prod3d.supplyIds) {
                 const supplyId = supplyObj.supplyId;
-                const qtyNeeded = supplyObj.quantity * item.quantity;
+                const qtyNeeded = supplyObj.quantity * qty;
 
                 const supRef = doc(db, 'inventory', supplyId);
                 const supSnap = await getDoc(supRef);
@@ -324,7 +335,7 @@ export const NewOrder: React.FC = () => {
                     previousQuantity: prevQty,
                     modifiedQuantity: -qtyNeeded,
                     finalQuantity: newQty,
-                    reason: `Consumo de insumo por venta de ${item.quantity}x "${item.name}" en Pedido #${orderNumber}`,
+                    reason: `Consumo de insumo por venta de ${qty}x "${item.name}" en Pedido #${orderNumber}`,
                     userId,
                     orderId
                   };
@@ -348,19 +359,19 @@ export const NewOrder: React.FC = () => {
         });
       }
 
-      // 4. Register Cash Session Transaction if paidAmount > 0
-      if (paidAmount > 0 && activeSession) {
+      // 4. Register Cash Session Transaction if paidAmountAmt > 0
+      if (paidAmountAmt > 0 && activeSession) {
         const movementData: Omit<any, 'id'> = {
           sessionId: activeSession.id,
           date: new Date().toISOString(),
-          type: paidAmount === totalAmount ? 'sale_income' : 'deposit',
-          amount: paidAmount,
+          type: paidAmountAmt === totalAmount ? 'sale_income' : 'deposit',
+          amount: paidAmountAmt,
           paymentMethod,
           orderId,
           customerId: selectedClientId,
           userId: userData?.uid || '',
           userName: userData?.displayName || 'Admin',
-          observation: `${paidAmount === totalAmount ? 'Venta' : 'Seña'} de Pedido #${orderNumber} (${customerName})`
+          observation: `${paidAmountAmt === totalAmount ? 'Venta' : 'Seña'} de Pedido #${orderNumber} (${customerName})`
         };
 
         // Add movement
@@ -372,11 +383,11 @@ export const NewOrder: React.FC = () => {
         const currentExpected = activeSession.expectedAmount || 0;
         const breakdown = { ...(activeSession.breakdown || { cash: 0, transfer: 0, mercadopago: 0, card: 0, other: 0 }) };
         
-        breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + paidAmount;
+        breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + paidAmountAmt;
 
         await updateDoc(sessionRef, {
-          totalIncome: currentIncome + paidAmount,
-          expectedAmount: currentExpected + paidAmount,
+          totalIncome: currentIncome + paidAmountAmt,
+          expectedAmount: currentExpected + paidAmountAmt,
           breakdown
         });
       }
@@ -541,8 +552,8 @@ export const NewOrder: React.FC = () => {
                       <input 
                         type="number" 
                         min="1"
-                        value={item.quantity}
-                        onChange={e => updateQuantity(item.productId, Number(e.target.value))}
+                        value={item.quantity ?? ''}
+                        onChange={e => updateQuantity(item.productId, e.target.value === '' ? '' : Number(e.target.value))}
                         className="w-12 p-1 border rounded text-center text-xs font-semibold"
                       />
                       <button onClick={() => updateQuantity(item.productId, 0)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
@@ -601,14 +612,13 @@ export const NewOrder: React.FC = () => {
                       type="number" 
                       min="0" 
                       max={totalAmount}
-                      value={paidAmount || ''} 
-                      onChange={e => setPaidAmount(Number(e.target.value))}
+                      value={paidAmount ?? ''} 
+                      onChange={e => setPaidAmount(e.target.value === '' ? '' : Number(e.target.value))}
                       className="w-24 p-1 border rounded text-right font-bold text-xs"
                       placeholder="$0"
                     />
                   </div>
                 </div>
-
                 {/* Minimum Deposit Note */}
                 {minDepositRequired > 0 && !bypassDeposit && (
                   <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 border-t border-slate-200/50 pt-1.5">
@@ -618,7 +628,7 @@ export const NewOrder: React.FC = () => {
                 )}
 
                 {/* Payment Method Selector if paidAmount > 0 */}
-                {paidAmount > 0 && (
+                {paidAmountAmt > 0 && (
                   <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-200/50">
                     <span className="text-slate-500 font-medium flex items-center gap-1">
                       <CreditCard size={12} className="text-slate-400" /> Método de pago:
@@ -638,7 +648,7 @@ export const NewOrder: React.FC = () => {
                 )}
                 
                 {/* Cash Session Status warning */}
-                {paidAmount > 0 && !activeSession && (
+                {paidAmountAmt > 0 && !activeSession && (
                   <div className="bg-red-50 text-red-700 border border-red-100 rounded-lg p-2 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold">
                     <AlertCircle size={13} className="flex-shrink-0" />
                     <span>La caja diaria está cerrada. No se registrará el pago.</span>

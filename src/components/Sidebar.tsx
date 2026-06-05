@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import { 
   LayoutDashboard, ShoppingBag, Package, Users, Receipt, 
   Warehouse, ArrowLeftRight, DollarSign, BarChart3, Settings,
@@ -25,6 +27,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userData, hasPermission, logout } = useAuth();
+  const [businessSettings, setBusinessSettings] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        setBusinessSettings(snap.data());
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -112,11 +124,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* Logo */}
         <div className="flex items-center justify-between px-5 h-16 border-b border-white/5 flex-shrink-0">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNav('/catalog')}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <span className="text-white font-black text-sm">D</span>
-            </div>
+            {businessSettings?.logoUrl ? (
+              <img src={businessSettings.logoUrl} className="w-9 h-9 object-cover rounded-xl shadow-lg" alt="Logo" />
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <span className="text-white font-black text-sm">
+                  {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : 'D'}
+                </span>
+              </div>
+            )}
             <div>
-              <h1 className="text-white font-bold text-base leading-tight">Dualgi 3D</h1>
+              <h1 className="text-white font-bold text-base leading-tight truncate max-w-[140px]">
+                {businessSettings?.name || 'Dualgi 3D'}
+              </h1>
               <p className="text-slate-500 text-[10px] font-medium tracking-wider">PLATFORM</p>
             </div>
           </div>

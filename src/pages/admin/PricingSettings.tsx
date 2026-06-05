@@ -10,35 +10,7 @@ import {
   Clock, TrendingUp, Package, Zap, Wrench, Scale,
 } from 'lucide-react';
 
-// ─── Defaults ────────────────────────────────────────────────────────────────
-
-const default3D: PricingSettings3D = {
-  filamentPriceUsdKg: 20,
-  kwhPriceArs: 150,
-  printerWatts: 300,
-  printerLifespanHours: 5000,
-  estimatedSparesCostArs: 50000,
-  errorMarginPercent: 10,
-  multiplierRetailNormal: 3.5,
-  multiplierRetailKeychain: 4.5,
-  wholesaleDiscountPercentNormal: 25,
-  wholesaleDiscountPercentKeychain: 30,
-  wholesaleThresholdGramsNormal: 500,
-  wholesaleThresholdGramsKeychain: 200,
-};
-
-const defaultResale: PricingSettingsResale = {
-  profitMarginPercent: 40,
-  enableWholesale: true,
-  wholesaleDiscountPercent: 15,
-  wholesaleMinimumOrderArs: 20000,
-};
-
-const defaultDeposit: DepositSettings = {
-  requiredDepositPercent: 30,
-  trustedClientBypassDeposit: true,
-  note: 'Los clientes de confianza pueden omitir la seña.',
-};
+import { default3D, defaultResale, defaultDeposit } from '../../constants/defaults';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,6 +50,7 @@ export const PricingSettings: React.FC = () => {
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [savingDefaults, setSavingDefaults] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshingRate, setRefreshingRate] = useState(false);
   const [manualRateInput, setManualRateInput] = useState('');
@@ -119,10 +92,25 @@ export const PricingSettings: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const clean3D = { ...settings3D };
+      Object.keys(clean3D).forEach(k => {
+        if ((clean3D as any)[k] === '') (clean3D as any)[k] = 0;
+      });
+
+      const cleanResale = { ...settingsResale };
+      Object.keys(cleanResale).forEach(k => {
+        if ((cleanResale as any)[k] === '') (cleanResale as any)[k] = 0;
+      });
+
+      const cleanDeposit = { ...depositSettings };
+      Object.keys(cleanDeposit).forEach(k => {
+        if ((cleanDeposit as any)[k] === '') (cleanDeposit as any)[k] = 0;
+      });
+
       await Promise.all([
-        setDoc(doc(db, 'settings', 'pricing3d'), settings3D),
-        setDoc(doc(db, 'settings', 'pricingResale'), settingsResale),
-        setDoc(doc(db, 'settings', 'deposit'), depositSettings),
+        setDoc(doc(db, 'settings', 'pricing3d'), clean3D),
+        setDoc(doc(db, 'settings', 'pricingResale'), cleanResale),
+        setDoc(doc(db, 'settings', 'deposit'), cleanDeposit),
       ]);
       showToast('Configuración guardada exitosamente');
     } catch (err) {
@@ -130,6 +118,31 @@ export const PricingSettings: React.FC = () => {
       showToast('Error al guardar la configuración');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDefaults = async () => {
+    setSavingDefaults(true);
+    try {
+      const response = await fetch('/api/save-defaults', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings3D,
+          settingsResale,
+          depositSettings
+        })
+      });
+      if (response.ok) {
+        showToast('Valores establecidos como predeterminados del código');
+      } else {
+        showToast('Error al guardar predeterminados locales');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error de red al intentar guardar predeterminados');
+    } finally {
+      setSavingDefaults(false);
     }
   };
 
@@ -203,14 +216,24 @@ export const PricingSettings: React.FC = () => {
             <p className="text-sm text-slate-500">Ajustá los parámetros de cálculo para todos tus productos</p>
           </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-200 hover:shadow-xl hover:from-indigo-600 hover:to-blue-700 transition-all disabled:opacity-60"
-        >
-          {saving ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
-          Guardar Todo
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleSaveDefaults}
+            disabled={savingDefaults}
+            className="flex items-center gap-2 px-5 py-2.5 border-2 border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl font-semibold transition-all disabled:opacity-60"
+          >
+            {savingDefaults ? <RefreshCw size={18} className="animate-spin" /> : <Settings size={18} />}
+            Fijar Predeterminados del Código
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-200 hover:shadow-xl hover:from-indigo-600 hover:to-blue-700 transition-all disabled:opacity-60"
+          >
+            {saving ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
+            Guardar Todo
+          </button>
+        </div>
       </div>
 
       {/* ─── 1. Exchange Rate ───────────────────────────────────────────── */}
@@ -620,8 +643,8 @@ export const PricingSettings: React.FC = () => {
 interface FieldCardProps {
   label: string;
   icon: React.ReactNode;
-  value: number;
-  onChange: (v: number) => void;
+  value: number | '';
+  onChange: (v: any) => void;
   suffix?: string;
   step?: number;
 }
@@ -639,7 +662,7 @@ const FieldCard: React.FC<FieldCardProps> = ({ label, icon, value, onChange, suf
         step={step}
         className="w-full border border-slate-200 rounded-lg p-2.5 pr-12 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-slate-800 font-semibold text-sm"
         value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        onChange={(e) => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
       />
       {suffix && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">

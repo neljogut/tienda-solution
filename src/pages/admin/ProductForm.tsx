@@ -190,13 +190,29 @@ export const ProductForm: React.FC = () => {
         mainImageUrl = await compressAndConvertToBase64(imageFile);
       }
 
-      const productToSave = {
+      const productToSave: any = {
         ...formData,
         mainImage: mainImageUrl,
         calculatedCost: calculated.cost,
         calculatedRetailPrice: calculated.retail,
         calculatedWholesalePrice: calculated.wholesale,
       };
+
+      // Sanitize fields
+      if (productToSave.weightGrams === '') productToSave.weightGrams = 0;
+      if (productToSave.printTimeMinutes === '') productToSave.printTimeMinutes = 0;
+      if (productToSave.purchaseCost === '') productToSave.purchaseCost = 0;
+      if (productToSave.stock === '') productToSave.stock = 0;
+      if (productToSave.manualRetailPrice === '') productToSave.manualRetailPrice = 0;
+
+      // Sanitize priceTiers
+      if (productToSave.priceTiers) {
+        productToSave.priceTiers = productToSave.priceTiers.map((t: any) => ({
+          minQty: t.minQty === '' ? 1 : Number(t.minQty),
+          maxQty: t.maxQty === '' ? 1 : Number(t.maxQty),
+          unitPrice: t.unitPrice === '' ? 0 : Number(t.unitPrice)
+        }));
+      }
 
       if (isNew) {
         await addDoc(collection(db, 'products'), productToSave);
@@ -298,14 +314,14 @@ export const ProductForm: React.FC = () => {
               Cálculo de Precios
             </h3>
 
-            {formData.type === '3d' ? (
+             {formData.type === '3d' ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Peso (Gramos)</label>
                   <input 
                     type="number" min="0" required
                     className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.weightGrams || ''} onChange={e => setFormData({...formData, weightGrams: Number(e.target.value)})}
+                    value={formData.weightGrams ?? ''} onChange={e => setFormData({...formData, weightGrams: e.target.value === '' ? '' as any : Number(e.target.value)})}
                   />
                 </div>
                 <div>
@@ -313,7 +329,7 @@ export const ProductForm: React.FC = () => {
                   <input 
                     type="number" min="0" required
                     className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.printTimeMinutes || ''} onChange={e => setFormData({...formData, printTimeMinutes: Number(e.target.value)})}
+                    value={formData.printTimeMinutes ?? ''} onChange={e => setFormData({...formData, printTimeMinutes: e.target.value === '' ? '' as any : Number(e.target.value)})}
                   />
                 </div>
                 <div className="col-span-2 flex items-center gap-2">
@@ -332,7 +348,7 @@ export const ProductForm: React.FC = () => {
                   <input 
                     type="number" min="0" required
                     className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.purchaseCost || ''} onChange={e => setFormData({...formData, purchaseCost: Number(e.target.value)})}
+                    value={formData.purchaseCost ?? ''} onChange={e => setFormData({...formData, purchaseCost: e.target.value === '' ? '' as any : Number(e.target.value)})}
                   />
                 </div>
               </div>
@@ -344,7 +360,7 @@ export const ProductForm: React.FC = () => {
                 <input 
                   type="number" min="0" required
                   className="w-full border border-blue-300 bg-blue-50 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 font-semibold"
-                  value={formData.stock === undefined ? 0 : formData.stock} onChange={e => setFormData({...formData, stock: Number(e.target.value)})}
+                  value={formData.stock ?? ''} onChange={e => setFormData({...formData, stock: e.target.value === '' ? '' as any : Number(e.target.value)})}
                 />
                 <p className="text-xs text-slate-500 mt-1">El stock controla si los clientes pueden añadirlo al carrito.</p>
               </div>
@@ -381,7 +397,7 @@ export const ProductForm: React.FC = () => {
                   <input 
                     type="number" min="0" required={formData.useManualPrice}
                     className="w-full border border-amber-300 bg-amber-50 rounded-lg p-2 focus:ring-2 focus:ring-amber-500"
-                    value={formData.manualRetailPrice || ''} onChange={e => setFormData({...formData, manualRetailPrice: Number(e.target.value)})}
+                    value={formData.manualRetailPrice ?? ''} onChange={e => setFormData({...formData, manualRetailPrice: e.target.value === '' ? '' as any : Number(e.target.value)})}
                   />
                   <p className="text-xs text-amber-600 mt-1">El precio mayorista se calculará en base a este precio manual.</p>
                 </div>
@@ -424,10 +440,10 @@ export const ProductForm: React.FC = () => {
                           type="number"
                           min="1"
                           required
-                          value={tier.minQty}
+                          value={tier.minQty ?? ''}
                           onChange={e => {
                             const newTiers = [...formData.priceTiers];
-                            newTiers[index].minQty = Number(e.target.value);
+                            newTiers[index].minQty = e.target.value === '' ? '' as any : Number(e.target.value);
                             setFormData({ ...formData, priceTiers: newTiers });
                           }}
                           className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
@@ -439,10 +455,10 @@ export const ProductForm: React.FC = () => {
                           type="number"
                           min={tier.minQty}
                           required
-                          value={tier.maxQty}
+                          value={tier.maxQty ?? ''}
                           onChange={e => {
                             const newTiers = [...formData.priceTiers];
-                            newTiers[index].maxQty = Number(e.target.value);
+                            newTiers[index].maxQty = e.target.value === '' ? '' as any : Number(e.target.value);
                             setFormData({ ...formData, priceTiers: newTiers });
                           }}
                           className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
@@ -454,10 +470,10 @@ export const ProductForm: React.FC = () => {
                           type="number"
                           min="0"
                           required
-                          value={tier.unitPrice}
+                          value={tier.unitPrice ?? ''}
                           onChange={e => {
                             const newTiers = [...formData.priceTiers];
-                            newTiers[index].unitPrice = Number(e.target.value);
+                            newTiers[index].unitPrice = e.target.value === '' ? '' as any : Number(e.target.value);
                             setFormData({ ...formData, priceTiers: newTiers });
                           }}
                           className="w-full border border-slate-300 rounded-md p-1 text-sm text-right font-semibold text-emerald-600"

@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [businessSettings, setBusinessSettings] = useState<any>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        setBusinessSettings(snap.data());
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,10 +43,16 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <div className="card w-full max-w-md p-8 glass">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
-            <span className="text-white text-3xl font-bold">D</span>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800">Dualgi 3D</h2>
+          {businessSettings?.logoUrl ? (
+            <img src={businessSettings.logoUrl} className="w-16 h-16 object-cover rounded-2xl mb-4 shadow-lg shadow-slate-200/50" alt="Logo" />
+          ) : (
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
+              <span className="text-white text-3xl font-bold">
+                {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : 'D'}
+              </span>
+            </div>
+          )}
+          <h2 className="text-2xl font-bold text-slate-800">{businessSettings?.name || 'Dualgi 3D'}</h2>
           <p className="text-slate-500 text-sm mt-1">Plataforma de Gestión y Venta</p>
         </div>
 

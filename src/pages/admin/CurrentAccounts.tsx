@@ -16,7 +16,7 @@ export const CurrentAccounts: React.FC = () => {
 
   // Payment modal state
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentAmount, setPaymentAmount] = useState<number | ''>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [observations, setObservations] = useState('');
   const [saving, setSaving] = useState(false);
@@ -99,8 +99,9 @@ export const CurrentAccounts: React.FC = () => {
   // Submit payment
   const handleRegisterPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || paymentAmount <= 0) return;
-    if (paymentAmount > (selectedClient.totalOwed || 0)) {
+    const amt = paymentAmount === '' ? 0 : Number(paymentAmount);
+    if (!selectedClient || amt <= 0) return;
+    if (amt > (selectedClient.totalOwed || 0)) {
       return alert("El monto ingresado supera el saldo adeudado del cliente.");
     }
     if (!activeSession) {
@@ -123,7 +124,7 @@ export const CurrentAccounts: React.FC = () => {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       const batch = writeBatch(db);
-      let remainingPayment = paymentAmount;
+      let remainingPayment = amt;
 
       // Distribute payment across orders (oldest first)
       for (const order of clientOrders) {
@@ -157,7 +158,7 @@ export const CurrentAccounts: React.FC = () => {
 
       // 2. Update Client totalOwed
       const clientRef = doc(db, 'clients', selectedClient.id);
-      const newOwed = Math.max(0, (selectedClient.totalOwed || 0) - paymentAmount);
+      const newOwed = Math.max(0, (selectedClient.totalOwed || 0) - amt);
       batch.update(clientRef, { totalOwed: newOwed });
 
       // Commit DB changes
@@ -168,7 +169,7 @@ export const CurrentAccounts: React.FC = () => {
         sessionId: activeSession.id,
         date: new Date().toISOString(),
         type: 'account_payment',
-        amount: paymentAmount,
+        amount: amt,
         paymentMethod,
         customerId: selectedClient.id,
         userId: userData?.uid || '',
@@ -184,11 +185,11 @@ export const CurrentAccounts: React.FC = () => {
       const currentExpected = activeSession.expectedAmount || 0;
       const breakdown = { ...(activeSession.breakdown || { cash: 0, transfer: 0, mercadopago: 0, card: 0, other: 0 }) };
       
-      breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + paymentAmount;
+      breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + amt;
 
       await updateDoc(sessionRef, {
-        totalIncome: currentIncome + paymentAmount,
-        expectedAmount: currentExpected + paymentAmount,
+        totalIncome: currentIncome + amt,
+        expectedAmount: currentExpected + amt,
         breakdown
       });
 
@@ -344,8 +345,8 @@ export const CurrentAccounts: React.FC = () => {
                   max={selectedClient.totalOwed}
                   step="0.01"
                   required
-                  value={paymentAmount || ''} 
-                  onChange={e => setPaymentAmount(Number(e.target.value))}
+                  value={paymentAmount ?? ''} 
+                  onChange={e => setPaymentAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
                   className="input font-bold text-lg text-slate-800 focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />
@@ -395,7 +396,7 @@ export const CurrentAccounts: React.FC = () => {
               </button>
               <button 
                 type="submit" 
-                disabled={saving || !activeSession || paymentAmount <= 0 || paymentAmount > (selectedClient.totalOwed || 0)}
+                disabled={saving || !activeSession || paymentAmount === '' || Number(paymentAmount) <= 0 || Number(paymentAmount) > (selectedClient.totalOwed || 0)}
                 className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving && <Loader2 className="animate-spin" size={16} />}

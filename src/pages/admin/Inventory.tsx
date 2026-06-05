@@ -455,6 +455,19 @@ const InventoryModal = ({
     e.preventDefault();
     setSaving(true);
     try {
+      // Sanitize fields before saving
+      const dataToSave = { ...formData };
+      if (type === 'filaments') {
+        dataToSave.priceUsdKg = dataToSave.priceUsdKg === '' ? 0 : Number(dataToSave.priceUsdKg);
+        dataToSave.minStockGrams = dataToSave.minStockGrams === '' ? 0 : Number(dataToSave.minStockGrams);
+        dataToSave.initialWeightGrams = dataToSave.initialWeightGrams === '' ? 0 : Number(dataToSave.initialWeightGrams);
+        dataToSave.availableWeightGrams = dataToSave.availableWeightGrams === '' ? 0 : Number(dataToSave.availableWeightGrams);
+      } else {
+        dataToSave.currentStock = dataToSave.currentStock === '' ? 0 : Number(dataToSave.currentStock);
+        dataToSave.minStock = dataToSave.minStock === '' ? 0 : Number(dataToSave.minStock);
+        dataToSave.unitCostArs = dataToSave.unitCostArs === '' ? 0 : Number(dataToSave.unitCostArs);
+      }
+
       if (item?.id) {
         // Compute delta and type of movement for update
         let delta = 0;
@@ -463,15 +476,15 @@ const InventoryModal = ({
         
         if (type === 'filaments') {
           prevVal = item.availableWeightGrams || 0;
-          finalVal = Number(formData.availableWeightGrams);
+          finalVal = Number(dataToSave.availableWeightGrams);
           delta = finalVal - prevVal;
         } else {
           prevVal = item.currentStock || 0;
-          finalVal = Number(formData.currentStock);
+          finalVal = Number(dataToSave.currentStock);
           delta = finalVal - prevVal;
         }
 
-        await updateDoc(doc(db, 'inventory', item.id), formData);
+        await updateDoc(doc(db, 'inventory', item.id), dataToSave);
         
         if (Math.abs(delta) > 0.01) {
           // Log adjustment
@@ -488,17 +501,17 @@ const InventoryModal = ({
             previousQuantity: prevVal,
             modifiedQuantity: delta,
             finalQuantity: finalVal,
-            reason: `${reason}: ${type === 'filaments' ? formData.color : formData.name}`,
+            reason: `${reason}: ${type === 'filaments' ? dataToSave.color : dataToSave.name}`,
             userId
           };
           await addDoc(collection(db, 'inventory_movements'), movement);
         }
       } else {
         // Create new item
-        const docRef = await addDoc(collection(db, 'inventory'), formData);
+        const docRef = await addDoc(collection(db, 'inventory'), dataToSave);
         
         // Log "in" movement
-        const qty = type === 'filaments' ? Number(formData.availableWeightGrams) : Number(formData.currentStock);
+        const qty = type === 'filaments' ? Number(dataToSave.availableWeightGrams) : Number(dataToSave.currentStock);
         const movement = {
           date: new Date().toISOString(),
           movementType: 'in' as InventoryMovementType,
@@ -507,7 +520,7 @@ const InventoryModal = ({
           previousQuantity: 0,
           modifiedQuantity: qty,
           finalQuantity: qty,
-          reason: `Alta de ítem en inventario: ${type === 'filaments' ? formData.color : formData.name}`,
+          reason: `Alta de ítem en inventario: ${type === 'filaments' ? dataToSave.color : dataToSave.name}`,
           userId
         };
         await addDoc(collection(db, 'inventory_movements'), movement);
@@ -637,8 +650,8 @@ const InventoryModal = ({
                       type="number" 
                       step="0.01"
                       className="input w-full pl-10" 
-                      value={formData.priceUsdKg || ''} 
-                      onChange={e => setFormData({...formData, priceUsdKg: Number(e.target.value)})} 
+                      value={formData.priceUsdKg ?? ''} 
+                      onChange={e => setFormData({...formData, priceUsdKg: e.target.value === '' ? '' as any : Number(e.target.value)})} 
                     />
                   </div>
                 </div>
@@ -648,8 +661,8 @@ const InventoryModal = ({
                     required 
                     type="number" 
                     className="input w-full mt-1" 
-                    value={formData.minStockGrams || ''} 
-                    onChange={e => setFormData({...formData, minStockGrams: Number(e.target.value)})} 
+                    value={formData.minStockGrams ?? ''} 
+                    onChange={e => setFormData({...formData, minStockGrams: e.target.value === '' ? '' as any : Number(e.target.value)})} 
                   />
                 </div>
               </div>
@@ -661,9 +674,9 @@ const InventoryModal = ({
                     required 
                     type="number" 
                     className="input w-full mt-1" 
-                    value={formData.initialWeightGrams || ''} 
+                    value={formData.initialWeightGrams ?? ''} 
                     onChange={e => {
-                      const val = Number(e.target.value);
+                      const val = e.target.value === '' ? '' as any : Number(e.target.value);
                       setFormData({
                         ...formData, 
                         initialWeightGrams: val,
@@ -679,8 +692,8 @@ const InventoryModal = ({
                     required 
                     type="number" 
                     className="input w-full mt-1 font-bold text-blue-600" 
-                    value={formData.availableWeightGrams || ''} 
-                    onChange={e => setFormData({...formData, availableWeightGrams: Number(e.target.value)})} 
+                    value={formData.availableWeightGrams ?? ''} 
+                    onChange={e => setFormData({...formData, availableWeightGrams: e.target.value === '' ? '' as any : Number(e.target.value)})} 
                   />
                 </div>
               </div>
@@ -771,8 +784,8 @@ const InventoryModal = ({
                     required 
                     type="number" 
                     className="input w-full mt-1 font-bold text-blue-600" 
-                    value={formData.currentStock || ''} 
-                    onChange={e => setFormData({...formData, currentStock: Number(e.target.value)})} 
+                    value={formData.currentStock ?? ''} 
+                    onChange={e => setFormData({...formData, currentStock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
                   />
                 </div>
                 <div>
@@ -781,8 +794,8 @@ const InventoryModal = ({
                     required 
                     type="number" 
                     className="input w-full mt-1" 
-                    value={formData.minStock || ''} 
-                    onChange={e => setFormData({...formData, minStock: Number(e.target.value)})} 
+                    value={formData.minStock ?? ''} 
+                    onChange={e => setFormData({...formData, minStock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
                   />
                 </div>
                 <div>
@@ -793,8 +806,8 @@ const InventoryModal = ({
                       required 
                       type="number" 
                       className="input w-full pl-6" 
-                      value={formData.unitCostArs || ''} 
-                      onChange={e => setFormData({...formData, unitCostArs: Number(e.target.value)})} 
+                      value={formData.unitCostArs ?? ''} 
+                      onChange={e => setFormData({...formData, unitCostArs: e.target.value === '' ? '' as any : Number(e.target.value)})} 
                     />
                   </div>
                 </div>

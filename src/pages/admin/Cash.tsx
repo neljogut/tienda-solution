@@ -12,14 +12,14 @@ export const Cash: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Opening / Closing form states
-  const [initialAmount, setInitialAmount] = useState<number>(0);
-  const [declaredAmount, setDeclaredAmount] = useState<number>(0);
+  const [initialAmount, setInitialAmount] = useState<number | ''>(0);
+  const [declaredAmount, setDeclaredAmount] = useState<number | ''>(0);
   const [obs, setObs] = useState('');
   const [sessionSaving, setSessionSaving] = useState(false);
 
   // Manual transaction modal states
   const [manualModalOpen, setManualModalOpen] = useState(false);
-  const [manualAmount, setManualAmount] = useState<number>(0);
+  const [manualAmount, setManualAmount] = useState<number | ''>(0);
   const [manualType, setManualType] = useState<'manual_income' | 'manual_expense'>('manual_income');
   const [manualMethod, setManualMethod] = useState<PaymentMethod>('cash');
   const [manualObs, setManualObs] = useState('');
@@ -61,16 +61,17 @@ export const Cash: React.FC = () => {
     if (!userData) return;
     setSessionSaving(true);
     try {
+      const startAmt = initialAmount === '' ? 0 : Number(initialAmount);
       const newSession: Omit<CashSession, 'id'> = {
         openedAt: new Date().toISOString(),
         openedBy: userData.uid,
         openedByName: userData.displayName,
-        initialAmount,
+        initialAmount: startAmt,
         status: 'open',
         totalIncome: 0,
         totalExpense: 0,
-        expectedAmount: initialAmount,
-        breakdown: { cash: initialAmount, transfer: 0, mercadopago: 0, card: 0, other: 0 }
+        expectedAmount: startAmt,
+        breakdown: { cash: startAmt, transfer: 0, mercadopago: 0, card: 0, other: 0 }
       };
       await addDoc(collection(db, 'cash_sessions'), newSession);
       setInitialAmount(0);
@@ -89,8 +90,9 @@ export const Cash: React.FC = () => {
     setSessionSaving(true);
     
     // Calculates
+    const declAmt = declaredAmount === '' ? 0 : Number(declaredAmount);
     const expected = activeSession.initialAmount + activeSession.totalIncome - activeSession.totalExpense;
-    const diff = declaredAmount - expected;
+    const diff = declAmt - expected;
     
     try {
       await updateDoc(doc(db, 'cash_sessions', activeSession.id), {
@@ -99,7 +101,7 @@ export const Cash: React.FC = () => {
         closedBy: userData.uid,
         closedByName: userData.displayName,
         expectedAmount: expected,
-        declaredAmount: declaredAmount,
+        declaredAmount: declAmt,
         difference: diff,
         observations: obs
       });
@@ -116,7 +118,8 @@ export const Cash: React.FC = () => {
 
   const handleRegisterManualMovement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeSession || !userData || manualAmount <= 0 || !manualObs.trim()) return;
+    const amt = manualAmount === '' ? 0 : Number(manualAmount);
+    if (!activeSession || !userData || amt <= 0 || !manualObs.trim()) return;
 
     setManualSaving(true);
     try {
@@ -125,7 +128,7 @@ export const Cash: React.FC = () => {
         sessionId: activeSession.id,
         date: new Date().toISOString(),
         type: manualType,
-        amount: manualAmount,
+        amount: amt,
         paymentMethod: manualMethod,
         userId: userData.uid,
         userName: userData.displayName || 'Admin',
@@ -140,11 +143,11 @@ export const Cash: React.FC = () => {
       let breakdownChange = 0;
 
       if (manualType === 'manual_income') {
-        incomeChange = manualAmount;
-        breakdownChange = manualAmount;
+        incomeChange = amt;
+        breakdownChange = amt;
       } else {
-        expenseChange = manualAmount;
-        breakdownChange = -manualAmount;
+        expenseChange = amt;
+        breakdownChange = -amt;
       }
 
       const currentIncome = activeSession.totalIncome || 0;
@@ -200,7 +203,7 @@ export const Cash: React.FC = () => {
               <input 
                 type="number" required min="0"
                 className="w-full border border-slate-300 rounded-lg p-3 text-lg font-bold focus:ring-2 focus:ring-blue-500"
-                value={initialAmount || ''} onChange={e => setInitialAmount(Number(e.target.value))}
+                value={initialAmount ?? ''} onChange={e => setInitialAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
               />
             </div>
             <button type="submit" disabled={sessionSaving} className="w-full btn-primary py-3 flex justify-center items-center gap-2 text-lg">
@@ -291,7 +294,7 @@ export const Cash: React.FC = () => {
                   <input 
                     type="number" required min="0"
                     className="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-lg focus:ring-2 focus:ring-red-500"
-                    value={declaredAmount || ''} onChange={e => setDeclaredAmount(Number(e.target.value))}
+                    value={declaredAmount ?? ''} onChange={e => setDeclaredAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
                   />
                 </div>
                 <div>
@@ -359,8 +362,8 @@ export const Cash: React.FC = () => {
                   min="0.01" 
                   step="0.01"
                   required
-                  value={manualAmount || ''} 
-                  onChange={e => setManualAmount(Number(e.target.value))}
+                  value={manualAmount ?? ''} 
+                  onChange={e => setManualAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
                   className="input font-bold text-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />
@@ -401,7 +404,7 @@ export const Cash: React.FC = () => {
               </button>
               <button 
                 type="submit" 
-                disabled={manualSaving || manualAmount <= 0 || !manualObs.trim()}
+                disabled={manualSaving || manualAmount === '' || manualAmount <= 0 || !manualObs.trim()}
                 className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {manualSaving && <Loader2 className="animate-spin" size={16} />}

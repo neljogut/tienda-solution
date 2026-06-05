@@ -120,7 +120,7 @@ El catálogo interno del dueño/admin debe mostrar además:
 
 * Si el producto tiene precio manual.
 * Costos.
-* Ganancia estimada.
+* Ganancia real.
 * Tipo de cálculo.
 * Estado de stock.
 * Acciones rápidas para editar.
@@ -234,13 +234,63 @@ El PDF interno puede incluir imagen pequeña del producto para identificación, 
 
 # 4. Precios del catálogo con cotización automática
 
-Para productos impresos en 3D, el precio del filamento se carga en dólares dentro de la configuración de precios. (Configuracion de precios, aca colocamos la configuracion para que los pruductos que agregamos al catalogo se calcule automaticamente segun los parametros de precios, lo que se puede configurar en parametros de precios es : *Precio Filamento por KG (en dolares) *Precio KwH *Consumo (watts) *Vida util de la maquina *Costo en repuestos *Margen de error (%) *Multiplicador Minorista (productos que no son llavero) *Multiplicador minorista (productos que son llaveros) *% Descuento mayorista (Productos que no son llaveros) *% Descuento Mayorista (productos que son llaveros) *Umbral para aplicar descuento mayorista en gramos (productos que no son llaveros) *Umbral para aplicar descuento mayorista en gramos (productos que son llaveros) TODO ESO ES PARA PRODUCTOS DE IMPRESION 3D, AHORA FALTA LO QUE ES PARA PRODUCTOS DE REVENTA: *Ganancia sobre costo de compra % *Descuento mayorista % *Pedido minimo en $ para aplicar el descuento mayorista (0 queda deshabilitado el precio mayorista o colocar un switch que active o desactive el descuento mayorista en reventa)
+implementar una sección llamada Configuración de precios, desde donde se configuren todos los parámetros necesarios para calcular automáticamente los precios de los productos agregados al catálogo.
 
-El catálogo debe mostrar los precios en pesos argentinos.
+La plataforma debe manejar dos tipos de productos:
 
-La conversión debe hacerse automáticamente usando la cotización actual del dólar.
+Productos impresos en 3D
+Productos de reventa
+1. Configuración para productos impresos en 3D
 
-La cotización del dólar debe obtenerse automáticamente desde una API. Usar preferentemente una API confiable basada en la cotización del Banco Nación o una fuente equivalente para Argentina.
+Para los productos impresos en 3D, el precio del filamento debe cargarse en dólares dentro de la configuración de precios.
+
+El catálogo debe mostrar siempre los precios finales en pesos argentinos (ARS).
+
+La conversión de dólares a pesos argentinos debe hacerse automáticamente usando la cotización actual del dólar. La cotización debe obtenerse desde una API confiable, preferentemente basada en la cotización del Banco Nación Argentina o una fuente equivalente para Argentina.
+
+Dentro de la configuración de precios para impresión 3D, deben poder configurarse los siguientes campos:
+
+Precio del filamento por KG, en dólares.
+Precio del KWh.
+Consumo de la impresora en watts.
+Vida útil estimada de la máquina, en horas.
+Costo estimado en repuestos.
+Margen de error, en porcentaje.
+Multiplicador minorista para productos que no son llaveros.
+Multiplicador minorista para productos que son llaveros.
+Porcentaje de descuento mayorista para productos que no son llaveros.
+Porcentaje de descuento mayorista para productos que son llaveros.
+Umbral en gramos para aplicar descuento mayorista en productos que no son llaveros.
+Umbral en gramos para aplicar descuento mayorista en productos que son llaveros.
+
+Cuando se agrega un producto impreso en 3D al catálogo, el sistema debe calcular automáticamente el precio en base a estos parámetros.
+
+Cada producto 3D debe permitir cargar al menos:
+
+Nombre del producto.
+Categoría.
+Si es llavero o no.
+Gramos de filamento utilizados.
+Tiempo de impresión.
+Insumos adicionales, si corresponde.
+Imagen del producto.
+Precio calculado automáticamente.
+Posibilidad de activar precio manual, dejando claro internamente que ese producto no usa el precio automático.
+2. Configuración para productos de reventa
+
+Los productos de reventa no usan cálculo por filamento, tiempo de impresión ni consumo eléctrico.
+
+Para productos de reventa, la configuración de precios debe incluir:
+
+Ganancia sobre costo de compra, en porcentaje.
+Descuento mayorista, en porcentaje.
+Pedido mínimo en pesos argentinos para aplicar descuento mayorista.
+
+El descuento mayorista para reventa debe poder activarse o desactivarse mediante un switch.
+
+Si el switch de descuento mayorista está desactivado, el producto solo debe usar precio minorista.
+
+Si el switch está activado, el sistema debe aplicar el descuento mayorista únicamente cuando el pedido alcance el monto mínimo configurado.
 
 Reglas:
 
@@ -273,7 +323,7 @@ Regla obligatoria:
   * Cotización del dólar usada en ese momento.
   * Fecha y hora de la cotización.
   * Costos calculados al momento de la venta.
-  * Ganancia estimada al momento de la venta.
+  * Ganancia real al momento de la venta.
   * Imagen del producto o referencia visual si corresponde.
 * Si mañana cambia el dólar, solo deben cambiar los precios del catálogo y productos todavía no vendidos.
 * Los pedidos ya creados deben mantener el precio original.

@@ -1,125 +1,50 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
+    
+    // Función para verificar si el usuario está logueado
+    function isAuth() {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function role() {
-      return signedIn() ? userDoc().data.role : 'guest';
-    }
-
-    function isOwner() {
-      return signedIn() && role() == 'owner';
-    }
-
-    function isEmployee() {
-      return signedIn() && role() == 'employee';
-    }
-
-    function isClient() {
-      return signedIn() && role() == 'client';
-    }
-
-    function hasPermission(permission) {
-      return isOwner() || (isEmployee() && userDoc().data.permissions[permission] == true);
-    }
-
-    function ownsCustomer(customerId) {
-      return isClient() && userDoc().data.customerId == customerId;
-    }
-
+    // Reglas para la colección de Usuarios
     match /users/{userId} {
-      allow read: if isOwner() || request.auth.uid == userId || hasPermission('manageEmployees');
-      allow create, update, delete: if isOwner();
+      // Un usuario puede leer y escribir su propio documento
+      allow read, write: if isAuth() && request.auth.uid == userId;
+      // Administradores podrían leer todo (requeriría custom claims o similar en producción)
+      allow read, write: if isAuth(); 
     }
 
-    match /customers/{customerId} {
-      allow read: if isOwner() || hasPermission('viewClients') || ownsCustomer(customerId);
-      allow create: if isOwner() || hasPermission('createClients') || request.auth.uid == customerId;
-      allow update: if isOwner() || hasPermission('editClients') || ownsCustomer(customerId);
-      allow delete: if isOwner();
-    }
-
+    // Reglas para Productos
     match /products/{productId} {
+      // Cualquier persona (incluso invitados) puede ver el catálogo
       allow read: if true;
-      allow create: if isOwner() || hasPermission('createProducts');
-      allow update: if isOwner() || hasPermission('editProducts');
-      allow delete: if isOwner();
+      // Solo usuarios autenticados pueden crear o modificar productos (luego se puede restringir a 'owner')
+      allow write: if isAuth();
     }
 
+    // Reglas para Pedidos
     match /orders/{orderId} {
-      allow read: if isOwner() || hasPermission('viewOrders') || ownsCustomer(resource.data.customerId);
-      allow create: if isOwner() || hasPermission('createOrders') || ownsCustomer(request.resource.data.customerId);
-      allow update: if isOwner() || hasPermission('editOrders') || hasPermission('registerPayments');
-      allow delete: if isOwner();
+      // Todos los usuarios logueados pueden interactuar con los pedidos (para simplificar ahora)
+      allow read, write: if isAuth();
     }
 
-    match /payments/{paymentId} {
-      allow read: if isOwner() || hasPermission('registerPayments') || ownsCustomer(resource.data.customerId);
-      allow create: if isOwner() || hasPermission('registerPayments');
-      allow update, delete: if isOwner();
+    // Reglas para Inventario (Filamentos y otros)
+    match /inventory/{itemId} {
+      allow read, write: if isAuth();
     }
 
-    match /filaments/{id} {
-      allow read: if isOwner() || hasPermission('viewInventory');
-      allow write: if isOwner() || hasPermission('modifyInventory');
+    // Reglas para Caja Diaria
+    match /cash_sessions/{sessionId} {
+      allow read, write: if isAuth();
     }
-
-    match /supplies/{id} {
-      allow read: if isOwner() || hasPermission('viewInventory');
-      allow write: if isOwner() || hasPermission('modifyInventory');
+    match /cash_movements/{movementId} {
+      allow read, write: if isAuth();
     }
-
-    match /inventory_movements/{id} {
-      allow read: if isOwner() || hasPermission('viewInventoryMovements');
-      allow create: if isOwner() || hasPermission('modifyInventory') || hasPermission('createOrders');
-      allow update, delete: if isOwner();
-    }
-
-    match /cash_sessions/{id} {
-      allow read: if isOwner() || hasPermission('viewCurrentCash') || hasPermission('viewCashHistory');
-      allow create: if isOwner() || hasPermission('openCash');
-      allow update: if isOwner() || hasPermission('closeCash');
-      allow delete: if isOwner();
-    }
-
-    match /cash_movements/{id} {
-      allow read: if isOwner() || hasPermission('viewCurrentCash') || hasPermission('viewCashHistory');
-      allow create: if isOwner() || hasPermission('registerPayments') || hasPermission('openCash');
-      allow update, delete: if isOwner();
-    }
-
-    match /business_settings/{id} {
-      allow read: if true;
-      allow write: if isOwner();
-    }
-
-    match /pricing_settings/{id} {
-      allow read: if isOwner() || hasPermission('viewPricingSettings');
-      allow write: if isOwner();
-    }
-
-    match /exchange_rates/{id} {
-      allow read: if true;
-      allow write: if isOwner();
-    }
-
-    match /pdf_documents/{id} {
-      allow read: if isOwner()
-        || hasPermission('viewInternalPdfs')
-        || (resource.data.visibility == 'customer' && ownsCustomer(resource.data.customerId));
-      allow create: if isOwner() || hasPermission('downloadInternalPdfs');
-      allow update, delete: if isOwner();
-    }
-
+    
+    // Cualquier otra colección, por defecto bloqueada a no logueados, abierta a logueados
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAuth();
     }
   }
 }

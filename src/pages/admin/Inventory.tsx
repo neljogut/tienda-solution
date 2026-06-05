@@ -7,6 +7,7 @@ import {
   Plus, Edit, Trash2, Droplet, Package, AlertTriangle, 
   Search, Image, X 
 } from 'lucide-react';
+import { NumericInput } from '../../components/NumericInput';
 
 export const Inventory: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'filaments' | 'supplies'>('filaments');
@@ -645,24 +646,22 @@ const InventoryModal = ({
                   <label className="input-label font-bold text-slate-500 uppercase">Precio USD/Kg (Costo)</label>
                   <div className="relative mt-1">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-semibold">U$D</span>
-                    <input 
+                    <NumericInput 
+                      allowDecimals
                       required 
-                      type="number" 
-                      step="0.01"
                       className="input w-full pl-10" 
-                      value={formData.priceUsdKg ?? ''} 
-                      onChange={e => setFormData({...formData, priceUsdKg: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                      value={formData.priceUsdKg} 
+                      onChange={val => setFormData({...formData, priceUsdKg: val})} 
                     />
                   </div>
                 </div>
                 <div>
                   <label className="input-label font-bold text-slate-500 uppercase">Stock Mínimo Alerta (g)</label>
-                  <input 
+                  <NumericInput 
                     required 
-                    type="number" 
                     className="input w-full mt-1" 
-                    value={formData.minStockGrams ?? ''} 
-                    onChange={e => setFormData({...formData, minStockGrams: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                    value={formData.minStockGrams} 
+                    onChange={val => setFormData({...formData, minStockGrams: val})} 
                   />
                 </div>
               </div>
@@ -670,13 +669,11 @@ const InventoryModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="input-label font-bold text-slate-500 uppercase">Peso Inicial Bobina (g)</label>
-                  <input 
+                  <NumericInput 
                     required 
-                    type="number" 
                     className="input w-full mt-1" 
-                    value={formData.initialWeightGrams ?? ''} 
-                    onChange={e => {
-                      const val = e.target.value === '' ? '' as any : Number(e.target.value);
+                    value={formData.initialWeightGrams} 
+                    onChange={val => {
                       setFormData({
                         ...formData, 
                         initialWeightGrams: val,
@@ -688,12 +685,11 @@ const InventoryModal = ({
                 </div>
                 <div>
                   <label className="input-label font-bold text-slate-500 uppercase">Peso Disponible Actual (g)</label>
-                  <input 
+                  <NumericInput 
                     required 
-                    type="number" 
                     className="input w-full mt-1 font-bold text-blue-600" 
-                    value={formData.availableWeightGrams ?? ''} 
-                    onChange={e => setFormData({...formData, availableWeightGrams: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                    value={formData.availableWeightGrams} 
+                    onChange={val => setFormData({...formData, availableWeightGrams: val})} 
                   />
                 </div>
               </div>
@@ -780,34 +776,32 @@ const InventoryModal = ({
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="input-label font-bold text-slate-500 uppercase">Stock Actual</label>
-                  <input 
+                  <NumericInput 
                     required 
-                    type="number" 
                     className="input w-full mt-1 font-bold text-blue-600" 
-                    value={formData.currentStock ?? ''} 
-                    onChange={e => setFormData({...formData, currentStock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                    value={formData.currentStock} 
+                    onChange={val => setFormData({...formData, currentStock: val})} 
                   />
                 </div>
                 <div>
                   <label className="input-label font-bold text-slate-500 uppercase">Stock Mínimo</label>
-                  <input 
+                  <NumericInput 
                     required 
-                    type="number" 
                     className="input w-full mt-1" 
-                    value={formData.minStock ?? ''} 
-                    onChange={e => setFormData({...formData, minStock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                    value={formData.minStock} 
+                    onChange={val => setFormData({...formData, minStock: val})} 
                   />
                 </div>
                 <div>
                   <label className="input-label font-bold text-slate-500 uppercase">Costo Unitario ARS</label>
                   <div className="relative mt-1">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-semibold">$</span>
-                    <input 
+                    <NumericInput 
+                      allowDecimals
                       required 
-                      type="number" 
                       className="input w-full pl-6" 
-                      value={formData.unitCostArs ?? ''} 
-                      onChange={e => setFormData({...formData, unitCostArs: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                      value={formData.unitCostArs} 
+                      onChange={val => setFormData({...formData, unitCostArs: val})} 
                     />
                   </div>
                 </div>

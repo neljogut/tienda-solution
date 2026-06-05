@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice } from '../../services/pricingService';
+import { NumericInput } from '../../components/NumericInput';
 
 export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -556,11 +557,9 @@ export const NewOrder: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="number" 
-                        min="1"
-                        value={item.quantity ?? ''}
-                        onChange={e => updateQuantity(item.productId, e.target.value === '' ? '' : Number(e.target.value))}
+                      <NumericInput 
+                        value={item.quantity}
+                        onChange={val => updateQuantity(item.productId, val)}
                         className="w-12 p-1 border rounded text-center text-xs font-semibold"
                       />
                       <button onClick={() => updateQuantity(item.productId, 0)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
@@ -615,12 +614,9 @@ export const NewOrder: React.FC = () => {
                     )}
                   </span>
                   <div className="flex items-center gap-2">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max={totalAmount}
-                      value={paidAmount ?? ''} 
-                      onChange={e => setPaidAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    <NumericInput 
+                      value={paidAmount} 
+                      onChange={val => setPaidAmount(val)}
                       className="w-24 p-1 border rounded text-right font-bold text-xs"
                       placeholder="$0"
                     />

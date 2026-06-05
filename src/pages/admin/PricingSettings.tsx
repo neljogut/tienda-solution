@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { fetchDollarRate, setManualRate } from '../../services/dollarService';
 import { calculate3DPrice } from '../../services/pricing';
 import { recalculateAllProductsInFirestore } from '../../services/pricingService';
+import { NumericInput } from '../../components/NumericInput';
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData, DepositSettings } from '../../types/settings';
 import {
   Settings, DollarSign, Printer, Calculator, Percent,
@@ -299,14 +300,12 @@ export const PricingSettings: React.FC = () => {
                   <AlertTriangle size={14} className="inline mr-1" />
                   Cotización manual (ARS por 1 USD)
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="0.01"
+                <NumericInput
+                  allowDecimals
                   placeholder="Ej: 1250"
                   className="w-full border border-amber-300 bg-white rounded-lg p-2.5 focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
-                  value={manualRateInput}
-                  onChange={(e) => setManualRateInput(e.target.value)}
+                  value={manualRateInput === '' ? '' : Number(manualRateInput)}
+                  onChange={(val) => setManualRateInput(val === '' ? '' : val.toString())}
                 />
               </div>
               <button
@@ -661,13 +660,11 @@ const FieldCard: React.FC<FieldCardProps> = ({ label, icon, value, onChange, suf
       {label}
     </label>
     <div className="relative">
-      <input
-        type="number"
-        min={0}
-        step={step}
+      <NumericInput
+        allowDecimals={step < 1}
         className="w-full border border-slate-200 rounded-lg p-2.5 pr-12 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-slate-800 font-semibold text-sm"
         value={value}
-        onChange={(e) => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
+        onChange={onChange}
       />
       {suffix && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">

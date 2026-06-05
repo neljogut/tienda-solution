@@ -13,6 +13,7 @@ import {
   calculateResaleWholesalePrice
 } from '../../services/pricingService';
 import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2 } from 'lucide-react';
+import { NumericInput } from '../../components/NumericInput';
 
 export const ProductForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -318,18 +319,20 @@ export const ProductForm: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Peso (Gramos)</label>
-                  <input 
-                    type="number" min="0" required
+                  <NumericInput 
+                    required
                     className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.weightGrams ?? ''} onChange={e => setFormData({...formData, weightGrams: e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    value={formData.weightGrams} 
+                    onChange={val => setFormData({...formData, weightGrams: val})}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tiempo (Minutos)</label>
-                  <input 
-                    type="number" min="0" required
+                  <NumericInput 
+                    required
                     className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.printTimeMinutes ?? ''} onChange={e => setFormData({...formData, printTimeMinutes: e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    value={formData.printTimeMinutes} 
+                    onChange={val => setFormData({...formData, printTimeMinutes: val})}
                   />
                 </div>
                 <div className="col-span-2 flex items-center gap-2">
@@ -345,10 +348,12 @@ export const ProductForm: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Costo de Compra ($)</label>
-                  <input 
-                    type="number" min="0" required
+                  <NumericInput 
+                    allowDecimals
+                    required
                     className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.purchaseCost ?? ''} onChange={e => setFormData({...formData, purchaseCost: e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    value={formData.purchaseCost} 
+                    onChange={val => setFormData({...formData, purchaseCost: val})}
                   />
                 </div>
               </div>
@@ -357,10 +362,11 @@ export const ProductForm: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Stock Disponible</label>
-                <input 
-                  type="number" min="0" required
+                <NumericInput 
+                  required
                   className="w-full border border-blue-300 bg-blue-50 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 font-semibold"
-                  value={formData.stock ?? ''} onChange={e => setFormData({...formData, stock: e.target.value === '' ? '' as any : Number(e.target.value)})}
+                  value={formData.stock} 
+                  onChange={val => setFormData({...formData, stock: val})}
                 />
                 <p className="text-xs text-slate-500 mt-1">El stock controla si los clientes pueden añadirlo al carrito.</p>
               </div>
@@ -394,10 +400,11 @@ export const ProductForm: React.FC = () => {
               {formData.useManualPrice && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Precio Manual Minorista ($)</label>
-                  <input 
-                    type="number" min="0" required={formData.useManualPrice}
+                  <NumericInput 
+                    required={formData.useManualPrice}
                     className="w-full border border-amber-300 bg-amber-50 rounded-lg p-2 focus:ring-2 focus:ring-amber-500"
-                    value={formData.manualRetailPrice ?? ''} onChange={e => setFormData({...formData, manualRetailPrice: e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    value={formData.manualRetailPrice} 
+                    onChange={val => setFormData({...formData, manualRetailPrice: val})}
                   />
                   <p className="text-xs text-amber-600 mt-1">El precio mayorista se calculará en base a este precio manual.</p>
                 </div>
@@ -436,14 +443,12 @@ export const ProductForm: React.FC = () => {
                     <div className="flex-1 grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Min Cantidad</label>
-                        <input
-                          type="number"
-                          min="1"
+                        <NumericInput
                           required
-                          value={tier.minQty ?? ''}
-                          onChange={e => {
+                          value={tier.minQty}
+                          onChange={val => {
                             const newTiers = [...formData.priceTiers];
-                            newTiers[index].minQty = e.target.value === '' ? '' as any : Number(e.target.value);
+                            newTiers[index].minQty = val;
                             setFormData({ ...formData, priceTiers: newTiers });
                           }}
                           className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
@@ -451,14 +456,12 @@ export const ProductForm: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Max Cantidad</label>
-                        <input
-                          type="number"
-                          min={tier.minQty}
+                        <NumericInput
                           required
-                          value={tier.maxQty ?? ''}
-                          onChange={e => {
+                          value={tier.maxQty}
+                          onChange={val => {
                             const newTiers = [...formData.priceTiers];
-                            newTiers[index].maxQty = e.target.value === '' ? '' as any : Number(e.target.value);
+                            newTiers[index].maxQty = val;
                             setFormData({ ...formData, priceTiers: newTiers });
                           }}
                           className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
@@ -466,14 +469,12 @@ export const ProductForm: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Precio Unitario ($)</label>
-                        <input
-                          type="number"
-                          min="0"
+                        <NumericInput
                           required
-                          value={tier.unitPrice ?? ''}
-                          onChange={e => {
+                          value={tier.unitPrice}
+                          onChange={val => {
                             const newTiers = [...formData.priceTiers];
-                            newTiers[index].unitPrice = e.target.value === '' ? '' as any : Number(e.target.value);
+                            newTiers[index].unitPrice = val;
                             setFormData({ ...formData, priceTiers: newTiers });
                           }}
                           className="w-full border border-slate-300 rounded-md p-1 text-sm text-right font-semibold text-emerald-600"

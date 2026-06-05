@@ -1,5 +1,6 @@
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../types/settings';
-import type { Product3D, PriceTier, FilamentLine, SupplyLine } from '../types/product';
+import type { Product, Product3D, PriceTier, FilamentLine, SupplyLine } from '../types/product';
+import { getFilamentPriceUsdKg } from '../types/inventory';
 import { doc, getDoc, getDocs, collection, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { default3D, defaultResale } from '../constants/defaults';
@@ -10,6 +11,7 @@ type InventoryItem = {
   unitCostArs?: number;
 };
 
+/** USD/kg del filamento: personalizado si existe, si no el de Parámetros de precios. */
 function filamentPricePerGramArs(
   filamentId: string | undefined,
   settings: PricingSettings3D,
@@ -17,9 +19,10 @@ function filamentPricePerGramArs(
   inventoryMap?: Map<string, InventoryItem>
 ): number {
   const item = filamentId ? inventoryMap?.get(filamentId) : undefined;
-  const usdKg = item?.priceUsdKg && item.priceUsdKg > 0
-    ? item.priceUsdKg
-    : settings.filamentPriceUsdKg;
+  const usdKg = getFilamentPriceUsdKg(
+    { priceUsdKg: item?.priceUsdKg },
+    settings.filamentPriceUsdKg
+  );
   return (usdKg * exchangeRate.currentUsdToArs) / 1000;
 }
 
@@ -148,6 +151,37 @@ export function validateTierPrice(tierPrice: number, cost: number): boolean {
   return tierPrice > cost;
 }
 
+/** Precio minorista en ARS para catálogo: manual del producto o calculado al vuelo. */
+export function resolveProductRetailPrice(
+  product: Product,
+  settings3d: PricingSettings3D,
+  settingsResale: PricingSettingsResale,
+  exchangeRate: ExchangeRateData,
+  inventoryMap?: Map<string, InventoryItem>
+): number {
+  if (product.useManualPrice) {
+    return product.manualRetailPrice ?? 0;
+  }
+  if (product.type === '3d') {
+    return calculate3DRetailPrice(product, settings3d, exchangeRate, inventoryMap);
+  }
+  return calculateResaleRetailPrice(product.purchaseCost ?? 0, settingsResale);
+}
+
+/** Costo en ARS (admin / margen). Respeta precios de filamento personalizados. */
+export function resolveProductCost(
+  product: Product,
+  settings3d: PricingSettings3D,
+  _settingsResale: PricingSettingsResale,
+  exchangeRate: ExchangeRateData,
+  inventoryMap?: Map<string, InventoryItem>
+): number {
+  if (product.type === '3d') {
+    return calculate3DCost(product, settings3d, exchangeRate, inventoryMap);
+  }
+  return product.purchaseCost ?? 0;
+}
+
 // Recalculate all products in Firestore when pricing settings or exchange rate change
 export async function recalculateAllProductsInFirestore(): Promise<number> {
   try {
@@ -179,8 +213,8 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
 
       if (product.type === '3d') {
         cost = calculate3DCost(product as Product3D, settings3d, exchangeRate, inventoryMap);
-        retail = calculate3DRetailPrice(product as any, settings3d, exchangeRate);
-        wholesale = calculate3DWholesalePrice(product as any, settings3d, exchangeRate);
+        retail = calculate3DRetailPrice(product as Product3D, settings3d, exchangeRate, inventoryMap);
+        wholesale = calculate3DWholesalePrice(product as Product3D, settings3d, exchangeRate, inventoryMap);
       } else if (product.type === 'resale') {
         const purchaseCost = product.purchaseCost || 0;
         cost = purchaseCost;

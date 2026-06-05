@@ -3,17 +3,30 @@ import type { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Eye } from 'lucide-react';
+import { formatPrintTime } from '../utils/printTime';
 
 interface ProductCardProps {
   product: Product;
   isAdminView?: boolean;
+  getRetailPrice?: (product: Product) => number;
+  getCost?: (product: Product) => number;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, isAdminView = false }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  isAdminView = false,
+  getRetailPrice,
+  getCost,
+}) => {
   const navigate = useNavigate();
   const { addItem, openDrawer } = useCartStore();
   
-  const priceToDisplay = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
+  const priceToDisplay = getRetailPrice
+    ? getRetailPrice(product)
+    : (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice);
+  const costToDisplay = getCost
+    ? getCost(product)
+    : (product.calculatedCost ?? 0);
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -109,10 +122,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, isAdminView =
         {/* Admin cost info */}
         {isAdminView && (
           <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-500">
-            <div>Costo: ${product.calculatedCost?.toLocaleString('es-AR') || 0}</div>
+            <div>Costo: ${costToDisplay.toLocaleString('es-AR')}</div>
             <div className="text-right text-emerald-600 font-semibold">
-              Ganancia: ${((priceToDisplay || 0) - (product.calculatedCost || 0)).toLocaleString('es-AR')}
+              Ganancia: ${((priceToDisplay || 0) - costToDisplay).toLocaleString('es-AR')}
             </div>
+            {product.type === '3d' && (
+              <div className="col-span-2">Tiempo: {formatPrintTime(product.printTimeMinutes)}</div>
+            )}
           </div>
         )}
       </div>

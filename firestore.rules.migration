@@ -1,0 +1,9 @@
+rules_version = '2';
+// TEMPORAL — solo para scripts de migración. Restaurar firestore.rules original después.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

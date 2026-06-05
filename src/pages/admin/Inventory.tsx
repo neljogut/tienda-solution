@@ -1,26 +1,74 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, onSnapshot, query, where, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import type { Filament, Supply, InventoryMovementType } from '../../types/inventory';
+import { getFilamentPriceUsdKg, hasCustomFilamentPrice } from '../../types/inventory';
+import type { PricingSettings3D } from '../../types/settings';
+import { default3D } from '../../constants/defaults';
 import { 
   Plus, Edit, Trash2, Droplet, Package, AlertTriangle, 
-  Search, Image, X 
+  Search, Image, X, Settings, Loader2
 } from 'lucide-react';
 import { NumericInput } from '../../components/NumericInput';
+import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
+import { formatWeightGrams } from '../../utils/weightGrams';
 
 export const Inventory: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'filaments' | 'supplies'>('filaments');
   const [filaments, setFilaments] = useState<Filament[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filtros filamentos
+  const [filamentFilterBrand, setFilamentFilterBrand] = useState('');
+  const [filamentFilterMaterial, setFilamentFilterMaterial] = useState('');
+  const [filamentFilterColor, setFilamentFilterColor] = useState('');
+
+  // Buscador insumos
+  const [supplySearchTerm, setSupplySearchTerm] = useState('');
+  const [supplyFilterCategory, setSupplyFilterCategory] = useState('');
+
+  // Stock mínimo inline y configuración masiva
+  const [minStockDrafts, setMinStockDrafts] = useState<Record<string, number | ''>>({});
+  const [savingMinId, setSavingMinId] = useState<string | null>(null);
+  const [bulkMinStockGrams, setBulkMinStockGrams] = useState<number | ''>(200);
+  const [applyingBulkMin, setApplyingBulkMin] = useState(false);
+  const [resettingFilamentPrices, setResettingFilamentPrices] = useState(false);
+  const [pricing3D, setPricing3D] = useState<PricingSettings3D>(default3D);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
   const { currentUser } = useAuth();
+
+  const filamentBrands = useMemo(
+    () => [...new Set(filaments.map(f => f.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
+    [filaments]
+  );
+  const filamentMaterials = useMemo(
+    () => [...new Set(filaments.map(f => f.material).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
+    [filaments]
+  );
+  const filamentColors = useMemo(
+    () => [...new Set(filaments.map(f => f.color).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
+    [filaments]
+  );
+  const supplyCategories = useMemo(
+    () => [...new Set(supplies.map(s => s.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
+    [supplies]
+  );
+
+  useEffect(() => {
+    const unsubPricing = onSnapshot(doc(db, 'settings', 'pricing3d'), (snap) => {
+      if (snap.exists()) {
+        setPricing3D({ ...default3D, ...snap.data() } as PricingSettings3D);
+      }
+    });
+    return () => unsubPricing();
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -77,18 +125,144 @@ export const Inventory: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const filteredFilaments = filaments.filter(f => 
-    f.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (f.provider && f.provider.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const resetFilamentFilters = () => {
+    setFilamentFilterBrand('');
+    setFilamentFilterMaterial('');
+    setFilamentFilterColor('');
+  };
 
-  const filteredSupplies = supplies.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.provider && s.provider.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const resetSupplyFilters = () => {
+    setSupplySearchTerm('');
+    setSupplyFilterCategory('');
+  };
+
+  const getMinStockValue = (id: string, fallback: number) =>
+    minStockDrafts[id] !== undefined ? minStockDrafts[id] : fallback;
+
+  const saveFilamentMinStock = async (id: string) => {
+    const filament = filaments.find(f => f.id === id);
+    if (!filament) return;
+    const raw = getMinStockValue(id, filament.minStockGrams ?? 0);
+    const value = raw === '' ? 0 : Number(raw);
+    if (value === (filament.minStockGrams ?? 0)) {
+      setMinStockDrafts(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setSavingMinId(id);
+    try {
+      await updateDoc(doc(db, 'inventory', id), { minStockGrams: value });
+      setMinStockDrafts(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch (err) {
+      console.error('Error saving filament min stock:', err);
+      alert('No se pudo guardar el stock mínimo del filamento.');
+    } finally {
+      setSavingMinId(null);
+    }
+  };
+
+  const saveSupplyMinStock = async (id: string) => {
+    const supply = supplies.find(s => s.id === id);
+    if (!supply) return;
+    const raw = getMinStockValue(id, supply.minStock ?? 0);
+    const value = raw === '' ? 0 : Number(raw);
+    if (value === (supply.minStock ?? 0)) {
+      setMinStockDrafts(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setSavingMinId(id);
+    try {
+      await updateDoc(doc(db, 'inventory', id), { minStock: value });
+      setMinStockDrafts(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch (err) {
+      console.error('Error saving supply min stock:', err);
+      alert('No se pudo guardar el stock mínimo del insumo.');
+    } finally {
+      setSavingMinId(null);
+    }
+  };
+
+  const resetAllFilamentPricesToGlobal = async () => {
+    const withCustom = filaments.filter(f => hasCustomFilamentPrice(f));
+    if (withCustom.length === 0) {
+      alert('Todos los filamentos ya usan el precio de Parámetros de precios.');
+      return;
+    }
+    if (!window.confirm(
+      `¿Quitar el precio fijo de ${withCustom.length} filamento(s) y usar el precio global (U$D ${pricing3D.filamentPriceUsdKg}/kg)?`
+    )) return;
+
+    setResettingFilamentPrices(true);
+    try {
+      await Promise.all(
+        withCustom.map(f => updateDoc(doc(db, 'inventory', f.id), { priceUsdKg: 0 }))
+      );
+    } catch (err) {
+      console.error('Error resetting filament prices:', err);
+      alert('No se pudieron actualizar los precios.');
+    } finally {
+      setResettingFilamentPrices(false);
+    }
+  };
+
+  const applyBulkFilamentMinStock = async () => {
+    const value = bulkMinStockGrams === '' ? 0 : Number(bulkMinStockGrams);
+    if (filaments.length === 0) return;
+    if (!window.confirm(
+      `¿Aplicar ${formatWeightGrams(value)} como stock mínimo de alerta a los ${filaments.length} filamentos?`
+    )) return;
+
+    setApplyingBulkMin(true);
+    try {
+      await Promise.all(
+        filaments.map(f => updateDoc(doc(db, 'inventory', f.id), { minStockGrams: value }))
+      );
+      setMinStockDrafts({});
+    } catch (err) {
+      console.error('Error applying bulk min stock:', err);
+      alert('No se pudo aplicar la configuración general.');
+    } finally {
+      setApplyingBulkMin(false);
+    }
+  };
+
+  const filteredFilaments = filaments.filter(f => {
+    if (filamentFilterBrand && f.brand !== filamentFilterBrand) return false;
+    if (filamentFilterMaterial && f.material !== filamentFilterMaterial) return false;
+    if (filamentFilterColor && f.color !== filamentFilterColor) return false;
+    return true;
+  });
+
+  const filteredSupplies = supplies.filter(s => {
+    const term = supplySearchTerm.trim().toLowerCase();
+    if (term) {
+      const matchesSearch =
+        s.name.toLowerCase().includes(term) ||
+        s.category.toLowerCase().includes(term) ||
+        (s.provider && s.provider.toLowerCase().includes(term));
+      if (!matchesSearch) return false;
+    }
+    if (supplyFilterCategory && s.category !== supplyFilterCategory) return false;
+    return true;
+  });
+
+  const hasActiveFilamentFilters = !!(filamentFilterBrand || filamentFilterMaterial || filamentFilterColor);
+  const hasActiveSupplyFilters = !!(supplySearchTerm.trim() || supplyFilterCategory);
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
@@ -117,7 +291,7 @@ export const Inventory: React.FC = () => {
         {/* Tabs */}
         <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
           <button 
-            onClick={() => { setActiveTab('filaments'); setSearchTerm(''); }}
+            onClick={() => { setActiveTab('filaments'); resetSupplyFilters(); }}
             className={`px-5 py-2 font-semibold text-xs rounded-lg flex items-center gap-2 transition-all ${
               activeTab === 'filaments' 
                 ? 'bg-white text-slate-800 shadow-sm' 
@@ -128,7 +302,7 @@ export const Inventory: React.FC = () => {
             Filamentos ({filaments.length})
           </button>
           <button 
-            onClick={() => { setActiveTab('supplies'); setSearchTerm(''); }}
+            onClick={() => { setActiveTab('supplies'); resetFilamentFilters(); }}
             className={`px-5 py-2 font-semibold text-xs rounded-lg flex items-center gap-2 transition-all ${
               activeTab === 'supplies' 
                 ? 'bg-white text-slate-800 shadow-sm' 
@@ -140,19 +314,83 @@ export const Inventory: React.FC = () => {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full md:w-72">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-            <Search size={16} />
-          </span>
-          <input 
-            type="text" 
-            placeholder={`Buscar por color, marca, nombre...`}
-            className="input pl-10 w-full text-xs"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
+        {activeTab === 'filaments' ? (
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
+            <select
+              className="input text-xs min-w-[130px]"
+              value={filamentFilterBrand}
+              onChange={e => setFilamentFilterBrand(e.target.value)}
+            >
+              <option value="">Todas las marcas</option>
+              {filamentBrands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+            <select
+              className="input text-xs min-w-[120px]"
+              value={filamentFilterMaterial}
+              onChange={e => setFilamentFilterMaterial(e.target.value)}
+            >
+              <option value="">Todos los tipos</option>
+              {filamentMaterials.map(material => (
+                <option key={material} value={material}>{material}</option>
+              ))}
+            </select>
+            <select
+              className="input text-xs min-w-[140px]"
+              value={filamentFilterColor}
+              onChange={e => setFilamentFilterColor(e.target.value)}
+            >
+              <option value="">Todos los colores</option>
+              {filamentColors.map(color => (
+                <option key={color} value={color}>{color}</option>
+              ))}
+            </select>
+            {hasActiveFilamentFilters && (
+              <button
+                type="button"
+                onClick={resetFilamentFilters}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
+            <div className="relative flex-1 min-w-[180px] md:w-56">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                placeholder="Buscar insumo, categoría..."
+                className="input pl-10 w-full text-xs"
+                value={supplySearchTerm}
+                onChange={e => setSupplySearchTerm(e.target.value)}
+              />
+            </div>
+            <select
+              className="input text-xs min-w-[150px]"
+              value={supplyFilterCategory}
+              onChange={e => setSupplyFilterCategory(e.target.value)}
+            >
+              <option value="">Todas las categorías</option>
+              {supplyCategories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+            {hasActiveSupplyFilters && (
+              <button
+                type="button"
+                onClick={resetSupplyFilters}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -162,7 +400,47 @@ export const Inventory: React.FC = () => {
           <p className="text-sm font-medium">Cargando inventario...</p>
         </div>
       ) : activeTab === 'filaments' ? (
-        /* Filaments list */
+        <>
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-end gap-4">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="p-2 bg-white rounded-xl border border-slate-200 text-blue-600 shrink-0">
+              <Settings size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">Alerta de stock bajo — configuración general</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Define el mínimo (kg + g) para todos los filamentos. También podés ajustar cada uno en la tabla.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-2 sm:shrink-0">
+            <WeightKgGramsInput
+              label="Mínimo global"
+              valueGrams={bulkMinStockGrams}
+              onChangeGrams={setBulkMinStockGrams}
+              className="text-sm"
+            />
+            <button
+              type="button"
+              onClick={applyBulkFilamentMinStock}
+              disabled={applyingBulkMin || filaments.length === 0}
+              className="btn-primary text-xs px-4 py-2.5 flex items-center gap-2"
+            >
+              {applyingBulkMin ? <Loader2 size={14} className="animate-spin" /> : null}
+              Aplicar mínimos
+            </button>
+            <button
+              type="button"
+              onClick={resetAllFilamentPricesToGlobal}
+              disabled={resettingFilamentPrices || filaments.length === 0}
+              className="text-xs px-4 py-2.5 rounded-xl font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+            >
+              {resettingFilamentPrices ? <Loader2 size={14} className="animate-spin" /> : null}
+              Usar precio de parámetros
+            </button>
+          </div>
+        </div>
+
         <div className="card overflow-hidden border border-slate-200/80 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -171,6 +449,7 @@ export const Inventory: React.FC = () => {
                   <th className="p-4">Color / Material</th>
                   <th className="p-4">Marca / Prov.</th>
                   <th className="p-4 text-right">Peso Disp.</th>
+                  <th className="p-4 text-right">Mín. Alerta</th>
                   <th className="p-4 text-right">Precio USD/Kg</th>
                   <th className="p-4">Fecha Compra</th>
                   <th className="p-4 text-center">Estado</th>
@@ -180,13 +459,18 @@ export const Inventory: React.FC = () => {
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                 {filteredFilaments.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center text-slate-400">
-                      No se encontraron filamentos registrados.
+                    <td colSpan={8} className="p-12 text-center text-slate-400">
+                      {hasActiveFilamentFilters
+                        ? 'No hay filamentos que coincidan con los filtros.'
+                        : 'No se encontraron filamentos registrados.'}
                     </td>
                   </tr>
                 )}
                 {filteredFilaments.map(f => {
-                  const isLowStock = f.availableWeightGrams <= f.minStockGrams;
+                  const minStock = f.minStockGrams ?? 0;
+                  const isLowStock = f.availableWeightGrams <= minStock;
+                  const draftMin = getMinStockValue(f.id, minStock);
+                  const hasUnsavedMin = minStockDrafts[f.id] !== undefined && (draftMin === '' ? 0 : Number(draftMin)) !== minStock;
                   return (
                     <tr key={f.id} className="hover:bg-slate-50/40 transition-colors">
                       <td className="p-4">
@@ -221,9 +505,8 @@ export const Inventory: React.FC = () => {
                       <td className="p-4 text-right">
                         <div className="inline-block text-right">
                           <p className={`font-extrabold text-sm ${isLowStock ? 'text-red-500' : 'text-slate-800'}`}>
-                            {f.availableWeightGrams.toLocaleString('es-AR')} g
+                            {formatWeightGrams(f.availableWeightGrams)}
                           </p>
-                          <p className="text-[9px] text-slate-400">Min: {f.minStockGrams}g</p>
                         </div>
                         {isLowStock && (
                           <span className="inline-block ml-1.5 text-red-500" title="Bajo Stock">
@@ -231,8 +514,27 @@ export const Inventory: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="p-4 text-right font-bold text-slate-800">
-                        U$D {f.priceUsdKg.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                      <td className="p-4 text-right">
+                        <div className={`inline-flex items-center gap-1 justify-end ${hasUnsavedMin ? 'ring-2 ring-amber-300 rounded-lg p-0.5' : ''}`}>
+                          <WeightKgGramsInput
+                            compact
+                            valueGrams={draftMin}
+                            onChangeGrams={val => setMinStockDrafts(prev => ({ ...prev, [f.id]: val }))}
+                            onBlur={() => saveFilamentMinStock(f.id)}
+                            disabled={savingMinId === f.id}
+                          />
+                          {savingMinId === f.id && (
+                            <Loader2 size={14} className="animate-spin text-slate-400" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <p className="font-bold text-slate-800">
+                          U$D {getFilamentPriceUsdKg(f, pricing3D.filamentPriceUsdKg).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        {!hasCustomFilamentPrice(f) && (
+                          <p className="text-[9px] text-blue-500 font-semibold">Parámetros</p>
+                        )}
                       </td>
                       <td className="p-4 text-slate-500">
                         {f.purchaseDate ? new Date(f.purchaseDate).toLocaleDateString('es-AR') : '—'}
@@ -271,6 +573,7 @@ export const Inventory: React.FC = () => {
             </table>
           </div>
         </div>
+        </>
       ) : (
         /* Supplies list */
         <div className="card overflow-hidden border border-slate-200/80 shadow-sm">
@@ -281,6 +584,7 @@ export const Inventory: React.FC = () => {
                   <th className="p-4">Insumo</th>
                   <th className="p-4">Categoría / Marca</th>
                   <th className="p-4 text-right">Stock Actual</th>
+                  <th className="p-4 text-right">Mín. Alerta</th>
                   <th className="p-4 text-right">Costo Unit.</th>
                   <th className="p-4">Observaciones</th>
                   <th className="p-4 text-right">Acciones</th>
@@ -289,13 +593,19 @@ export const Inventory: React.FC = () => {
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                 {filteredSupplies.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center text-slate-400">
-                      No se encontraron insumos registrados.
+                    <td colSpan={7} className="p-12 text-center text-slate-400">
+                      {hasActiveSupplyFilters
+                        ? 'No hay insumos que coincidan con la búsqueda.'
+                        : 'No se encontraron insumos registrados.'}
                     </td>
                   </tr>
                 )}
                 {filteredSupplies.map(s => {
-                  const isLowStock = s.currentStock <= s.minStock;
+                  const minStock = s.minStock ?? 0;
+                  const isLowStock = s.currentStock <= minStock;
+                  const draftMin = getMinStockValue(s.id, minStock);
+                  const hasUnsavedMin = minStockDrafts[s.id] !== undefined && (draftMin === '' ? 0 : Number(draftMin)) !== minStock;
+                  const unit = s.unitOfMeasure || 'u';
                   return (
                     <tr key={s.id} className="hover:bg-slate-50/40 transition-colors">
                       <td className="p-4">
@@ -324,15 +634,32 @@ export const Inventory: React.FC = () => {
                       <td className="p-4 text-right">
                         <div className="inline-block text-right">
                           <p className={`font-extrabold text-sm ${isLowStock ? 'text-red-500' : 'text-slate-800'}`}>
-                            {s.currentStock.toLocaleString('es-AR')} {s.unitOfMeasure || 'u'}
+                            {s.currentStock.toLocaleString('es-AR')} {unit}
                           </p>
-                          <p className="text-[9px] text-slate-400">Min: {s.minStock} {s.unitOfMeasure || 'u'}</p>
                         </div>
                         {isLowStock && (
                           <span className="inline-block ml-1.5 text-red-500" title="Bajo Stock">
                             <AlertTriangle size={14} className="inline align-text-bottom" />
                           </span>
                         )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="inline-flex flex-col items-end gap-0.5">
+                          <div className="inline-flex items-center gap-1">
+                            <NumericInput
+                              className={`input w-20 text-right text-xs py-1.5 ${hasUnsavedMin ? 'ring-2 ring-amber-300' : ''}`}
+                              value={draftMin}
+                              onChange={val => setMinStockDrafts(prev => ({ ...prev, [s.id]: val }))}
+                              onBlur={() => saveSupplyMinStock(s.id)}
+                              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                              disabled={savingMinId === s.id}
+                            />
+                            {savingMinId === s.id && (
+                              <Loader2 size={14} className="animate-spin text-slate-400" />
+                            )}
+                          </div>
+                          <span className="text-[9px] text-slate-400">{unit}</span>
+                        </div>
                       </td>
                       <td className="p-4 text-right font-bold text-slate-800">
                         ${s.unitCostArs.toLocaleString('es-AR', {minimumFractionDigits: 1})}
@@ -373,6 +700,7 @@ export const Inventory: React.FC = () => {
           item={editingItem} 
           onClose={() => setIsModalOpen(false)} 
           userId={currentUser?.uid || 'system'}
+          defaultFilamentPriceUsdKg={pricing3D.filamentPriceUsdKg}
         />
       )}
     </div>
@@ -384,32 +712,56 @@ const InventoryModal = ({
   type, 
   item, 
   onClose,
-  userId
+  userId,
+  defaultFilamentPriceUsdKg,
 }: { 
   type: 'filaments' | 'supplies'; 
   item: any; 
   onClose: () => void;
   userId: string;
+  defaultFilamentPriceUsdKg: number;
 }) => {
   const [formData, setFormData] = useState<any>(
-    item || { 
-      type: type === 'filaments' ? 'filament' : 'supply',
-      isActive: true,
-      hexColor: '#3b82f6',
-      purchaseDate: new Date().toISOString().split('T')[0],
-      initialWeightGrams: 1000,
-      availableWeightGrams: 1000,
-      priceUsdKg: 20,
-      minStockGrams: 200,
-      currentStock: 10,
-      minStock: 2,
-      unitCostArs: 100,
-      unitOfMeasure: 'unidades'
-    }
+    item
+      ? {
+          ...item,
+          minStockGrams: item.minStockGrams ?? 200,
+          minStock: item.minStock ?? 2,
+          priceUsdKg: hasCustomFilamentPrice(item) ? item.priceUsdKg : 0,
+        }
+      : { 
+          type: type === 'filaments' ? 'filament' : 'supply',
+          isActive: true,
+          hexColor: '#3b82f6',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          initialWeightGrams: 1000,
+          availableWeightGrams: 1000,
+          priceUsdKg: 0,
+          minStockGrams: 200,
+          currentStock: 10,
+          minStock: 2,
+          unitCostArs: 100,
+          unitOfMeasure: 'unidades'
+        }
+  );
+  const [useCustomFilamentPrice, setUseCustomFilamentPrice] = useState(
+    item ? hasCustomFilamentPrice(item) : false
   );
   
   const [imagePreview, setImagePreview] = useState<string | null>(formData.mainImage || null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
 
   // Compress & convert file to Base64
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -459,7 +811,9 @@ const InventoryModal = ({
       // Sanitize fields before saving
       const dataToSave = { ...formData };
       if (type === 'filaments') {
-        dataToSave.priceUsdKg = dataToSave.priceUsdKg === '' ? 0 : Number(dataToSave.priceUsdKg);
+        dataToSave.priceUsdKg = useCustomFilamentPrice
+          ? (dataToSave.priceUsdKg === '' ? 0 : Number(dataToSave.priceUsdKg))
+          : 0;
         dataToSave.minStockGrams = dataToSave.minStockGrams === '' ? 0 : Number(dataToSave.minStockGrams);
         dataToSave.initialWeightGrams = dataToSave.initialWeightGrams === '' ? 0 : Number(dataToSave.initialWeightGrams);
         dataToSave.availableWeightGrams = dataToSave.availableWeightGrams === '' ? 0 : Number(dataToSave.availableWeightGrams);
@@ -535,9 +889,17 @@ const InventoryModal = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 border border-slate-100 max-h-[90vh] overflow-y-auto no-scrollbar">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="relative z-10 bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 border border-slate-100 max-h-[min(90vh,800px)] overflow-y-auto no-scrollbar"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h2 className="text-base font-extrabold text-slate-800">
             {item ? 'Editar' : 'Nuevo'} {type === 'filaments' ? 'Filamento' : 'Insumo'}
@@ -641,57 +1003,79 @@ const InventoryModal = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="input-label font-bold text-slate-500 uppercase">Precio USD/Kg (Costo)</label>
-                  <div className="relative mt-1">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-semibold">U$D</span>
-                    <NumericInput 
-                      allowDecimals
-                      required 
-                      className="input w-full pl-10" 
-                      value={formData.priceUsdKg} 
-                      onChange={val => setFormData({...formData, priceUsdKg: val})} 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label font-bold text-slate-500 uppercase">Stock Mínimo Alerta (g)</label>
-                  <NumericInput 
-                    required 
-                    className="input w-full mt-1" 
-                    value={formData.minStockGrams} 
-                    onChange={val => setFormData({...formData, minStockGrams: val})} 
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="useCustomFilamentPrice"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                    checked={useCustomFilamentPrice}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      setUseCustomFilamentPrice(checked);
+                      if (!checked) {
+                        setFormData({ ...formData, priceUsdKg: 0 });
+                      } else if (!formData.priceUsdKg) {
+                        setFormData({ ...formData, priceUsdKg: defaultFilamentPriceUsdKg });
+                      }
+                    }}
                   />
+                  <label htmlFor="useCustomFilamentPrice" className="font-bold text-slate-600 cursor-pointer text-sm">
+                    Usar precio personalizado (USD/Kg)
+                  </label>
                 </div>
+                {useCustomFilamentPrice ? (
+                  <div>
+                    <label className="input-label font-bold text-slate-500 uppercase">Precio USD/Kg (Costo)</label>
+                    <div className="relative mt-1">
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-semibold">U$D</span>
+                      <NumericInput
+                        allowDecimals
+                        required
+                        className="input w-full pl-10"
+                        value={formData.priceUsdKg}
+                        onChange={val => setFormData({ ...formData, priceUsdKg: val })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-600">
+                    Usa el precio global de{' '}
+                    <strong>Parámetros de precios</strong>:{' '}
+                    <span className="text-blue-600 font-bold">
+                      U$D {defaultFilamentPriceUsdKg.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg
+                    </span>
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="input-label font-bold text-slate-500 uppercase">Peso Inicial Bobina (g)</label>
-                  <NumericInput 
-                    required 
-                    className="input w-full mt-1" 
-                    value={formData.initialWeightGrams} 
-                    onChange={val => {
-                      setFormData({
-                        ...formData, 
-                        initialWeightGrams: val,
-                        // If creating, set availableWeight too
-                        availableWeightGrams: item ? formData.availableWeightGrams : val
-                      });
-                    }} 
-                  />
-                </div>
-                <div>
-                  <label className="input-label font-bold text-slate-500 uppercase">Peso Disponible Actual (g)</label>
-                  <NumericInput 
-                    required 
-                    className="input w-full mt-1 font-bold text-blue-600" 
-                    value={formData.availableWeightGrams} 
-                    onChange={val => setFormData({...formData, availableWeightGrams: val})} 
-                  />
-                </div>
+              <WeightKgGramsInput
+                label="Stock Mínimo Alerta"
+                required
+                valueGrams={formData.minStockGrams}
+                onChangeGrams={val => setFormData({ ...formData, minStockGrams: val })}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <WeightKgGramsInput
+                  label="Peso Inicial Bobina"
+                  required
+                  valueGrams={formData.initialWeightGrams}
+                  onChangeGrams={val => {
+                    setFormData({
+                      ...formData,
+                      initialWeightGrams: val,
+                      availableWeightGrams: item ? formData.availableWeightGrams : val,
+                    });
+                  }}
+                />
+                <WeightKgGramsInput
+                  label="Peso Disponible Actual"
+                  required
+                  valueGrams={formData.availableWeightGrams}
+                  onChangeGrams={val => setFormData({ ...formData, availableWeightGrams: val })}
+                  className="[&_input]:font-bold [&_input]:text-blue-600"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -851,6 +1235,7 @@ const InventoryModal = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

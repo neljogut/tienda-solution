@@ -5,6 +5,8 @@ import { fetchDollarRate, setManualRate } from '../../services/dollarService';
 import { calculate3DPrice } from '../../services/pricing';
 import { recalculateAllProductsInFirestore } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
+import { formatWeightGrams } from '../../utils/weightGrams';
+import { formatPrintTime } from '../../utils/printTime';
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData, DepositSettings } from '../../types/settings';
 import {
   Settings, DollarSign, Printer, Calculator, Percent,
@@ -568,7 +570,7 @@ export const PricingSettings: React.FC = () => {
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-sm font-medium text-slate-700">Peso del producto</label>
                   <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg">
-                    {previewWeight} g
+                    {formatWeightGrams(previewWeight)}
                   </span>
                 </div>
                 <input
@@ -590,7 +592,7 @@ export const PricingSettings: React.FC = () => {
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-sm font-medium text-slate-700">Tiempo de impresión</label>
                   <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg">
-                    {previewTime} min
+                    {formatPrintTime(previewTime)}
                   </span>
                 </div>
                 <input
@@ -603,8 +605,8 @@ export const PricingSettings: React.FC = () => {
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                 />
                 <div className="flex justify-between text-xs text-slate-400 mt-1">
-                  <span>5 min</span>
-                  <span>600 min</span>
+                  <span>{formatPrintTime(5)}</span>
+                  <span>{formatPrintTime(600)}</span>
                 </div>
               </div>
             </div>
@@ -661,7 +663,7 @@ const FieldCard: React.FC<FieldCardProps> = ({ label, icon, value, onChange, suf
     </label>
     <div className="relative">
       <NumericInput
-        allowDecimals={step < 1}
+        allowDecimals={step < 1 || suffix === 'USD' || suffix === 'x' || suffix === '%'}
         className="w-full border border-slate-200 rounded-lg p-2.5 pr-12 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-slate-800 font-semibold text-sm"
         value={value}
         onChange={onChange}

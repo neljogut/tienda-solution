@@ -259,6 +259,14 @@ export const NewOrder: React.FC = () => {
       // 3. Decrement Product & Material Inventory Stocks in Batch
       const batch = writeBatch(db);
       const userId = userData?.uid || 'system';
+      const saleLines: {
+        itemId: string;
+        itemType: 'filament' | 'supply' | 'product';
+        lineType: 'out_sale' | 'consumption';
+        modifiedQuantity: number;
+        previousQuantity: number;
+        finalQuantity: number;
+      }[] = [];
 
       for (const item of sanitizedItems) {
         const prodRef = doc(db, 'products', item.productId);
@@ -269,20 +277,14 @@ export const NewOrder: React.FC = () => {
           const newStock = Math.max(0, prevStock - qty);
           batch.update(prodRef, { stock: newStock });
 
-          // Log product sale movement
-          const prodMov = {
-            date: new Date().toISOString(),
-            movementType: 'out_sale',
+          saleLines.push({
             itemId: item.productId,
             itemType: 'product',
+            lineType: 'out_sale',
             previousQuantity: prevStock,
             modifiedQuantity: -qty,
             finalQuantity: newStock,
-            reason: `Venta de producto en Pedido #${orderNumber}`,
-            userId,
-            orderId
-          };
-          await addDoc(collection(db, 'inventory_movements'), prodMov);
+          });
 
           // Deduct associated 3D materials (filaments and supplies)
           if (product.type === '3d') {
@@ -310,19 +312,14 @@ export const NewOrder: React.FC = () => {
 
                 batch.update(filRef, { availableWeightGrams: newWeight });
 
-                const filMov = {
-                  date: new Date().toISOString(),
-                  movementType: 'consumption',
+                saleLines.push({
                   itemId: filamentId,
                   itemType: 'filament',
+                  lineType: 'consumption',
                   previousQuantity: prevWeight,
                   modifiedQuantity: -weightToDeduct,
                   finalQuantity: newWeight,
-                  reason: `Consumo de filamento por impresión de ${qty}x "${item.name}" en Pedido #${orderNumber}`,
-                  userId,
-                  orderId
-                };
-                await addDoc(collection(db, 'inventory_movements'), filMov);
+                });
               }
             }
 
@@ -341,20 +338,14 @@ export const NewOrder: React.FC = () => {
 
                   batch.update(supRef, { currentStock: newQty });
 
-                  // Log supply consumption
-                  const supMov = {
-                    date: new Date().toISOString(),
-                    movementType: 'consumption',
+                  saleLines.push({
                     itemId: supplyId,
                     itemType: 'supply',
+                    lineType: 'consumption',
                     previousQuantity: prevQty,
                     modifiedQuantity: -qtyNeeded,
                     finalQuantity: newQty,
-                    reason: `Consumo de insumo por venta de ${qty}x "${item.name}" en Pedido #${orderNumber}`,
-                    userId,
-                    orderId
-                  };
-                  await addDoc(collection(db, 'inventory_movements'), supMov);
+                  });
                 }
               }
             }
@@ -362,6 +353,17 @@ export const NewOrder: React.FC = () => {
         }
       }
       await batch.commit();
+
+      if (saleLines.length > 0) {
+        await addDoc(collection(db, 'inventory_movements'), {
+          date: new Date().toISOString(),
+          movementType: 'sale',
+          reason: `Venta · Pedido #${orderNumber}`,
+          userId,
+          orderId,
+          lines: saleLines,
+        });
+      }
 
       // Update client totals (totalPurchased and totalOwed)
       if (activeClient) {

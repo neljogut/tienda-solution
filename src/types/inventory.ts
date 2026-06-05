@@ -10,7 +10,8 @@ export interface Filament {
   mainImage?: string;
   initialWeightGrams: number;
   availableWeightGrams: number;
-  priceUsdKg: number;
+  /** 0 o ausente = usar precio global de Parámetros de precios */
+  priceUsdKg?: number;
   provider: string;
   purchaseDate: string;
   minStockGrams: number;
@@ -31,18 +32,53 @@ export interface Supply {
   observations: string;
 }
 
-export type InventoryMovementType = 'in' | 'out_sale' | 'adjustment' | 'return' | 'correction' | 'consumption';
+export type InventoryMovementType =
+  | 'in'
+  | 'out_sale'
+  | 'adjustment'
+  | 'return'
+  | 'correction'
+  | 'consumption'
+  | 'sale';
 
+export interface InventoryMovementLine {
+  itemId: string;
+  itemType: InventoryItemType | 'product';
+  lineType: InventoryMovementType;
+  modifiedQuantity: number;
+  previousQuantity: number;
+  finalQuantity: number;
+}
+
+/** Movimiento simple (un ítem) o agrupado (venta/devolución con varias líneas) */
 export interface InventoryMovement {
   id: string;
   date: string;
   movementType: InventoryMovementType;
-  itemId: string;
-  itemType: InventoryItemType | 'product'; // Includes 3D and Resale products
-  previousQuantity: number;
-  modifiedQuantity: number;
-  finalQuantity: number;
   reason: string;
   userId: string;
   orderId?: string;
+  /** Presente cuando el movimiento agrupa varias líneas (ej. una venta completa) */
+  lines?: InventoryMovementLine[];
+  /** Campos de ítem único (cuando no hay `lines`) */
+  itemId?: string;
+  itemType?: InventoryItemType | 'product';
+  previousQuantity?: number;
+  modifiedQuantity?: number;
+  finalQuantity?: number;
+}
+
+export function isGroupedMovement(m: InventoryMovement): boolean {
+  return Array.isArray(m.lines) && m.lines.length > 0;
+}
+
+export function hasCustomFilamentPrice(filament: Pick<Filament, 'priceUsdKg'>): boolean {
+  return (filament.priceUsdKg ?? 0) > 0;
+}
+
+export function getFilamentPriceUsdKg(
+  filament: Pick<Filament, 'priceUsdKg'>,
+  defaultUsdKg: number
+): number {
+  return hasCustomFilamentPrice(filament) ? filament.priceUsdKg! : defaultUsdKg;
 }

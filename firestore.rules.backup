@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función para verificar si el usuario está logueado
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Reglas para la colección de Usuarios
+    match /users/{userId} {
+      // Un usuario puede leer y escribir su propio documento
+      allow read, write: if isAuth() && request.auth.uid == userId;
+      // Administradores podrían leer todo (requeriría custom claims o similar en producción)
+      allow read, write: if isAuth(); 
+    }
+
+    // Reglas para Productos
+    match /products/{productId} {
+      // Cualquier persona (incluso invitados) puede ver el catálogo
+      allow read: if true;
+      // Solo usuarios autenticados pueden crear o modificar productos (luego se puede restringir a 'owner')
+      allow write: if isAuth();
+    }
+
+    // Reglas para Pedidos
+    match /orders/{orderId} {
+      // Todos los usuarios logueados pueden interactuar con los pedidos (para simplificar ahora)
+      allow read, write: if isAuth();
+    }
+
+    // Reglas para Inventario (Filamentos y otros)
+    match /inventory/{itemId} {
+      allow read, write: if isAuth();
+    }
+
+    // Reglas para Caja Diaria
+    match /cash_sessions/{sessionId} {
+      allow read, write: if isAuth();
+    }
+    match /cash_movements/{movementId} {
+      allow read, write: if isAuth();
+    }
+    
+    // Cualquier otra colección, por defecto bloqueada a no logueados, abierta a logueados
+    match /{document=**} {
+      allow read, write: if isAuth();
+    }
+  }
+}

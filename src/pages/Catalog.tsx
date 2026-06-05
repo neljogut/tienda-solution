@@ -1,10 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Product } from '../types/product';
 import type { Category } from '../types/category';
 import { ProductCard } from '../components/ProductCard';
 import { useAuth } from '../context/AuthContext';
+import { usePricingData } from '../hooks/usePricingData';
+import {
+  getCategoryTreeIds,
+  flattenCategoriesForSelect,
+  dedupeCategories,
+  resolveCategoryId,
+} from '../utils/categories';
 import { Search, Package, X } from 'lucide-react';
 
 export const Catalog: React.FC = () => {
@@ -17,6 +24,7 @@ export const Catalog: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const isAdminView = userData?.role === 'owner' || userData?.role === 'employee';
+  const { getRetailPrice, getCost } = usePricingData();
 
   useEffect(() => {
     const q = query(collection(db, 'products'), where('isActive', '==', true));
@@ -40,10 +48,28 @@ export const Catalog: React.FC = () => {
     return () => { unsubscribe(); catUnsub(); };
   }, []);
 
+  const { canonical: canonicalCategories, idRemap } = useMemo(
+    () => dedupeCategories(categories),
+    [categories]
+  );
+
+  const categoryFilterIds = useMemo(() => {
+    if (selectedCategory === 'all') return null;
+    return getCategoryTreeIds(canonicalCategories, selectedCategory);
+  }, [selectedCategory, canonicalCategories]);
+
+  const categoryOptions = useMemo(
+    () => flattenCategoriesForSelect(categories),
+    [categories]
+  );
+
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           p.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || p.categoryId === selectedCategory || p.category === selectedCategory;
+    const resolvedCategoryId = resolveCategoryId(p.categoryId, idRemap);
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      (resolvedCategoryId && categoryFilterIds?.has(resolvedCategoryId));
     const matchesType = selectedType === 'all' || p.type === selectedType;
     return matchesSearch && matchesCategory && matchesType;
   });
@@ -86,8 +112,8 @@ export const Catalog: React.FC = () => {
             className="input w-full md:w-48"
           >
             <option value="all">Todas las categorías</option>
-            {categories.filter(c => c.parentId === null).map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            {categoryOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>{opt.label}</option>
             ))}
           </select>
 
@@ -136,7 +162,13 @@ export const Catalog: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filteredProducts.map(product => (
-            <ProductCard key={product.id} product={product} isAdminView={isAdminView} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              isAdminView={isAdminView}
+              getRetailPrice={getRetailPrice}
+              getCost={getCost}
+            />
           ))}
         </div>
       )}

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 
 interface NumericInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   value: number | '' | undefined;
@@ -6,59 +6,100 @@ interface NumericInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
   allowDecimals?: boolean;
 }
 
+/** Convierte texto es-AR (1.234,56) a formato parseable (1234.56) */
+function sanitizeDecimalRaw(input: string): string {
+  let s = input.trim();
+  if (!s) return '';
+
+  if (s.includes(',')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  }
+
+  s = s.replace(/[^\d.]/g, '');
+  const parts = s.split('.');
+  if (parts.length > 2) {
+    s = parts[0] + '.' + parts.slice(1).join('');
+  }
+  return s;
+}
+
+function sanitizeIntegerRaw(input: string): string {
+  return input.replace(/\./g, '').replace(/\D/g, '');
+}
+
+function formatDecimalDisplay(raw: string): string {
+  if (!raw) return '';
+  if (raw === '.') return '0,';
+
+  const endsWithDot = raw.endsWith('.');
+  const parts = raw.split('.');
+  const intPart = parts[0] === '' ? '0' : parts[0];
+  const formattedInt = Number(intPart).toLocaleString('es-AR');
+
+  if (endsWithDot) return `${formattedInt},`;
+  if (parts.length > 1) return `${formattedInt},${parts[1]}`;
+  return formattedInt;
+}
+
+function parseDecimalValue(raw: string): number | '' {
+  if (!raw || raw === '.') return '';
+  if (raw.endsWith('.')) {
+    const intPart = raw.slice(0, -1);
+    return intPart === '' ? '' : Number(intPart);
+  }
+  const num = Number(raw);
+  return Number.isNaN(num) ? '' : num;
+}
+
+function formatValue(num: number | '' | undefined, allowDecimals: boolean): string {
+  if (num === '' || num === undefined || num === null) return '';
+
+  if (allowDecimals) {
+    const numStr = num.toString();
+    const parts = numStr.split('.');
+    const integerPart = Number(parts[0]).toLocaleString('es-AR');
+    return parts[1] !== undefined ? `${integerPart},${parts[1]}` : integerPart;
+  }
+
+  return Math.round(Number(num)).toLocaleString('es-AR');
+}
+
 export const NumericInput: React.FC<NumericInputProps> = ({
   value,
   onChange,
   allowDecimals = false,
   className = '',
+  onFocus,
+  onBlur,
   ...props
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
 
-  // Format number to string with dots as thousands separator (and commas for decimals)
-  const formatValue = (num: number | '' | undefined): string => {
-    if (num === '' || num === undefined || num === null) return '';
-    
-    if (allowDecimals) {
-      const numStr = num.toString();
-      const parts = numStr.split('.');
-      // Use local format for integer part
-      const integerPart = Number(parts[0]).toLocaleString('es-AR');
-      // If there was a decimal dot, return with comma
-      return parts[1] !== undefined ? `${integerPart},${parts[1]}` : integerPart;
-    }
-    
-    // For integer values, format with thousands separator dot
-    return Math.round(Number(num)).toLocaleString('es-AR');
-  };
+  const displayValue = focused ? draft : formatValue(value, allowDecimals);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value;
-    
-    // Normalize decimal separators (commas to dots)
-    if (allowDecimals) {
-      raw = raw.replace(/,/g, '.');
-      // Keep only digits and a single dot
-      raw = raw.replace(/[^\d.]/g, '');
-      const parts = raw.split('.');
-      if (parts.length > 2) {
-        raw = parts[0] + '.' + parts.slice(1).join('');
-      }
-    } else {
-      // Keep only digits
-      raw = raw.replace(/\D/g, '');
-    }
+    const raw = allowDecimals
+      ? sanitizeDecimalRaw(e.target.value)
+      : sanitizeIntegerRaw(e.target.value);
 
-    const numericValue = raw === '' ? '' : Number(raw);
-    
-    // Capture cursor position before update
+    const display = allowDecimals ? formatDecimalDisplay(raw) : (
+      raw === '' ? '' : Number(raw).toLocaleString('es-AR')
+    );
+
+    setDraft(display);
+
+    const numericValue = allowDecimals
+      ? parseDecimalValue(raw)
+      : (raw === '' ? '' : Number(raw));
+
     const input = inputRef.current;
     const oldSelectionStart = input?.selectionStart || 0;
     const oldLength = input?.value.length || 0;
 
     onChange(numericValue);
 
-    // Schedule cursor position restoration after React state update
     setTimeout(() => {
       if (input) {
         const newLength = input.value.length;
@@ -72,9 +113,20 @@ export const NumericInput: React.FC<NumericInputProps> = ({
   return (
     <input
       type="text"
+      inputMode={allowDecimals ? 'decimal' : 'numeric'}
       ref={inputRef}
-      value={formatValue(value)}
+      value={displayValue}
       onChange={handleInputChange}
+      onFocus={(e) => {
+        setFocused(true);
+        setDraft(formatValue(value, allowDecimals));
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        setDraft('');
+        onBlur?.(e);
+      }}
       className={className}
       {...props}
     />

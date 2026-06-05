@@ -19,6 +19,11 @@ import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { Firestore } from '@google-cloud/firestore';
 import { readFile as readFileFs } from 'node:fs/promises';
 import { getFirebaseCliAuthClient } from './firebase-cli-auth.mjs';
+import {
+  buildPedidosMaterialMap,
+  loadMaterialOverrides,
+  resolveProductMaterials,
+} from './lib/product-materials.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -117,20 +122,52 @@ function mapPaymentStatus(total, paid) {
 /** @type {Map<string, string>} */
 const categoryIdByPath = new Map();
 
-function buildCategories(meta) {
-  const categories = [];
-  let order = 0;
+function ensureCategoryPath(pathKey) {
+  if (categoryIdByPath.has(pathKey)) {
+    return categoryIdByPath.get(pathKey);
+  }
+  const parts = pathKey.split('>');
+  let currentPath = '';
+  let parentId = null;
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}>${part}` : part;
+    if (!categoryIdByPath.has(currentPath)) {
+      const id = `imp_cat_${slug(currentPath)}`;
+      categoryIdByPath.set(currentPath, id);
+      categoriesOut.push({
+        id,
+        name: part,
+        parentId,
+        order: orderCounter++,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    parentId = categoryIdByPath.get(currentPath);
+  }
+  return parentId;
+}
+
+/** @type {Array<{id:string,name:string,parentId:string|null,order:number,createdAt:string}>} */
+let categoriesOut = [];
+let orderCounter = 0;
+
+function buildCategories(meta, productos = []) {
+  categoryIdByPath.clear();
+  categoriesOut = [];
+  orderCounter = 0;
 
   const add = (pathKey, name, parentId) => {
+    if (categoryIdByPath.has(pathKey)) return categoryIdByPath.get(pathKey);
     const id = `imp_cat_${slug(pathKey)}`;
     categoryIdByPath.set(pathKey, id);
-    categories.push({
+    categoriesOut.push({
       id,
       name,
       parentId,
-      order: order++,
+      order: orderCounter++,
       createdAt: new Date().toISOString(),
     });
+    return id;
   };
 
   for (const name of meta.customCategories ?? []) {
@@ -138,8 +175,9 @@ function buildCategories(meta) {
   }
 
   for (const [parent, subs] of Object.entries(meta.subcategoriesByParent ?? {})) {
-    if (!categoryIdByPath.has(parent)) add(parent, parent, null);
-    const parentId = categoryIdByPath.get(parent);
+    const parentId = categoryIdByPath.has(parent)
+      ? categoryIdByPath.get(parent)
+      : add(parent, parent, null);
     for (const sub of subs ?? []) {
       add(`${parent}>${sub}`, sub, parentId);
     }
@@ -150,14 +188,31 @@ function buildCategories(meta) {
   }
 
   for (const [parent, subs] of Object.entries(meta.subcategoriesReventaByParent ?? {})) {
-    if (!categoryIdByPath.has(parent)) add(parent, parent, null);
-    const parentId = categoryIdByPath.get(parent);
+    const parentId = parent.includes('>')
+      ? ensureCategoryPath(parent)
+      : (categoryIdByPath.has(parent) ? categoryIdByPath.get(parent) : add(parent, parent, null));
     for (const sub of subs ?? []) {
       add(`${parent}>${sub}`, sub, parentId);
     }
   }
 
-  return categories;
+  // Categorías usadas en productos pero ausentes en meta (ej. "Llaveros", "420")
+  for (const raw of productos) {
+    if (raw.category) {
+      if (!categoryIdByPath.has(raw.category)) {
+        add(raw.category, raw.category, null);
+      }
+      if (raw.subcategory) {
+        const path = `${raw.category}>${raw.subcategory}`;
+        if (!categoryIdByPath.has(path)) {
+          const parentId = categoryIdByPath.get(raw.category);
+          add(path, raw.subcategory, parentId);
+        }
+      }
+    }
+  }
+
+  return categoriesOut;
 }
 
 function resolveCategoryId(category, subcategory) {
@@ -209,27 +264,30 @@ function computeLegacyProductCost(raw, config, insumoMap) {
   return Math.round(subtotal * (1 + margin / 100));
 }
 
-function mapProduct(raw, config, insumoMap) {
+function mapProduct(raw, config, insumoMap, pedidosMap, overridesMap) {
   const { id: categoryId, name: categoryName } = resolveCategoryId(raw.category, raw.subcategory);
   const is3d = raw.productKind !== 'reventa';
   const thresholdKeychain = config?.thresholdKeychainGrams ?? 600;
 
-  const filamentLines = (raw.filamentLines ?? [])
-    .map((l) => ({
-      supplyId: l.supplyId,
-      grams: Number(l.grams) || 0,
-    }))
-    .filter((l) => l.supplyId);
+  const materials = is3d
+    ? resolveProductMaterials(raw, pedidosMap, overridesMap)
+    : {
+        filamentLines: [],
+        supplyIds: [],
+        filamentIds: [],
+        weightGrams: 0,
+        recoveredFrom: null,
+      };
 
-  const supplyIds = (raw.insumoLines ?? [])
-    .map((l) => ({
-      supplyId: l.supplyId,
-      quantity: Number(l.amount) || 1,
-    }))
-    .filter((l) => l.supplyId);
+  const filamentLines = materials.filamentLines;
+  const supplyIds = materials.supplyIds;
 
   const calculatedCost = is3d
-    ? computeLegacyProductCost(raw, config, insumoMap)
+    ? computeLegacyProductCost(
+        { ...raw, filamentLines, insumoLines: supplyIds.map((l) => ({ supplyId: l.supplyId, amount: l.quantity })) },
+        config,
+        insumoMap
+      )
     : Number(raw.purchaseCost) || 0;
 
   const base = {
@@ -262,10 +320,10 @@ function mapProduct(raw, config, insumoMap) {
     return {
       ...base,
       type: '3d',
-      weightGrams: Number(raw.gramsFilament) || 0,
+      weightGrams: materials.weightGrams,
       printTimeMinutes: Math.round((Number(raw.printingTimeHours) || 0) * 60),
-      isKeychain: (Number(raw.gramsFilament) || 0) > 0 && (Number(raw.gramsFilament) || 0) <= thresholdKeychain,
-      filamentIds: filamentLines.map((l) => l.supplyId),
+      isKeychain: materials.weightGrams > 0 && materials.weightGrams <= thresholdKeychain,
+      filamentIds: materials.filamentIds,
       filamentLines,
       supplyIds,
     };
@@ -283,8 +341,9 @@ function subcategoryOrParent(catName, sub, parent) {
 }
 
 function mapFilament(raw, config, exchangeRate = DEFAULT_EXCHANGE_RATE) {
-  const priceArsPerKg = filamentPricePerKgArs(raw, config);
-  return {
+  const hasCustomPrice =
+    raw?.filamentCustomPricePerKg != null && Number(raw.filamentCustomPricePerKg) > 0;
+  const doc = {
     id: raw.id,
     type: 'filament',
     brand: raw.brand ?? 'Sin marca',
@@ -294,12 +353,18 @@ function mapFilament(raw, config, exchangeRate = DEFAULT_EXCHANGE_RATE) {
     mainImage: raw.imageUrl || undefined,
     initialWeightGrams: Number(raw.stock) || 0,
     availableWeightGrams: Number(raw.stock) || 0,
-    priceUsdKg: Number((priceArsPerKg / exchangeRate).toFixed(2)),
     provider: '',
     purchaseDate: iso(raw.purchaseDate ?? raw.createdAt),
     minStockGrams: Number(raw.minimumStock) || 0,
     isActive: !raw.isDraft,
   };
+  // Solo precio propio del ítem; el global vive en settings/pricing3d
+  if (hasCustomPrice) {
+    doc.priceUsdKg = Number((Number(raw.filamentCustomPricePerKg) / exchangeRate).toFixed(2));
+  } else {
+    doc.priceUsdKg = 0;
+  }
+  return doc;
 }
 
 function mapSupply(raw) {
@@ -407,56 +472,78 @@ const LEGACY_TYPE_LABEL = {
   stockReturn: 'Devolución al stock',
 };
 
-function buildMovementReason(parent, line) {
-  const base = parent.reason || LEGACY_TYPE_LABEL[parent.type] || 'Importado desde gestión anterior';
-  if (line.label && line.label !== line.refId) {
-    return `${base} · ${line.label}`;
-  }
-  return base;
+function buildGroupedReason(parent) {
+  return parent.reason || LEGACY_TYPE_LABEL[parent.type] || 'Importado desde gestión anterior';
 }
 
-function expandLegacyMovements(rawMovements) {
-  const expanded = [];
+function mapLegacyParentType(parentType) {
+  if (parentType === 'sale') return 'sale';
+  if (parentType === 'stockReturn') return 'return';
+  if (parentType === 'replenishment') return 'in';
+  return 'adjustment';
+}
 
-  for (const parent of rawMovements) {
-    const date = iso(parent.createdAt);
-    const userId = parent.actorUid ?? 'import';
-    const orderId = parent.orderId || undefined;
+/** Un documento por evento (venta, devolución, etc.) con todas sus líneas agrupadas */
+function mapLegacyGroupedMovements(rawMovements) {
+  const sorted = [...rawMovements].sort(
+    (a, b) => new Date(iso(a.createdAt)).getTime() - new Date(iso(b.createdAt)).getTime()
+  );
+  const stockByItem = new Map();
+  const result = [];
 
-    (parent.lines ?? []).forEach((line, lineIndex) => {
+  for (const parent of sorted) {
+    const lines = [];
+
+    for (const line of parent.lines ?? []) {
       const delta = Number(line.delta) || 0;
-      if (!line.refId || delta === 0) return;
+      if (!line.refId || delta === 0) continue;
 
-      expanded.push({
-        id: `imp_mov_${parent.id}__${lineIndex}`,
-        date,
-        movementType: mapLegacyMovementType(parent.type, line.category, delta),
+      const prev = stockByItem.get(line.refId) ?? 0;
+      const final = prev + delta;
+      stockByItem.set(line.refId, final);
+
+      lines.push({
         itemId: line.refId,
         itemType: mapLineCategory(line.category),
+        lineType: mapLegacyMovementType(parent.type, line.category, delta),
         modifiedQuantity: delta,
-        previousQuantity: 0,
-        finalQuantity: 0,
-        reason: buildMovementReason(parent, line),
-        userId,
-        orderId,
-        _sortKey: `${date}__${parent.id}__${lineIndex}`,
+        previousQuantity: prev,
+        finalQuantity: final,
       });
+    }
+
+    if (!lines.length) continue;
+
+    result.push({
+      id: `imp_grp_${parent.id}`,
+      date: iso(parent.createdAt),
+      movementType: mapLegacyParentType(parent.type),
+      reason: buildGroupedReason(parent),
+      userId: parent.actorUid ?? 'import',
+      orderId: parent.orderId || undefined,
+      lines,
     });
   }
 
-  expanded.sort((a, b) => a._sortKey.localeCompare(b._sortKey));
+  return result;
+}
 
-  const stockByItem = new Map();
-  for (const mov of expanded) {
-    const prev = stockByItem.get(mov.itemId) ?? 0;
-    const final = prev + mov.modifiedQuantity;
-    mov.previousQuantity = prev;
-    mov.finalQuantity = final;
-    stockByItem.set(mov.itemId, final);
-    delete mov._sortKey;
+async function deleteLooseImportedMovements(db) {
+  if (DRY_RUN) return 0;
+  const snap = await db.collection('inventory_movements').get();
+  const toDelete = snap.docs.filter(
+    (d) => d.id.startsWith('imp_mov_') || d.id.startsWith('imp_grp_')
+  );
+  if (!toDelete.length) return 0;
+
+  for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
+    const chunk = toDelete.slice(i, i + BATCH_SIZE);
+    const batch = db.batch();
+    chunk.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
   }
-
-  return expanded;
+  console.log(`    Eliminados ${toDelete.length} movimientos sueltos/anteriores`);
+  return toDelete.length;
 }
 
 function mapCashSession(raw) {
@@ -533,6 +620,18 @@ function mapBusiness(perfil) {
     description: 'Importado desde gestión de negocios',
     logoUrl: perfil.businessLogoUrl ?? '',
   };
+}
+
+async function wipeCollection(db, collectionName) {
+  const snap = await db.collection(collectionName).get();
+  if (snap.empty) return 0;
+  for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+    const chunk = snap.docs.slice(i, i + BATCH_SIZE);
+    const batch = db.batch();
+    chunk.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return snap.size;
 }
 
 async function commitBatches(db, label, items, collectionName) {
@@ -648,9 +747,18 @@ async function main() {
     ]);
   }
 
+  const productosRaw =
+    shouldRun('products') || shouldRun('categories')
+      ? await readCollection('productos')
+      : [];
+
   if (shouldRun('categories')) {
     console.log('📁 Categorías');
-    const categories = buildCategories(metaCats);
+    if (!DRY_RUN && db) {
+      const removed = await wipeCollection(db, 'categories');
+      if (removed) console.log(`    Eliminadas ${removed} categorías anteriores (unificación)`);
+    }
+    const categories = buildCategories(metaCats, productosRaw);
     categories.push({
       id: 'imp_cat_sin_categoria',
       name: 'Sin categoría',
@@ -661,7 +769,7 @@ async function main() {
     await commitBatches(db, 'categories', categories, 'categories');
   } else {
     // Cargar paths mínimos para productos si solo importamos products
-    buildCategories(metaCats);
+    buildCategories(metaCats, productosRaw);
     categoryIdByPath.set('Sin categoría', 'imp_cat_sin_categoria');
   }
 
@@ -681,10 +789,27 @@ async function main() {
 
   if (shouldRun('products')) {
     console.log('🛍️  Productos');
-    const productos = (await readCollection('productos')).map((p) => mapProduct(p, configCalc, insumoMap));
-    const withMaterials = productos.filter((p) => p.type === '3d' && ((p.filamentLines?.length) || (p.supplyIds?.length)));
+    const pedidosForMaterials = await readCollection('pedidos');
+    const pedidosMap = buildPedidosMaterialMap(pedidosForMaterials);
+    const overridesMap = await loadMaterialOverrides(IMPORT_DIR);
+    const productos = productosRaw.map((p) => mapProduct(p, configCalc, insumoMap, pedidosMap, overridesMap));
+    const withFil = productos.filter((p) => p.type === '3d' && p.filamentLines?.length);
+    const withIns = productos.filter((p) => p.type === '3d' && p.supplyIds?.length);
+    const fromOverride = productosRaw.filter((p) => {
+      if (p.productKind === 'reventa') return false;
+      const hadFil = (p.filamentLines ?? []).some((l) => l.supplyId);
+      return !hadFil && overridesMap.has(p.id);
+    }).length;
+    const missingFil = productos.filter(
+      (p) => p.type === '3d' && !p.filamentLines?.length && (p.weightGrams || 0) > 0
+    );
     const withCost = productos.filter((p) => (p.calculatedCost || 0) > 0);
-    console.log(`    Con filamentos/insumos: ${withMaterials.length} | Con costo > 0: ${withCost.length}`);
+    console.log(`    Con filamentos: ${withFil.length} | Con insumos: ${withIns.length} | Recuperados por override: ${fromOverride} | Con costo > 0: ${withCost.length}`);
+    if (missingFil.length) {
+      console.log(`    ⚠️  Sin filamentos en export: ${missingFil.length} (completar manualmente o re-exportar)`);
+      missingFil.slice(0, 5).forEach((p) => console.log(`       - ${p.name}`));
+      if (missingFil.length > 5) console.log(`       ... y ${missingFil.length - 5} más`);
+    }
     await commitBatches(db, 'products', productos, 'products');
   }
 
@@ -720,14 +845,16 @@ async function main() {
   }
 
   if (shouldRun('inventory_movements')) {
-    console.log('📒 Movimientos de inventario (histórico)');
+    console.log('📒 Movimientos de inventario (histórico agrupado)');
+    await deleteLooseImportedMovements(db);
     const legacyMovements = await readCollection('inventario_movimientos');
-    const movements = expandLegacyMovements(legacyMovements);
+    const movements = mapLegacyGroupedMovements(legacyMovements);
+    const lineCount = movements.reduce((n, m) => n + (m.lines?.length ?? 0), 0);
     const byType = {};
     for (const m of movements) {
       byType[m.movementType] = (byType[m.movementType] ?? 0) + 1;
     }
-    console.log(`    ${legacyMovements.length} eventos → ${movements.length} líneas (${JSON.stringify(byType)})`);
+    console.log(`    ${legacyMovements.length} eventos → ${movements.length} transacciones (${lineCount} líneas) ${JSON.stringify(byType)}`);
     await commitBatches(db, 'inventory_movements', movements, 'inventory_movements');
   }
 

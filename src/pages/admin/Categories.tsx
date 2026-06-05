@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Category } from '../../types/category';
+import { dedupeCategories, countProductsInSubtree } from '../../utils/categories';
 import {
   Tag,
   Plus,
@@ -78,7 +79,8 @@ interface TreeNodeProps {
   category: Category;
   depth: number;
   childrenMap: Map<string | null, Category[]>;
-  productCounts: Map<string, number>;
+  allCategories: Category[];
+  remappedProductCounts: Map<string, number>;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
   onEdit: (cat: Category) => void;
@@ -93,7 +95,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   category,
   depth,
   childrenMap,
-  productCounts,
+  allCategories,
+  remappedProductCounts,
   expandedIds,
   onToggleExpand,
   onEdit,
@@ -106,7 +109,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const children = childrenMap.get(category.id) ?? [];
   const hasChildren = children.length > 0;
   const isExpanded = expandedIds.has(category.id);
-  const productCount = productCounts.get(category.id) ?? 0;
+  const productCount = countProductsInSubtree(
+    category.id,
+    allCategories,
+    remappedProductCounts,
+    new Map()
+  );
   const isRoot = depth === 0;
 
   return (
@@ -217,7 +225,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               category={child}
               depth={depth + 1}
               childrenMap={childrenMap}
-              productCounts={productCounts}
+              allCategories={allCategories}
+              remappedProductCounts={remappedProductCounts}
               expandedIds={expandedIds}
               onToggleExpand={onToggleExpand}
               onEdit={onEdit}
@@ -282,7 +291,21 @@ export const Categories: React.FC = () => {
   }, []);
 
   // ── Derived data ───────────────────────────────────────────────────────────
-  const childrenMap = useMemo(() => buildChildrenMap(categories), [categories]);
+  const { canonical: canonicalCategories, idRemap } = useMemo(
+    () => dedupeCategories(categories),
+    [categories]
+  );
+
+  const remappedProductCounts = useMemo(() => {
+    const merged = new Map<string, number>();
+    for (const [catId, count] of productCounts) {
+      const canonicalId = idRemap.get(catId) ?? catId;
+      merged.set(canonicalId, (merged.get(canonicalId) ?? 0) + count);
+    }
+    return merged;
+  }, [productCounts, idRemap]);
+
+  const childrenMap = useMemo(() => buildChildrenMap(canonicalCategories), [canonicalCategories]);
   const rootCategories = useMemo(() => childrenMap.get(null) ?? [], [childrenMap]);
 
   const flatOptions = useMemo(
@@ -534,7 +557,8 @@ export const Categories: React.FC = () => {
                 category={cat}
                 depth={0}
                 childrenMap={childrenMap}
-                productCounts={productCounts}
+                allCategories={canonicalCategories}
+                remappedProductCounts={remappedProductCounts}
                 expandedIds={expandedIds}
                 onToggleExpand={toggleExpand}
                 onEdit={openEditForm}

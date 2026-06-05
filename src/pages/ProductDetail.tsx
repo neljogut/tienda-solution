@@ -5,6 +5,9 @@ import { db } from '../firebase';
 import type { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
+import { usePricingData } from '../hooks/usePricingData';
+import { formatWeightGrams } from '../utils/weightGrams';
+import { formatPrintTime } from '../utils/printTime';
 import { ArrowLeft, Loader2, ShoppingCart, Box, Zap, Wrench } from 'lucide-react';
 
 export const ProductDetail: React.FC = () => {
@@ -19,6 +22,7 @@ export const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   
   const isAdminView = userData?.role === 'owner' || hasPermission('viewManualPrices');
+  const { getRetailPrice } = usePricingData();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -60,7 +64,7 @@ export const ProductDetail: React.FC = () => {
     );
   }
 
-  const price = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
+  const price = getRetailPrice(product);
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
 
   const handleAddToCart = () => {
@@ -142,8 +146,8 @@ export const ProductDetail: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 mb-8">
             {product.type === '3d' ? (
               <>
-                <SpecItem icon={Box} label="Peso" value={`${product.weightGrams}g`} />
-                <SpecItem icon={Zap} label="Tiempo aprox." value={`${product.printTimeMinutes} min`} />
+                <SpecItem icon={Box} label="Peso" value={formatWeightGrams(product.weightGrams)} />
+                <SpecItem icon={Zap} label="Tiempo aprox." value={formatPrintTime(product.printTimeMinutes)} />
                 <SpecItem icon={Wrench} label="Tipo" value={product.isKeychain ? 'Llavero' : 'Figura / Pieza'} />
               </>
             ) : (

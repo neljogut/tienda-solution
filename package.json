@@ -11,7 +11,11 @@
     "clean": "node -e \"['dist', 'node_modules'].forEach(p => require('fs').rmSync(p, { recursive: true, force: true }))\"",
     "import:data": "node scripts/import-gestion-data.mjs",
     "import:data:execute": "node scripts/import-gestion-data.mjs --execute",
-    "import:movements": "node scripts/import-gestion-data.mjs --execute --only=inventory_movements"
+    "import:movements": "node scripts/import-gestion-data.mjs --execute --only=inventory_movements",
+    "fix:product-materials": "node scripts/fix-product-materials.mjs",
+    "fix:product-materials:execute": "node scripts/fix-product-materials.mjs --execute",
+    "fix:filament-prices": "node scripts/fix-filament-prices.mjs --execute",
+    "fix:product-categories": "node scripts/fix-product-categories.mjs --execute"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

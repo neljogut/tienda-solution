@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import type { Product, FilamentLine, SupplyLine } from '../../types/product';
 import type { Filament, Supply } from '../../types/inventory';
 import type { Category } from '../../types/category';
+import { flattenCategoriesForSelect } from '../../utils/categories';
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../../types/settings';
 import {
   calculate3DCost,
@@ -15,6 +16,9 @@ import {
 } from '../../services/pricingService';
 import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2 } from 'lucide-react';
 import { NumericInput } from '../../components/NumericInput';
+import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
+import { TimeHoursMinutesInput } from '../../components/TimeHoursMinutesInput';
+import { formatWeightGrams } from '../../utils/weightGrams';
 
 export const ProductForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -120,28 +124,18 @@ export const ProductForm: React.FC = () => {
     loadInitialData();
   }, [id, isNew]);
 
-  const flatCategories = useMemo(() => {
-    const map = new Map<string | null, Category[]>();
-    for (const cat of categories) {
-      const key = cat.parentId ?? null;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(cat);
-    }
-    for (const [, children] of map) {
-      children.sort((a, b) => a.order - b.order);
-    }
-    
-    const flatten = (parentId: string | null, depth: number): { id: string; label: string }[] => {
-      const result: { id: string; label: string }[] = [];
-      const children = map.get(parentId) ?? [];
-      for (const cat of children) {
-        result.push({ id: cat.id, label: '─'.repeat(depth) + (depth > 0 ? ' ' : '') + cat.name });
-        result.push(...flatten(cat.id, depth + 1));
-      }
-      return result;
-    };
-    return flatten(null, 0);
-  }, [categories]);
+  const flatCategories = useMemo(
+    () => flattenCategoriesForSelect(categories),
+    [categories]
+  );
+
+  const resolveCategoryLabel = (catId: string) => {
+    const cat = categories.find((c) => c.id === catId);
+    if (!cat) return '';
+    if (!cat.parentId) return cat.name;
+    const parent = categories.find((c) => c.id === cat.parentId);
+    return parent ? `${parent.name} › ${cat.name}` : cat.name;
+  };
 
   const inventoryMap = useMemo(() => {
     const map = new Map<string, { type?: string; priceUsdKg?: number; unitCostArs?: number }>();
@@ -149,6 +143,15 @@ export const ProductForm: React.FC = () => {
     supplies.forEach((s) => map.set(s.id, { type: 'supply', unitCostArs: s.unitCostArs }));
     return map;
   }, [filaments, supplies]);
+
+  const totalFilamentGrams = useMemo(
+    () =>
+      (formData.filamentLines ?? []).reduce(
+        (sum: number, line: FilamentLine) => sum + (Number(line.grams) || 0),
+        0
+      ),
+    [formData.filamentLines]
+  );
 
   useEffect(() => {
     if (formData.type === '3d') {
@@ -316,8 +319,11 @@ export const ProductForm: React.FC = () => {
                   value={formData.categoryId || ''}
                   onChange={e => {
                     const catId = e.target.value;
-                    const catName = categories.find(c => c.id === catId)?.name || '';
-                    setFormData({ ...formData, categoryId: catId, category: catName });
+                    setFormData({
+                      ...formData,
+                      categoryId: catId,
+                      category: resolveCategoryLabel(catId),
+                    });
                   }}
                 >
                   <option value="">Seleccionar Categoría</option>
@@ -364,24 +370,20 @@ export const ProductForm: React.FC = () => {
 
              {formData.type === '3d' ? (
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Peso (Gramos)</label>
-                  <NumericInput 
-                    required
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.weightGrams} 
-                    onChange={val => setFormData({...formData, weightGrams: val})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tiempo (Minutos)</label>
-                  <NumericInput 
-                    required
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.printTimeMinutes} 
-                    onChange={val => setFormData({...formData, printTimeMinutes: val})}
-                  />
-                </div>
+                <WeightKgGramsInput
+                  label="Peso del producto"
+                  required
+                  valueGrams={formData.weightGrams}
+                  onChangeGrams={val => setFormData({ ...formData, weightGrams: val })}
+                  className="[&_label]:block [&_label]:text-sm [&_label]:font-medium [&_label]:text-slate-700 [&_label]:mb-1 [&_label]:normal-case"
+                />
+                <TimeHoursMinutesInput
+                  label="Tiempo de impresión"
+                  required
+                  valueMinutes={formData.printTimeMinutes}
+                  onChangeMinutes={val => setFormData({ ...formData, printTimeMinutes: val })}
+                  className="[&_label]:block [&_label]:text-sm [&_label]:font-medium [&_label]:text-slate-700 [&_label]:mb-1 [&_label]:normal-case [&_.input]:border [&_.input]:border-slate-300 [&_.input]:rounded-lg [&_.input]:p-2"
+                />
                 <div className="col-span-2 flex items-center gap-2">
                   <input 
                     type="checkbox" id="isKeychain"
@@ -426,19 +428,16 @@ export const ProductForm: React.FC = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="w-24">
-                        <NumericInput
-                          allowDecimals
-                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                          value={line.grams}
-                          onChange={(val) => {
-                            const next = [...formData.filamentLines];
-                            next[idx] = { ...next[idx], grams: val === '' ? 0 : Number(val) };
-                            setFormData({ ...formData, filamentLines: next });
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-slate-500 pb-2">g</span>
+                      <WeightKgGramsInput
+                        compact
+                        valueGrams={line.grams}
+                        onChangeGrams={(val) => {
+                          const next = [...formData.filamentLines];
+                          next[idx] = { ...next[idx], grams: val === '' ? 0 : Number(val) };
+                          setFormData({ ...formData, filamentLines: next });
+                        }}
+                        className="pb-0.5"
+                      />
                       <button
                         type="button"
                         className="text-red-500 p-2"
@@ -451,6 +450,12 @@ export const ProductForm: React.FC = () => {
                       </button>
                     </div>
                   ))}
+                  {(formData.filamentLines?.length ?? 0) > 0 && (
+                    <div className="flex justify-end items-center gap-2 text-sm pt-1">
+                      <span className="text-slate-500">Total filamento utilizado:</span>
+                      <span className="font-semibold text-slate-800">{formatWeightGrams(totalFilamentGrams)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="col-span-2 space-y-3 pt-2 border-t border-blue-200">

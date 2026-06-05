@@ -41,6 +41,7 @@ const STEPS = [
   'clients',
   'orders',
   'cash_sessions',
+  'inventory_movements',
 ];
 
 function shouldRun(step) {
@@ -380,6 +381,84 @@ function mapOrder(raw, orderNumber) {
   };
 }
 
+function mapLineCategory(category) {
+  if (category === 'filament') return 'filament';
+  if (category === 'insumo') return 'supply';
+  if (category === 'productPrint3d' || category === 'productReventa') return 'product';
+  return 'supply';
+}
+
+function mapLegacyMovementType(parentType, category, delta) {
+  const isProduct = category === 'productPrint3d' || category === 'productReventa';
+  if (parentType === 'sale') return isProduct ? 'out_sale' : 'consumption';
+  if (parentType === 'replenishment') return delta >= 0 ? 'in' : 'adjustment';
+  if (parentType === 'stockReturn') return 'return';
+  if (parentType === 'manual') {
+    if (delta > 0) return 'in';
+    return isProduct ? 'out_sale' : 'consumption';
+  }
+  return delta >= 0 ? 'in' : 'consumption';
+}
+
+const LEGACY_TYPE_LABEL = {
+  sale: 'Venta',
+  replenishment: 'Reposición de stock',
+  manual: 'Movimiento manual',
+  stockReturn: 'Devolución al stock',
+};
+
+function buildMovementReason(parent, line) {
+  const base = parent.reason || LEGACY_TYPE_LABEL[parent.type] || 'Importado desde gestión anterior';
+  if (line.label && line.label !== line.refId) {
+    return `${base} · ${line.label}`;
+  }
+  return base;
+}
+
+function expandLegacyMovements(rawMovements) {
+  const expanded = [];
+
+  for (const parent of rawMovements) {
+    const date = iso(parent.createdAt);
+    const userId = parent.actorUid ?? 'import';
+    const orderId = parent.orderId || undefined;
+
+    (parent.lines ?? []).forEach((line, lineIndex) => {
+      const delta = Number(line.delta) || 0;
+      if (!line.refId || delta === 0) return;
+
+      expanded.push({
+        id: `imp_mov_${parent.id}__${lineIndex}`,
+        date,
+        movementType: mapLegacyMovementType(parent.type, line.category, delta),
+        itemId: line.refId,
+        itemType: mapLineCategory(line.category),
+        modifiedQuantity: delta,
+        previousQuantity: 0,
+        finalQuantity: 0,
+        reason: buildMovementReason(parent, line),
+        userId,
+        orderId,
+        _sortKey: `${date}__${parent.id}__${lineIndex}`,
+      });
+    });
+  }
+
+  expanded.sort((a, b) => a._sortKey.localeCompare(b._sortKey));
+
+  const stockByItem = new Map();
+  for (const mov of expanded) {
+    const prev = stockByItem.get(mov.itemId) ?? 0;
+    const final = prev + mov.modifiedQuantity;
+    mov.previousQuantity = prev;
+    mov.finalQuantity = final;
+    stockByItem.set(mov.itemId, final);
+    delete mov._sortKey;
+  }
+
+  return expanded;
+}
+
 function mapCashSession(raw) {
   const ingress = raw.atCloseIngressSalesByMethod ?? {};
   return {
@@ -640,19 +719,34 @@ async function main() {
     await commitBatches(db, 'cash_sessions', sessions, 'cash_sessions');
   }
 
+  if (shouldRun('inventory_movements')) {
+    console.log('📒 Movimientos de inventario (histórico)');
+    const legacyMovements = await readCollection('inventario_movimientos');
+    const movements = expandLegacyMovements(legacyMovements);
+    const byType = {};
+    for (const m of movements) {
+      byType[m.movementType] = (byType[m.movementType] ?? 0) + 1;
+    }
+    console.log(`    ${legacyMovements.length} eventos → ${movements.length} líneas (${JSON.stringify(byType)})`);
+    await commitBatches(db, 'inventory_movements', movements, 'inventory_movements');
+  }
+
   console.log('\n✅ Proceso finalizado.');
   if (DRY_RUN) {
     console.log('\nPara escribir en Firestore ejecutá:');
     console.log('  node scripts/import-gestion-data.mjs --execute\n');
     console.log('(Usa sesión de Firebase CLI si no tenés cuenta de servicio)\n');
   } else {
-    console.log('\nRevisá la app en /admin. Los movimientos históricos de inventario no se importaron');
-    console.log('(el stock actual ya viene de productos e insumos).\n');
+    console.log('\nRevisá la app en /admin → Auditoría de Movimientos.\n');
+  }
+
+  if (!shouldRun('inventory_movements')) {
+    console.log('No importado en esta corrida:');
+    console.log('  - inventory_movements (usar --only=inventory_movements)\n');
   }
 
   console.log('No importado a propósito:');
   console.log('  - integraciones/mercadopago (token sensible; configurar de nuevo en la app)');
-  console.log('  - inventario_movimientos (formato distinto; stock actual ya está en productos/insumos)');
   console.log('  - staff_members (vincular empleados manualmente en Firebase Auth)\n');
 }
 

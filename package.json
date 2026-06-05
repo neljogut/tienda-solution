@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "clean": "node -e \"['dist', 'node_modules'].forEach(p => require('fs').rmSync(p, { recursive: true, force: true }))\"",
     "import:data": "node scripts/import-gestion-data.mjs",
-    "import:data:execute": "node scripts/import-gestion-data.mjs --execute"
+    "import:data:execute": "node scripts/import-gestion-data.mjs --execute",
+    "import:movements": "node scripts/import-gestion-data.mjs --execute --only=inventory_movements"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

@@ -14,11 +14,17 @@ import {
   calculateResaleRetailPrice,
   calculateResaleWholesalePrice
 } from '../../services/pricingService';
-import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star } from 'lucide-react';
+import { getProductImages } from '../../utils/productImages';
 import { NumericInput } from '../../components/NumericInput';
 import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
 import { TimeHoursMinutesInput } from '../../components/TimeHoursMinutesInput';
 import { formatWeightGrams } from '../../utils/weightGrams';
+
+interface ImageEntry {
+  url: string;
+  file?: File;
+}
 
 export const ProductForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,8 +33,8 @@ export const ProductForm: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(!isNew);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [images, setImages] = useState<ImageEntry[]>([]);
+  const [mainImageUrl, setMainImageUrl] = useState<string>('');
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [filaments, setFilaments] = useState<Filament[]>([]);
@@ -112,7 +118,9 @@ export const ProductForm: React.FC = () => {
               normalized.supplyIds = normalized.supplyIds ?? [];
             }
             setFormData(normalized);
-            setImagePreview(data.mainImage || '');
+            const existingImages = getProductImages(data).map((url) => ({ url }));
+            setImages(existingImages);
+            setMainImageUrl(data.mainImage || existingImages[0]?.url || '');
           }
         }
       } catch (err) {
@@ -170,12 +178,36 @@ export const ProductForm: React.FC = () => {
     }
   }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, formData.filamentLines, formData.supplyIds, settings3d, settingsResale, exchangeRate, inventoryMap]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+  const handleImagesAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+
+    const newEntries: ImageEntry[] = files.map((file) => ({
+      url: URL.createObjectURL(file),
+      file,
+    }));
+
+    setImages((prev) => [...prev, ...newEntries]);
+    if (!mainImageUrl && newEntries[0]) {
+      setMainImageUrl(newEntries[0].url);
     }
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (url: string) => {
+    setImages((prev) => {
+      const entry = prev.find((img) => img.url === url);
+      if (entry?.file) URL.revokeObjectURL(entry.url);
+      const next = prev.filter((img) => img.url !== url);
+      if (mainImageUrl === url) {
+        setMainImageUrl(next[0]?.url ?? '');
+      }
+      return next;
+    });
+  };
+
+  const handleSetMainImage = (url: string) => {
+    setMainImageUrl(url);
   };
 
   const compressAndConvertToBase64 = (file: File): Promise<string> => {
@@ -223,17 +255,24 @@ export const ProductForm: React.FC = () => {
     setLoading(true);
 
     try {
-      let mainImageUrl = formData.mainImage || '';
-
-      if (imageFile) {
-        // La mejor solución: Comprimir la imagen y guardarla en Base64 directo en la base de datos
-        // Evita bloqueos de red, CORS, y servidores externos de terceros.
-        mainImageUrl = await compressAndConvertToBase64(imageFile);
+      const resolvedUrls: string[] = [];
+      for (const img of images) {
+        if (img.file) {
+          resolvedUrls.push(await compressAndConvertToBase64(img.file));
+        } else {
+          resolvedUrls.push(img.url);
+        }
       }
+
+      const mainIndex = images.findIndex((img) => img.url === mainImageUrl);
+      const safeMainIndex = mainIndex >= 0 ? mainIndex : 0;
+      const resolvedMain = resolvedUrls[safeMainIndex] ?? '';
+      const resolvedGallery = resolvedUrls.filter((_, idx) => idx !== safeMainIndex);
 
       const productToSave: any = {
         ...formData,
-        mainImage: mainImageUrl,
+        mainImage: resolvedMain,
+        gallery: resolvedGallery,
         calculatedCost: calculated.cost,
         calculatedRetailPrice: calculated.retail,
         calculatedWholesalePrice: calculated.wholesale,
@@ -675,26 +714,84 @@ export const ProductForm: React.FC = () => {
         {/* Columna Derecha: Imagen y Guardar */}
         <div className="space-y-6">
           <div className="card p-6 flex flex-col items-center">
-            <h3 className="font-semibold text-lg text-slate-800 w-full border-b pb-2 mb-4">Imagen Principal</h3>
-            
-            <div className="w-full aspect-square bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden mb-4 relative group flex items-center justify-center">
-              {imagePreview ? (
-                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
-              ) : (
-                <div className="text-slate-400 flex flex-col items-center">
-                  <Upload size={32} className="mb-2" />
-                  <span className="text-sm">Sin imagen</span>
-                </div>
-              )}
-              
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <label className="cursor-pointer bg-white text-slate-800 px-4 py-2 rounded-lg font-medium text-sm shadow-lg hover:bg-slate-50 transition-colors">
-                  Cambiar Imagen
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                </label>
-              </div>
+            <div className="w-full flex items-center justify-between border-b pb-2 mb-4">
+              <h3 className="font-semibold text-lg text-slate-800">Imágenes del producto</h3>
+              <label className="cursor-pointer btn-secondary !py-1 !px-2 text-xs flex items-center gap-1">
+                <Plus size={12} /> Agregar
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleImagesAdd}
+                />
+              </label>
             </div>
-            <p className="text-xs text-slate-500 text-center mb-6">Formatos: JPG, PNG, GIF, MP4 (max 5MB).</p>
+
+            <div className="w-full aspect-square bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden mb-4 relative flex items-center justify-center">
+              {mainImageUrl ? (
+                <img src={mainImageUrl} className="w-full h-full object-cover" alt="Imagen principal" />
+              ) : (
+                <label className="text-slate-400 flex flex-col items-center cursor-pointer hover:text-slate-600 transition-colors">
+                  <Upload size={32} className="mb-2" />
+                  <span className="text-sm">Agregar imágenes</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleImagesAdd}
+                  />
+                </label>
+              )}
+              {mainImageUrl && (
+                <span className="absolute top-2 left-2 badge badge-blue text-[10px] flex items-center gap-1">
+                  <Star size={10} className="fill-current" /> Principal
+                </span>
+              )}
+            </div>
+
+            {images.length > 0 && (
+              <div className="w-full grid grid-cols-3 gap-2 mb-4">
+                {images.map((img) => {
+                  const isMain = img.url === mainImageUrl;
+                  return (
+                    <div
+                      key={img.url}
+                      className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
+                        isMain ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200'
+                      }`}
+                    >
+                      <img src={img.url} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-x-0 bottom-0 flex bg-black/60">
+                        <button
+                          type="button"
+                          title="Marcar como principal"
+                          onClick={() => handleSetMainImage(img.url)}
+                          className={`flex-1 py-1 flex items-center justify-center ${
+                            isMain ? 'text-yellow-300' : 'text-white hover:text-yellow-200'
+                          }`}
+                        >
+                          <Star size={12} className={isMain ? 'fill-current' : ''} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Eliminar"
+                          onClick={() => handleRemoveImage(img.url)}
+                          className="flex-1 py-1 flex items-center justify-center text-white hover:text-red-300"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-xs text-slate-500 text-center mb-6">
+              Podés seleccionar varias a la vez. Tocá la estrella para elegir la imagen principal.
+            </p>
 
             <button 
               type="submit" 

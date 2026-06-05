@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePricingData } from '../hooks/usePricingData';
 import { formatWeightGrams } from '../utils/weightGrams';
 import { formatPrintTime } from '../utils/printTime';
+import { getProductImages } from '../utils/productImages';
 import { ArrowLeft, Loader2, ShoppingCart, Box, Zap, Wrench } from 'lucide-react';
 
 export const ProductDetail: React.FC = () => {
@@ -81,7 +82,7 @@ export const ProductDetail: React.FC = () => {
     openDrawer();
   };
   
-  const allImages = [product.mainImage, ...(product.gallery || [])].filter(Boolean);
+  const allImages = getProductImages(product);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

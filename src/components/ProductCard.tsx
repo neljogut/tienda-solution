@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Eye } from 'lucide-react';
 import { formatPrintTime } from '../utils/printTime';
+import { getProductImages } from '../utils/productImages';
 
 interface ProductCardProps {
   product: Product;
@@ -28,6 +29,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? getCost(product)
     : (product.calculatedCost ?? 0);
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  const images = useMemo(() => getProductImages(product), [product]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [product.id]);
+
+  useEffect(() => {
+    if (images.length <= 1 || isPaused) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % images.length);
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [images.length, isPaused, product.id]);
+
+  const displayImage = images[activeIndex] ?? product.mainImage;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -51,16 +69,45 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onClick={() => navigate(`/catalog/${product.id}`)}
     >
       {/* Image */}
-      <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden flex-shrink-0">
-        {product.mainImage ? (
-          <img 
-            src={product.mainImage} 
-            alt={product.name} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+      <div
+        className="aspect-[4/3] bg-slate-100 relative overflow-hidden flex-shrink-0"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        {displayImage ? (
+          <img
+            key={displayImage}
+            src={displayImage}
+            alt={product.name}
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 animate-fadeIn"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-slate-300">
             <ShoppingCart size={40} />
+          </div>
+        )}
+
+        {images.length > 1 && (
+          <div
+            className="absolute top-2 right-2 flex gap-1 z-20 bg-black/40 backdrop-blur-sm rounded-full px-1.5 py-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                aria-label={`Imagen ${idx + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveIndex(idx);
+                }}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  idx === activeIndex
+                    ? 'bg-white scale-110'
+                    : 'bg-white/40 hover:bg-white/70'
+                }`}
+              />
+            ))}
           </div>
         )}
         
@@ -79,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Stock badge */}
         {isOutOfStock && (
-          <div className="absolute top-2 right-2">
+          <div className={`absolute top-2 z-20 ${images.length > 1 ? 'left-2' : 'right-2'}`}>
             <span className="badge badge-red text-[10px]">Sin Stock</span>
           </div>
         )}

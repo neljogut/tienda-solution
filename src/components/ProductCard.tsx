@@ -57,6 +57,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       name: product.name,
       type: product.type,
       price: priceToDisplay,
+      basePrice: priceToDisplay,
+      priceTiers: product.priceTiers,
       imageUrl: product.mainImage,
       maxStock: product.stock !== undefined ? product.stock : 999
     });

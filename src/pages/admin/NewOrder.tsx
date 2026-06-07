@@ -113,6 +113,12 @@ export const NewOrder: React.FC = () => {
 
   // Compute unit price for a product based on current selected client and cart quantity
   const calculateItemPrice = (product: Product, quantity: number, client: Client | null, total3DWeight = 0, allAreKeychains = false) => {
+    // 0. If product has price tiers, it ignores wholesale client / threshold discounts and uses tier price
+    if (product.priceTiers && product.priceTiers.length > 0) {
+      const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
+      return getTierPrice(quantity, basePrice, product.priceTiers);
+    }
+
     const isClientWholesale = client?.isWholesale ?? false;
     const threshold = allAreKeychains
       ? (pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600)
@@ -167,12 +173,13 @@ export const NewOrder: React.FC = () => {
       const product = products.find(p => p.id === item.productId);
       if (!product) return item;
       const unitPrice = calculateItemPrice(product, (item.quantity as any) === '' ? 1 : Number(item.quantity), client, total3DWeight, allAreKeychains);
-      const isWholesaleApplied = (client?.isWholesale ?? false) || (product.type === '3d' && total3DWeight >= threshold);
+      const hasTiers = product.priceTiers && product.priceTiers.length > 0;
+      const isWholesaleApplied = !hasTiers && ((client?.isWholesale ?? false) || (product.type === '3d' && total3DWeight >= threshold));
       return {
         ...item,
         unitPrice,
         unitProfit: unitPrice - (product.calculatedCost || 0),
-        appliedWholesale: isWholesaleApplied || !!(product.priceTiers && product.priceTiers.length > 0 && unitPrice < (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice))
+        appliedWholesale: isWholesaleApplied || !!(hasTiers && unitPrice < (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice))
       };
     });
   };

@@ -75,6 +75,8 @@ export const ProductDetail: React.FC = () => {
       name: product.name,
       type: product.type,
       price: price,
+      basePrice: price,
+      priceTiers: product.priceTiers,
       imageUrl: product.mainImage,
       quantity: quantity,
       maxStock: product.stock !== undefined ? product.stock : 999

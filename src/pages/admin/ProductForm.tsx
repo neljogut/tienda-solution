@@ -269,6 +269,20 @@ export const ProductForm: React.FC = () => {
     setLoading(true);
 
     try {
+      // Validate profit margin limit for each tier
+      const cost = calculated.cost || 0;
+      const minPriceLimit = cost * 1.10;
+      const tiers = formData.priceTiers || [];
+      for (let i = 0; i < tiers.length; i++) {
+        const tier = tiers[i];
+        const unitPrice = Number(tier.unitPrice) || 0;
+        if (unitPrice < minPriceLimit - 0.01) {
+          alert(`Error: El precio unitario del Tramo ${i + 1} ($${unitPrice}) es menor al costo de fabricación más el 10% de ganancia mínima ($${Math.ceil(minPriceLimit)}). Modifique el precio para cumplir con la ganancia mínima.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const resolvedUrls: string[] = [];
       for (const img of images) {
         if (img.file) {
@@ -650,9 +664,17 @@ export const ProductForm: React.FC = () => {
                     const tiers = formData.priceTiers || [];
                     const lastTier = tiers[tiers.length - 1];
                     const nextMin = lastTier ? lastTier.maxQty + 1 : 2;
+                    
+                    const basePrice = formData.useManualPrice ? (formData.manualRetailPrice || 0) : calculated.retail;
+                    const discountPercent = (tiers.length + 1) * 5;
+                    const rawSuggested = basePrice * (1 - discountPercent / 100);
+                    const minPriceLimit = (calculated.cost || 0) * 1.10;
+                    const suggestedPrice = Math.max(rawSuggested, minPriceLimit);
+                    const unitPrice = roundPriceUp10(suggestedPrice);
+
                     setFormData({
                       ...formData,
-                      priceTiers: [...tiers, { minQty: nextMin, maxQty: nextMin + 9, unitPrice: formData.useManualPrice ? formData.manualRetailPrice : calculated.retail }]
+                      priceTiers: [...tiers, { minQty: nextMin, maxQty: nextMin + 9, unitPrice }]
                     });
                   }}
                   className="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1"

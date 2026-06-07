@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ProductType } from '../types/product';
+import type { ProductType, PriceTier } from '../types/product';
+import { getTierPrice } from '../services/pricingService';
 
 export interface CartItem {
   productId: string;
@@ -8,6 +9,8 @@ export interface CartItem {
   type: ProductType;
   quantity: number;
   price: number;
+  basePrice: number;
+  priceTiers?: PriceTier[];
   imageUrl?: string;
   maxStock: number;
 }
@@ -17,7 +20,7 @@ interface CartState {
   isDrawerOpen: boolean;
   
   // Actions
-  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
+  addItem: (item: Omit<CartItem, 'quantity' | 'basePrice'> & { quantity?: number; basePrice?: number }) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -44,18 +47,32 @@ export const useCartStore = create<CartState>()(
         
         if (existingItem) {
           const newQuantity = Math.min(existingItem.quantity + addQty, existingItem.maxStock);
+          const price = getTierPrice(newQuantity, existingItem.basePrice, existingItem.priceTiers);
           return {
             items: state.items.map(i => 
               i.productId === newItem.productId 
-                ? { ...i, quantity: newQuantity }
+                ? { ...i, quantity: newQuantity, price }
                 : i
             )
           };
         }
         
         // Add new
+        const basePrice = newItem.basePrice ?? newItem.price;
+        const price = getTierPrice(addQty, basePrice, newItem.priceTiers);
+        
         return {
-          items: [...state.items, { ...newItem, quantity: addQty }]
+          items: [...state.items, { 
+            productId: newItem.productId,
+            name: newItem.name,
+            type: newItem.type,
+            imageUrl: newItem.imageUrl,
+            maxStock: newItem.maxStock,
+            priceTiers: newItem.priceTiers,
+            basePrice,
+            price,
+            quantity: addQty 
+          }]
         };
       }),
 
@@ -70,7 +87,9 @@ export const useCartStore = create<CartState>()(
         return {
           items: state.items.map(i => {
             if (i.productId === productId) {
-              return { ...i, quantity: Math.min(quantity, i.maxStock) };
+              const newQuantity = Math.min(quantity, i.maxStock);
+              const price = getTierPrice(newQuantity, i.basePrice, i.priceTiers);
+              return { ...i, quantity: newQuantity, price };
             }
             return i;
           })

@@ -202,11 +202,11 @@ export const CartDrawer: React.FC = () => {
   return (
     <>
       <div 
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 transition-opacity"
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 transition-opacity animate-fadeIn"
         onClick={closeDrawer}
       ></div>
       
-      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
+      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col animate-slideInRight">
         <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2">
             <ShoppingBag className="text-blue-600" size={24} />

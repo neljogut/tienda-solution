@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -85,6 +85,52 @@ export const Orders: React.FC = () => {
 
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+
+  // Sorting state
+  const [sortBy, setSortBy] = useState<'orderNumber' | 'customerName' | 'date' | 'orderStatus' | 'paymentStatus' | 'totalAmount'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (field: typeof sortBy) => {
+    if (sortBy === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder(field === 'customerName' ? 'asc' : 'desc');
+    }
+  };
+
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      let valA: any = a[sortBy];
+      let valB: any = b[sortBy];
+
+      if (sortBy === 'date') {
+        valA = new Date(a.date).getTime();
+        valB = new Date(b.date).getTime();
+      } else if (sortBy === 'customerName') {
+        valA = (a.customerName || '').toLowerCase();
+        valB = (b.customerName || '').toLowerCase();
+      } else if (sortBy === 'orderStatus') {
+        valA = (a.orderStatus || '').toLowerCase();
+        valB = (b.orderStatus || '').toLowerCase();
+      } else if (sortBy === 'paymentStatus') {
+        valA = (a.paymentStatus || '').toLowerCase();
+        valB = (b.paymentStatus || '').toLowerCase();
+      } else if (typeof valA === 'string' && typeof valB === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [orders, sortBy, sortOrder]);
+
+  const renderSortIndicator = (field: typeof sortBy) => {
+    if (sortBy !== field) return <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity ml-1">⇅</span>;
+    return <span className="text-blue-600 ml-1">{sortOrder === 'asc' ? '▲' : '▼'}</span>;
+  };
 
   const canChangeOrderState = hasPermission('changeOrderState');
   const canRegisterPayments = hasPermission('registerPayments');
@@ -455,24 +501,36 @@ export const Orders: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="p-4">Nº Pedido</th>
-                  <th className="p-4">Cliente</th>
-                  <th className="p-4">Fecha</th>
-                  <th className="p-4">Estado</th>
-                  <th className="p-4">Pago</th>
-                  <th className="p-4 text-right">Total</th>
-                  <th className="p-4 text-right">Acciones</th>
+                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderNumber')}>
+                    Nº Pedido {renderSortIndicator('orderNumber')}
+                  </th>
+                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('customerName')}>
+                    Cliente {renderSortIndicator('customerName')}
+                  </th>
+                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('date')}>
+                    Fecha {renderSortIndicator('date')}
+                  </th>
+                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderStatus')}>
+                    Estado {renderSortIndicator('orderStatus')}
+                  </th>
+                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('paymentStatus')}>
+                    Pago {renderSortIndicator('paymentStatus')}
+                  </th>
+                  <th className="p-4 text-right cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('totalAmount')}>
+                    Total {renderSortIndicator('totalAmount')}
+                  </th>
+                  <th className="p-4 text-right select-none">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {orders.length === 0 ? (
+                {sortedOrders.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-12 text-center text-slate-400">
                       No se encontraron pedidos registrados.
                     </td>
                   </tr>
                 ) : (
-                  orders.map(order => (
+                  sortedOrders.map(order => (
                     <tr key={order.id} className="hover:bg-slate-50/40 transition-colors">
                       {/* Order Number */}
                       <td className="p-4 font-bold text-slate-800">

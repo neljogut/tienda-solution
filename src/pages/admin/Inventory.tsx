@@ -7,6 +7,7 @@ import type { Filament, Supply, InventoryMovementType } from '../../types/invent
 import { getFilamentPriceUsdKg, hasCustomFilamentPrice } from '../../types/inventory';
 import type { PricingSettings3D } from '../../types/settings';
 import { default3D } from '../../constants/defaults';
+import { recalculateAllProductsInFirestore } from '../../services/pricingService';
 import { 
   Plus, Edit, Trash2, Droplet, Package, AlertTriangle, 
   Search, Image, X, Settings, Loader2
@@ -114,6 +115,10 @@ export const Inventory: React.FC = () => {
           userId
         };
         await addDoc(collection(db, 'inventory_movements'), movement);
+        if (type === 'filament') {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await recalculateAllProductsInFirestore();
+        }
       } catch (err) {
         console.error('Error deleting inventory item:', err);
       }
@@ -212,6 +217,8 @@ export const Inventory: React.FC = () => {
       await Promise.all(
         withCustom.map(f => updateDoc(doc(db, 'inventory', f.id), { priceUsdKg: 0 }))
       );
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await recalculateAllProductsInFirestore();
     } catch (err) {
       console.error('Error resetting filament prices:', err);
       alert('No se pudieron actualizar los precios.');
@@ -879,6 +886,10 @@ const InventoryModal = ({
           userId
         };
         await addDoc(collection(db, 'inventory_movements'), movement);
+      }
+      if (type === 'filaments') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await recalculateAllProductsInFirestore();
       }
       onClose();
     } catch (err) {

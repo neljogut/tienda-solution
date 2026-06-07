@@ -135,11 +135,15 @@ export const generateClientPDF = (order: Order, business: BusinessSettings) => {
   
   order.items.forEach((item) => {
     y += 7;
-    doc.text(item.name, 17, y);
+    const splitName = doc.splitTextToSize(item.name, 70);
+    doc.text(splitName, 17, y);
     doc.text(item.type === '3d' ? 'Impresión 3D' : 'Reventa', 90, y);
     doc.text(item.quantity.toString(), 115, y, { align: 'right' });
     doc.text(formatCurrency(item.unitPrice), 150, y, { align: 'right' });
     doc.text(formatCurrency(item.unitPrice * item.quantity), 193, y, { align: 'right' });
+    if (splitName.length > 1) {
+      y += (splitName.length - 1) * 4;
+    }
   });
 
   y += 5;
@@ -290,7 +294,8 @@ export const generateInternalPDF = (order: Order, business: BusinessSettings) =>
     
     // Check if manual price
     const labelName = item.isManualPrice ? `${item.name} (Manual)` : item.name;
-    doc.text(labelName, 17, y);
+    const splitName = doc.splitTextToSize(labelName, 50);
+    doc.text(splitName, 17, y);
     doc.text(item.type === '3d' ? '3D' : 'Reventa', 70, y);
     doc.text(item.quantity.toString(), 92, y, { align: 'right' });
     doc.text(formatCurrency(item.unitCost), 117, y, { align: 'right' });
@@ -305,6 +310,9 @@ export const generateInternalPDF = (order: Order, business: BusinessSettings) =>
     
     setDarkText();
     doc.setFont('helvetica', 'normal');
+    if (splitName.length > 1) {
+      y += (splitName.length - 1) * 4;
+    }
   });
 
   y += 5;

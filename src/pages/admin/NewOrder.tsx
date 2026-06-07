@@ -112,7 +112,13 @@ export const NewOrder: React.FC = () => {
   }, [selectedClientId, clients]);
 
   // Compute unit price for a product based on current selected client and cart quantity
-  const calculateItemPrice = (product: Product, quantity: number, client: Client | null, total3DWeight = 0, allAreKeychains = false) => {
+  const calculateItemPrice = (
+    product: Product,
+    quantity: number,
+    client: Client | null,
+    total3DWeightNormal = 0,
+    total3DWeightKeychain = 0
+  ) => {
     // 0. If product has price tiers, it ignores wholesale client / threshold discounts and uses tier price
     if (product.priceTiers && product.priceTiers.length > 0) {
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
@@ -120,11 +126,17 @@ export const NewOrder: React.FC = () => {
     }
 
     const isClientWholesale = client?.isWholesale ?? false;
-    const threshold = allAreKeychains
-      ? (pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600)
-      : (pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000);
-    const meetsThreshold = product.type === '3d' && total3DWeight >= threshold;
-    const isWholesale = isClientWholesale || meetsThreshold;
+    let isWholesale = isClientWholesale;
+
+    if (product.type === '3d') {
+      const isKeychain = !!(product as any).isKeychain;
+      const threshold = isKeychain
+        ? (pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600)
+        : (pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000);
+      const totalWeight = isKeychain ? total3DWeightKeychain : total3DWeightNormal;
+      const meetsThreshold = totalWeight >= threshold;
+      isWholesale = isClientWholesale || meetsThreshold;
+    }
     
     // 1. If wholesale client or meets weight threshold, use product calculated wholesale price
     if (isWholesale) {
@@ -149,32 +161,52 @@ export const NewOrder: React.FC = () => {
   // Recalculate cart item prices whenever the client or items change
   const recalculateCart = (items: any[], client: Client | null) => {
     // 1. Calculate total weight of 3D products in the items list
-    let total3DWeight = 0;
-    let has3D = false;
-    let allAreKeychains = true;
+    let total3DWeightNormal = 0;
+    let total3DWeightKeychain = 0;
     
     items.forEach(item => {
       const product = products.find(p => p.id === item.productId);
       if (product && product.type === '3d') {
-        has3D = true;
-        total3DWeight += (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
-        if (product.category !== 'Llaveros') {
-          allAreKeychains = false;
+        const hasTiers = product.priceTiers && product.priceTiers.length > 0;
+        if (hasTiers) return; // Price tiers ignore wholesale thresholds
+
+        const weight = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
+        if ((product as any).isKeychain) {
+          total3DWeightKeychain += weight;
+        } else {
+          total3DWeightNormal += weight;
         }
       }
     });
-    if (!has3D) allAreKeychains = false;
 
-    const threshold = allAreKeychains
-      ? (pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600)
-      : (pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000);
+    const thresholdNormal = pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000;
+    const thresholdKeychain = pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600;
 
     return items.map(item => {
       const product = products.find(p => p.id === item.productId);
       if (!product) return item;
-      const unitPrice = calculateItemPrice(product, (item.quantity as any) === '' ? 1 : Number(item.quantity), client, total3DWeight, allAreKeychains);
+      const unitPrice = calculateItemPrice(
+        product, 
+        (item.quantity as any) === '' ? 1 : Number(item.quantity), 
+        client, 
+        total3DWeightNormal,
+        total3DWeightKeychain
+      );
       const hasTiers = product.priceTiers && product.priceTiers.length > 0;
-      const isWholesaleApplied = !hasTiers && ((client?.isWholesale ?? false) || (product.type === '3d' && total3DWeight >= threshold));
+      
+      let isWholesaleApplied = false;
+      if (!hasTiers) {
+        if (client?.isWholesale) {
+          isWholesaleApplied = true;
+        } else if (product.type === '3d') {
+          if ((product as any).isKeychain) {
+            isWholesaleApplied = total3DWeightKeychain >= thresholdKeychain;
+          } else {
+            isWholesaleApplied = total3DWeightNormal >= thresholdNormal;
+          }
+        }
+      }
+
       return {
         ...item,
         unitPrice,

@@ -3,9 +3,13 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CartDrawer } from './CartDrawer';
+import { useCartStore } from '../store/cartStore';
+import { ShoppingCart } from 'lucide-react';
 
 export const Layout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { getTotalItems, openDrawer, isDrawerOpen } = useCartStore();
+  const totalItems = getTotalItems();
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -33,6 +37,19 @@ export const Layout: React.FC = () => {
         </main>
       </div>
       <CartDrawer />
+
+      {/* Floating cart button for mobile and quick desktop access */}
+      {!isDrawerOpen && totalItems > 0 && (
+        <button
+          onClick={openDrawer}
+          className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-4 rounded-full shadow-2xl transition-transform transform hover:scale-110 z-40 flex items-center justify-center"
+        >
+          <ShoppingCart size={24} />
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] rounded-full flex items-center justify-center shadow-md animate-pulse">
+            {totalItems}
+          </span>
+        </button>
+      )}
     </div>
   );
 };

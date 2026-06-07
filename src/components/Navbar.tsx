@@ -25,20 +25,18 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
       </div>
       
       <div className="flex items-center gap-2">
-        {/* Cart for clients */}
-        {(userData?.role === 'client' || !userData) && (
-          <button 
-            onClick={toggleDrawer} 
-            className="relative p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          >
-            <ShoppingCart size={20} />
-            {totalItems > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
-                {totalItems}
-              </span>
-            )}
-          </button>
-        )}
+        {/* Cart for clients and testing owners */}
+        <button 
+          onClick={toggleDrawer} 
+          className="relative p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        >
+          <ShoppingCart size={20} />
+          {totalItems > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
+              {totalItems}
+            </span>
+          )}
+        </button>
 
         {/* Notifications placeholder */}
         {userData && (

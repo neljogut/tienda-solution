@@ -109,7 +109,7 @@ export function calculate3DRetailPrice(
   const subtotal = filamentCost + electricityCost + maintenanceCost;
   const errorMargin = subtotal * (settings.errorMarginPercent / 100);
 
-  const isKeychain = product.category === 'Llaveros';
+  const isKeychain = !!product.isKeychain;
   const multiplier = isKeychain ? settings.multiplierRetailKeychain : settings.multiplierRetailNormal;
   const rawRetail = (subtotal + errorMargin) * multiplier + suppliesCost;
   return roundPriceUp10(rawRetail);
@@ -123,7 +123,7 @@ export function calculate3DWholesalePrice(
   inventoryMap?: Map<string, InventoryItem>
 ): number {
   const retailPrice = calculate3DRetailPrice(product, settings, exchangeRate, inventoryMap);
-  const isKeychain = product.category === 'Llaveros';
+  const isKeychain = !!product.isKeychain;
   const discountPercent = isKeychain
     ? settings.wholesaleDiscountPercentKeychain
     : settings.wholesaleDiscountPercentNormal;
@@ -239,7 +239,7 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
         cost = calculate3DCost(prod3d, settings3d, exchangeRate, inventoryMap);
         retail = calculate3DRetailPrice(prod3d, settings3d, exchangeRate, inventoryMap);
         if (prod3d.useManualPrice && prod3d.manualRetailPrice) {
-          const discountPercent = (prod3d.category === 'Llaveros')
+          const discountPercent = prod3d.isKeychain
             ? settings3d.wholesaleDiscountPercentKeychain
             : settings3d.wholesaleDiscountPercentNormal;
           wholesale = roundPriceUp10(prod3d.manualRetailPrice * (1 - discountPercent / 100));

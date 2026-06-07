@@ -46,6 +46,26 @@ function formatStockRange(prev: number, final: number, unit: 'g' | 'u.'): string
   return `${formatAmount(prev, unit)} → ${formatAmount(final, unit)}`;
 }
 
+function groupLinesByItem(lines: InventoryMovementLine[]): InventoryMovementLine[] {
+  const grouped: Record<string, InventoryMovementLine> = {};
+  const keys: string[] = [];
+
+  lines.forEach((line) => {
+    const key = `${line.itemType}-${line.itemId}`;
+    if (!grouped[key]) {
+      keys.push(key);
+      grouped[key] = { ...line };
+    } else {
+      grouped[key].modifiedQuantity += line.modifiedQuantity;
+      // We keep the first occurrence's previousQuantity
+      // and update the finalQuantity to the last one's
+      grouped[key].finalQuantity = line.finalQuantity;
+    }
+  });
+
+  return keys.map((k) => grouped[k]);
+}
+
 export const InventoryMovements: React.FC = () => {
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,15 +214,20 @@ export const InventoryMovements: React.FC = () => {
   };
 
   const getLines = (m: InventoryMovement): InventoryMovementLine[] => {
-    if (isGroupedMovement(m)) return m.lines!;
-    return [{
-      itemId: m.itemId!,
-      itemType: m.itemType!,
-      lineType: m.movementType,
-      modifiedQuantity: m.modifiedQuantity ?? 0,
-      previousQuantity: m.previousQuantity ?? 0,
-      finalQuantity: m.finalQuantity ?? 0,
-    }];
+    let rawLines: InventoryMovementLine[] = [];
+    if (isGroupedMovement(m)) {
+      rawLines = m.lines!;
+    } else {
+      rawLines = [{
+        itemId: m.itemId!,
+        itemType: m.itemType!,
+        lineType: m.movementType,
+        modifiedQuantity: m.modifiedQuantity ?? 0,
+        previousQuantity: m.previousQuantity ?? 0,
+        finalQuantity: m.finalQuantity ?? 0,
+      }];
+    }
+    return groupLinesByItem(rawLines);
   };
 
   const getMovementSummary = (m: InventoryMovement): string => {

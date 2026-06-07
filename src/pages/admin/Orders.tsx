@@ -501,9 +501,10 @@ export const Orders: React.FC = () => {
                         <div>
                           {getPaymentBadge(order.paymentStatus)}
                           {order.paymentStatus === 'partial' && (
-                            <p className="text-[10px] text-slate-400 mt-0.5">
-                              ${order.paidAmount.toLocaleString('es-AR')} abonado
-                            </p>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              <p>${order.paidAmount.toLocaleString('es-AR')} abonado</p>
+                              <p className="font-semibold text-amber-700">Resta: ${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</p>
+                            </div>
                           )}
                         </div>
                       </td>

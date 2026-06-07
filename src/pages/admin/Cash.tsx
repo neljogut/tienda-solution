@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import type { CashSession, CashMovement, PaymentMethod } from '../../types/cash';
 import { useAuth } from '../../context/AuthContext';
 import { Wallet, LogIn, LogOut, ArrowUpRight, ArrowDownRight, X, PlusCircle, Loader2, CheckCircle } from 'lucide-react';
+import { NumericInput } from '../../components/NumericInput';
 
 export const Cash: React.FC = () => {
   const { userData } = useAuth();
@@ -200,10 +201,11 @@ export const Cash: React.FC = () => {
           <form onSubmit={openCash} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Monto Inicial en Efectivo ($)</label>
-              <input 
-                type="number" required min="0"
+              <NumericInput 
+                required
                 className="w-full border border-slate-300 rounded-lg p-3 text-lg font-bold focus:ring-2 focus:ring-blue-500"
-                value={initialAmount ?? ''} onChange={e => setInitialAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
+                value={initialAmount} 
+                onChange={val => setInitialAmount(val)}
               />
             </div>
             <button type="submit" disabled={sessionSaving} className="w-full btn-primary py-3 flex justify-center items-center gap-2 text-lg">
@@ -291,10 +293,11 @@ export const Cash: React.FC = () => {
               <form onSubmit={closeCash} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Efectivo Real en Caja ($)</label>
-                  <input 
-                    type="number" required min="0"
+                  <NumericInput 
+                    required
                     className="w-full border border-slate-300 rounded-lg p-2.5 font-bold text-lg focus:ring-2 focus:ring-red-500"
-                    value={declaredAmount ?? ''} onChange={e => setDeclaredAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
+                    value={declaredAmount} 
+                    onChange={val => setDeclaredAmount(val)}
                   />
                 </div>
                 <div>
@@ -357,13 +360,11 @@ export const Cash: React.FC = () => {
 
               <div>
                 <label className="input-label">Monto ($) <span className="text-red-500">*</span></label>
-                <input 
-                  type="number" 
-                  min="0.01" 
-                  step="0.01"
+                <NumericInput 
+                  allowDecimals
                   required
-                  value={manualAmount ?? ''} 
-                  onChange={e => setManualAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
+                  value={manualAmount} 
+                  onChange={val => setManualAmount(val)}
                   className="input font-bold text-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />

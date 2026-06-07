@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import type { Product } from '../../types/product';
 import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
+import { migrateClient, getClientLabel } from '../../types/client';
 import type { ExchangeRateData, DepositSettings } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
@@ -44,7 +45,7 @@ export const NewOrder: React.FC = () => {
 
     // 2. Live clients listener
     const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
-      setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+      setClients(snap.docs.map(d => migrateClient({ id: d.id, ...d.data() }) as Client));
     });
 
     // 3. Live deposit settings listener
@@ -86,14 +87,14 @@ export const NewOrder: React.FC = () => {
 
   // Compute unit price for a product based on current selected client and cart quantity
   const calculateItemPrice = (product: Product, quantity: number, client: Client | null) => {
-    const clientType = client ? client.clientType : 'normal';
+    const isWholesale = client?.isWholesale ?? false;
     
     // 1. If wholesale client, use product calculated wholesale price
-    if (clientType === 'wholesale') {
+    if (isWholesale) {
       return product.calculatedWholesalePrice || (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice);
     }
     
-    // 2. Otherwise (normal/trusted), apply tier pricing if available
+    // 2. Otherwise (minorista / trusted), apply tier pricing if available
     const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
     return getTierPrice(quantity, basePrice, product.priceTiers);
   };
@@ -108,7 +109,7 @@ export const NewOrder: React.FC = () => {
         ...item,
         unitPrice,
         unitProfit: unitPrice - (product.calculatedCost || 0),
-        appliedWholesale: client?.clientType === 'wholesale' || !!(product.priceTiers && product.priceTiers.length > 0 && unitPrice < (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice))
+        appliedWholesale: (client?.isWholesale ?? false) || !!(product.priceTiers && product.priceTiers.length > 0 && unitPrice < (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice))
       };
     });
   };
@@ -148,7 +149,7 @@ export const NewOrder: React.FC = () => {
           type: product.type,
           quantity: 1,
           unitPrice: initialPrice,
-          appliedWholesale: activeClient?.clientType === 'wholesale',
+          appliedWholesale: activeClient?.isWholesale ?? false,
           unitCost: product.calculatedCost || 0,
           unitProfit: initialPrice - (product.calculatedCost || 0),
           imageUrl: product.mainImage,
@@ -188,7 +189,7 @@ export const NewOrder: React.FC = () => {
 
   // Deposit/Signal requirement calculations
   const requiredDepositPercent = depositSettings?.requiredDepositPercent || 30; // default 30%
-  const isTrustedClient = activeClient?.clientType === 'trusted';
+  const isTrustedClient = activeClient?.isTrusted ?? false;
   const bypassDeposit = isTrustedClient && (depositSettings?.trustedClientBypassDeposit ?? true);
   
   const minDepositRequired = bypassDeposit ? 0 : Math.ceil(totalAmount * (requiredDepositPercent / 100));
@@ -522,22 +523,28 @@ export const NewOrder: React.FC = () => {
                   <option value="">-- Seleccionar Cliente --</option>
                   {clients.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName} ({c.clientType === 'wholesale' ? 'Mayorista' : c.clientType === 'trusted' ? 'Confianza' : 'Minorista'})
+                      {c.firstName} {c.lastName} ({getClientLabel(c)})
                     </option>
                   ))}
                 </select>
                 
                 {activeClient && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
-                      activeClient.clientType === 'wholesale' 
-                        ? 'bg-purple-100 text-purple-700 border border-purple-200' 
-                        : activeClient.clientType === 'trusted' 
-                        ? 'bg-amber-100 text-amber-700 border border-amber-200' 
-                        : 'bg-blue-100 text-blue-700 border border-blue-200'
-                    }`}>
-                      {activeClient.clientType === 'wholesale' ? 'Tarifa Mayorista' : activeClient.clientType === 'trusted' ? 'Cliente Confianza' : 'Tarifa Minorista'}
-                    </span>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {activeClient.isWholesale && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+                        Tarifa Mayorista
+                      </span>
+                    )}
+                    {!activeClient.isWholesale && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200">
+                        Tarifa Minorista
+                      </span>
+                    )}
+                    {activeClient.isTrusted && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200">
+                        De Confianza
+                      </span>
+                    )}
                     {isTrustedClient && (
                       <span className="text-[10px] text-amber-600 flex items-center gap-0.5 font-semibold">
                         <Sparkles size={11} /> Seña no requerida

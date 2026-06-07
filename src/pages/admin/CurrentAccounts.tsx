@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, onSnapshot, getDocs, updateDoc, doc, addDoc, writeBatch, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Client } from '../../types/client';
+import { migrateClient } from '../../types/client';
 import type { Order } from '../../types/order';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useAuth } from '../../context/AuthContext';
 import { CreditCard, Search, DollarSign, Receipt, ChevronDown, ChevronUp, X, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { NumericInput } from '../../components/NumericInput';
 
 export const CurrentAccounts: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -32,7 +34,7 @@ export const CurrentAccounts: React.FC = () => {
     // 1. Listen to clients with debt
     const qClients = query(collection(db, 'clients'), orderBy('lastName', 'asc'));
     const unsubClients = onSnapshot(qClients, (snap) => {
-      setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+      setClients(snap.docs.map(d => migrateClient({ id: d.id, ...d.data() }) as Client));
       setLoading(false);
     });
 
@@ -258,13 +260,23 @@ export const CurrentAccounts: React.FC = () => {
                       </h3>
                       {client.phone && <p className="text-xs text-slate-400 mt-0.5">{client.phone}</p>}
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      client.clientType === 'wholesale' 
-                        ? 'bg-purple-50 text-purple-600 border border-purple-100' 
-                        : 'bg-amber-50 text-amber-600 border border-amber-100'
-                    }`}>
-                      {client.clientType === 'wholesale' ? 'Mayorista' : 'Confianza'}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {client.isWholesale && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-100">
+                          Mayorista
+                        </span>
+                      )}
+                      {client.isTrusted && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
+                          Confianza
+                        </span>
+                      )}
+                      {!client.isWholesale && !client.isTrusted && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                          Minorista
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="mb-4">
@@ -339,14 +351,11 @@ export const CurrentAccounts: React.FC = () => {
 
               <div>
                 <label className="input-label">Monto a Abonar ($) <span className="text-red-500">*</span></label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max={selectedClient.totalOwed}
-                  step="0.01"
+                <NumericInput 
+                  allowDecimals
                   required
-                  value={paymentAmount ?? ''} 
-                  onChange={e => setPaymentAmount(e.target.value === '' ? '' as any : Number(e.target.value))}
+                  value={paymentAmount} 
+                  onChange={val => setPaymentAmount(val)}
                   className="input font-bold text-lg text-slate-800 focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />

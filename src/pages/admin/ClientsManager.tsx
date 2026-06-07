@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import type { Client, ClientType } from '../../types/client';
+import { migrateClient, getClientLabel } from '../../types/client';
+import type { Client } from '../../types/client';
 import {
   Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin,
   Crown, Shield, Star, X, ChevronUp, Eye, UserPlus
@@ -9,13 +10,7 @@ import {
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
-const CLIENT_TYPE_CONFIG: Record<ClientType, { label: string; badge: string; icon: React.ReactNode }> = {
-  normal:    { label: 'Normal',    badge: 'badge badge-blue',   icon: <Star size={12} /> },
-  wholesale: { label: 'Mayorista', badge: 'badge badge-purple', icon: <Crown size={12} /> },
-  trusted:   { label: 'Confianza', badge: 'badge badge-yellow', icon: <Shield size={12} /> },
-};
-
-const emptyForm = (): Omit<Client, 'id' | 'createdAt' | 'totalPurchased' | 'totalOwed'> => ({
+const emptyForm = () => ({
   firstName: '',
   lastName: '',
   phone: '',
@@ -25,16 +20,34 @@ const emptyForm = (): Omit<Client, 'id' | 'createdAt' | 'totalPurchased' | 'tota
   province: '',
   postalCode: '',
   cuit: '',
-  clientType: 'normal',
+  isWholesale: false,
+  isTrusted: false,
   observations: '',
 });
+
+function getClientBadges(client: Pick<Client, 'isWholesale' | 'isTrusted'>) {
+  const badges: { label: string; className: string; icon: React.ReactNode }[] = [];
+
+  if (client.isWholesale) {
+    badges.push({ label: 'Mayorista', className: 'badge badge-purple', icon: <Crown size={12} /> });
+  }
+  if (client.isTrusted) {
+    badges.push({ label: 'Confianza', className: 'badge badge-yellow', icon: <Shield size={12} /> });
+  }
+  if (badges.length === 0) {
+    badges.push({ label: 'Minorista', className: 'badge badge-blue', icon: <Star size={12} /> });
+  }
+
+  return badges;
+}
 
 /* ─────────────────────────── component ─────────────────────────── */
 
 export const ClientsManager: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<ClientType | 'all'>('all');
+  const [filterWholesale, setFilterWholesale] = useState<boolean | null>(null);
+  const [filterTrusted, setFilterTrusted] = useState<boolean | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Modal state
@@ -52,7 +65,8 @@ export const ClientsManager: React.FC = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Client[] = [];
       snapshot.forEach((d) => {
-        list.push({ id: d.id, ...d.data() } as Client);
+        const migrated = migrateClient({ id: d.id, ...d.data() });
+        list.push(migrated as Client);
       });
       setClients(list);
     });
@@ -62,8 +76,11 @@ export const ClientsManager: React.FC = () => {
   /* ── filtered list ── */
   const filtered = useMemo(() => {
     let result = clients;
-    if (filterType !== 'all') {
-      result = result.filter((c) => c.clientType === filterType);
+    if (filterWholesale !== null) {
+      result = result.filter((c) => c.isWholesale === filterWholesale);
+    }
+    if (filterTrusted !== null) {
+      result = result.filter((c) => c.isTrusted === filterTrusted);
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -77,7 +94,7 @@ export const ClientsManager: React.FC = () => {
       );
     }
     return result;
-  }, [clients, filterType, searchTerm]);
+  }, [clients, filterWholesale, filterTrusted, searchTerm]);
 
   /* ── modal helpers ── */
   const openAdd = () => {
@@ -98,7 +115,8 @@ export const ClientsManager: React.FC = () => {
       province: client.province || '',
       postalCode: client.postalCode || '',
       cuit: client.cuit || '',
-      clientType: client.clientType,
+      isWholesale: client.isWholesale ?? false,
+      isTrusted: client.isTrusted ?? false,
       observations: client.observations || '',
     });
     setModalOpen(true);
@@ -129,7 +147,8 @@ export const ClientsManager: React.FC = () => {
         province: form.province?.trim() || '',
         postalCode: form.postalCode?.trim() || '',
         cuit: form.cuit?.trim() || '',
-        clientType: form.clientType,
+        isWholesale: form.isWholesale,
+        isTrusted: form.isTrusted,
         observations: form.observations?.trim() || '',
       };
 
@@ -163,6 +182,19 @@ export const ClientsManager: React.FC = () => {
     }
   };
 
+  /* ── active filter label ── */
+  const activeFilterLabels: string[] = [];
+  if (filterWholesale === true) activeFilterLabels.push('Mayoristas');
+  if (filterWholesale === false) activeFilterLabels.push('Minoristas');
+  if (filterTrusted === true) activeFilterLabels.push('De Confianza');
+  if (filterTrusted === false) activeFilterLabels.push('Sin Confianza');
+
+  const clearFilters = () => {
+    setFilterWholesale(null);
+    setFilterTrusted(null);
+    setSearchTerm('');
+  };
+
   /* ── render ── */
   return (
     <div className="space-y-6">
@@ -174,7 +206,7 @@ export const ClientsManager: React.FC = () => {
             Gestión de Clientes
           </h1>
           <p className="page-subtitle">
-            Administra tu cartera de clientes, datos de contacto y tipo de cliente.
+            Administra tu cartera de clientes, datos de contacto y clasificación.
           </p>
         </div>
         <button onClick={openAdd} className="btn-primary flex items-center gap-2">
@@ -184,31 +216,63 @@ export const ClientsManager: React.FC = () => {
       </div>
 
       {/* ─── Search & Filter Bar ─── */}
-      <div className="card p-4 flex flex-col sm:flex-row gap-3 items-center">
-        <div className="relative flex-1 w-full">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, teléfono, email o CUIT..."
-            className="input pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="card p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <div className="relative flex-1 w-full">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, teléfono, email o CUIT..."
+              className="input pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
-          {(['all', 'normal', 'wholesale', 'trusted'] as const).map((t) => (
+
+        {/* Filter toggles */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Filtrar:</span>
+
+          {/* Wholesale filter */}
+          <button
+            onClick={() => setFilterWholesale(filterWholesale === null ? true : filterWholesale === true ? false : null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+              filterWholesale === true
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
+                : filterWholesale === false
+                ? 'bg-purple-100 text-purple-700 ring-1 ring-purple-300'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Crown size={12} />
+            {filterWholesale === true ? '✓ Mayoristas' : filterWholesale === false ? '✗ Solo Minoristas' : 'Mayorista'}
+          </button>
+
+          {/* Trusted filter */}
+          <button
+            onClick={() => setFilterTrusted(filterTrusted === null ? true : filterTrusted === true ? false : null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+              filterTrusted === true
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
+                : filterTrusted === false
+                ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Shield size={12} />
+            {filterTrusted === true ? '✓ Confianza' : filterTrusted === false ? '✗ Sin Confianza' : 'Confianza'}
+          </button>
+
+          {(filterWholesale !== null || filterTrusted !== null) && (
             <button
-              key={t}
-              onClick={() => setFilterType(t)}
-              className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                filterType === t
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+              onClick={clearFilters}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors flex items-center gap-1"
             >
-              {t === 'all' ? 'Todos' : CLIENT_TYPE_CONFIG[t].label}
+              <X size={12} />
+              Limpiar
             </button>
-          ))}
+          )}
         </div>
       </div>
 
@@ -217,7 +281,7 @@ export const ClientsManager: React.FC = () => {
         <Users size={16} />
         <span>
           {filtered.length} {filtered.length === 1 ? 'cliente' : 'clientes'}
-          {filterType !== 'all' && ` (${CLIENT_TYPE_CONFIG[filterType].label})`}
+          {activeFilterLabels.length > 0 && ` (${activeFilterLabels.join(', ')})`}
           {searchTerm && ` — búsqueda: "${searchTerm}"`}
         </span>
       </div>
@@ -229,7 +293,7 @@ export const ClientsManager: React.FC = () => {
             <thead>
               <tr className="table-header">
                 <th>Cliente</th>
-                <th>Tipo</th>
+                <th>Clasificación</th>
                 <th>Teléfono</th>
                 <th>Email</th>
                 <th>Ciudad</th>
@@ -245,11 +309,11 @@ export const ClientsManager: React.FC = () => {
                         <UserPlus size={28} className="text-slate-300" />
                       </div>
                       <p className="font-medium text-slate-500">
-                        {searchTerm || filterType !== 'all'
+                        {searchTerm || filterWholesale !== null || filterTrusted !== null
                           ? 'No se encontraron clientes con esos filtros.'
                           : 'Aún no hay clientes registrados.'}
                       </p>
-                      {!searchTerm && filterType === 'all' && (
+                      {!searchTerm && filterWholesale === null && filterTrusted === null && (
                         <button onClick={openAdd} className="btn-primary text-sm flex items-center gap-2 mt-1">
                           <Plus size={16} /> Agregar primer cliente
                         </button>
@@ -259,7 +323,7 @@ export const ClientsManager: React.FC = () => {
                 </tr>
               ) : (
                 filtered.map((client) => {
-                  const cfg = CLIENT_TYPE_CONFIG[client.clientType];
+                  const badges = getClientBadges(client);
                   const isExpanded = expandedId === client.id;
                   return (
                     <React.Fragment key={client.id}>
@@ -281,10 +345,14 @@ export const ClientsManager: React.FC = () => {
                           </div>
                         </td>
                         <td>
-                          <span className={cfg.badge}>
-                            {cfg.icon}
-                            {cfg.label}
-                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {badges.map((b, i) => (
+                              <span key={i} className={b.className}>
+                                {b.icon}
+                                {b.label}
+                              </span>
+                            ))}
+                          </div>
                         </td>
                         <td>
                           {client.phone ? (
@@ -418,10 +486,11 @@ export const ClientsManager: React.FC = () => {
                                 </h4>
                                 <div className="space-y-2 text-sm">
                                   <p>
-                                    <span className="text-slate-400">Tipo:</span>{' '}
-                                    <span className={cfg.badge}>
-                                      {cfg.icon}
-                                      {cfg.label}
+                                    <span className="text-slate-400">Clasificación:</span>{' '}
+                                    <span className="flex flex-wrap gap-1 mt-1">
+                                      {badges.map((b, i) => (
+                                        <span key={i} className={b.className}>{b.icon}{b.label}</span>
+                                      ))}
                                     </span>
                                   </p>
                                   <p>
@@ -596,31 +665,81 @@ export const ClientsManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* CUIT + Client Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="input-label">CUIT</label>
-                  <input
-                    name="cuit"
-                    className="input"
-                    placeholder="Ej: 20-12345678-9"
-                    value={form.cuit}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label className="input-label">Tipo de Cliente</label>
-                  <select
-                    name="clientType"
-                    className="input"
-                    value={form.clientType}
-                    onChange={handleChange}
+              {/* CUIT */}
+              <div>
+                <label className="input-label">CUIT</label>
+                <input
+                  name="cuit"
+                  className="input"
+                  placeholder="Ej: 20-12345678-9"
+                  value={form.cuit}
+                  onChange={handleChange}
+                />
+              </div>
+
+              {/* ── Classification toggles ── */}
+              <div className="space-y-3">
+                <label className="input-label">Clasificación del Cliente</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Wholesale toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, isWholesale: !form.isWholesale })}
+                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      form.isWholesale
+                        ? 'border-purple-500 bg-purple-50 shadow-md shadow-purple-500/10'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
                   >
-                    <option value="normal">Normal</option>
-                    <option value="wholesale">Mayorista</option>
-                    <option value="trusted">Confianza</option>
-                  </select>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                      form.isWholesale ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      <Crown size={20} />
+                    </div>
+                    <div className="text-left">
+                      <p className={`font-semibold text-sm ${form.isWholesale ? 'text-purple-700' : 'text-slate-700'}`}>
+                        Mayorista
+                      </p>
+                      <p className="text-xs text-slate-400">Accede a precios mayoristas</p>
+                    </div>
+                    <div className={`ml-auto w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      form.isWholesale ? 'bg-purple-500 border-purple-500 text-white' : 'border-slate-300'
+                    }`}>
+                      {form.isWholesale && <span className="text-xs font-bold">✓</span>}
+                    </div>
+                  </button>
+
+                  {/* Trusted toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, isTrusted: !form.isTrusted })}
+                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      form.isTrusted
+                        ? 'border-amber-500 bg-amber-50 shadow-md shadow-amber-500/10'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                      form.isTrusted ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      <Shield size={20} />
+                    </div>
+                    <div className="text-left">
+                      <p className={`font-semibold text-sm ${form.isTrusted ? 'text-amber-700' : 'text-slate-700'}`}>
+                        De Confianza
+                      </p>
+                      <p className="text-xs text-slate-400">No requiere seña obligatoria</p>
+                    </div>
+                    <div className={`ml-auto w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      form.isTrusted ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-300'
+                    }`}>
+                      {form.isTrusted && <span className="text-xs font-bold">✓</span>}
+                    </div>
+                  </button>
                 </div>
+                <p className="text-xs text-slate-400 pl-1">
+                  Resultado: <span className="font-semibold text-slate-600">{getClientLabel(form)}</span>
+                </p>
               </div>
 
               {/* Observations */}

@@ -59,8 +59,8 @@ export const Catalog: React.FC = () => {
   }, [selectedCategory, canonicalCategories]);
 
   const categoryOptions = useMemo(
-    () => flattenCategoriesForSelect(categories),
-    [categories]
+    () => flattenCategoriesForSelect(canonicalCategories),
+    [canonicalCategories]
   );
 
   const filteredProducts = products.filter(p => {
@@ -91,7 +91,7 @@ export const Catalog: React.FC = () => {
       </div>
 
       {/* Filters Bar */}
-      <div className="card-glass p-4 sticky top-16 z-20">
+      <div className="card p-4 sticky top-0 z-20 bg-white shadow-sm border-b border-slate-100">
         <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
           {/* Search */}
           <div className="relative flex-1 w-full">

@@ -8,17 +8,33 @@ import { migrateClient, getClientLabel } from '../../types/client';
 import type { ExchangeRateData, DepositSettings } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getTierPrice } from '../../services/pricingService';
+import { getTierPrice, recalculateAllProductsInFirestore } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
 
 export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  
   const [searchTerm, setSearchTerm] = useState('');
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+
+  // Sort and filter clients alphabetically
+  const sortedAndFilteredClients = useMemo(() => {
+    const sorted = [...clients].sort((a, b) => {
+      const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
+      const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+      return nameA.localeCompare(nameB, 'es');
+    });
+    if (!clientSearchTerm.trim()) return sorted;
+    const term = clientSearchTerm.toLowerCase();
+    return sorted.filter(c => 
+      c.firstName.toLowerCase().includes(term) || 
+      c.lastName.toLowerCase().includes(term)
+    );
+  }, [clients, clientSearchTerm]);
+
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [paidAmount, setPaidAmount] = useState<number | ''>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
@@ -38,6 +54,9 @@ export const NewOrder: React.FC = () => {
 
   // Load products, clients, settings, active cash session in real-time
   useEffect(() => {
+    // Run an automatic recalculation to ensure manual-priced product wholesale values are accurate
+    recalculateAllProductsInFirestore().catch(err => console.error('Recalculation error:', err));
+
     // 1. Live products listener
     const unsubProducts = onSnapshot(collection(db, 'products'), (snap) => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
@@ -91,7 +110,17 @@ export const NewOrder: React.FC = () => {
     
     // 1. If wholesale client, use product calculated wholesale price
     if (isWholesale) {
-      return product.calculatedWholesalePrice || (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice);
+      if (product.calculatedWholesalePrice) {
+        // Safeguard: if for some reason the wholesale price in DB is higher than manual retail, apply a default 20% discount
+        if (product.useManualPrice && product.calculatedWholesalePrice > product.manualRetailPrice) {
+          return Math.ceil(product.manualRetailPrice * 0.8);
+        }
+        return product.calculatedWholesalePrice;
+      }
+      
+      // Dynamic fallback
+      const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
+      return Math.ceil(basePrice * 0.8); // 20% default wholesale fallback if not calculated in DB
     }
     
     // 2. Otherwise (minorista / trusted), apply tier pricing if available
@@ -509,11 +538,32 @@ export const NewOrder: React.FC = () => {
               </h3>
 
               {/* Client Selector */}
-              <div>
+              <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                   <User size={13} className="text-slate-400" />
                   Cliente Asignado
                 </label>
+                
+                {/* Search input for clients */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 text-slate-400" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente por nombre/apellido..."
+                    value={clientSearchTerm}
+                    onChange={(e) => setClientSearchTerm(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-slate-50/50 focus:ring-2 focus:ring-blue-500"
+                  />
+                  {clientSearchTerm && (
+                    <button
+                      onClick={() => setClientSearchTerm('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
                 <select 
                   required
                   value={selectedClientId} 
@@ -521,7 +571,7 @@ export const NewOrder: React.FC = () => {
                   className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="">-- Seleccionar Cliente --</option>
-                  {clients.map(c => (
+                  {sortedAndFilteredClients.map(c => (
                     <option key={c.id} value={c.id}>
                       {c.firstName} {c.lastName} ({getClientLabel(c)})
                     </option>

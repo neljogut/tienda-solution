@@ -167,16 +167,29 @@ export const ProductForm: React.FC = () => {
       const rateData = { currentUsdToArs: exchangeRate, lastUpdate: '', provider: '' };
       const cost = calculate3DCost(formData, settings3d, rateData, inventoryMap);
       const retail = calculate3DRetailPrice(formData, settings3d, rateData, inventoryMap);
-      const wholesale = calculate3DWholesalePrice(formData, settings3d, rateData, inventoryMap);
+      let wholesale = calculate3DWholesalePrice(formData, settings3d, rateData, inventoryMap);
+      
+      if (formData.useManualPrice && formData.manualRetailPrice) {
+        const discountPercent = formData.isKeychain
+          ? settings3d.wholesaleDiscountPercentKeychain
+          : settings3d.wholesaleDiscountPercentNormal;
+        wholesale = Math.ceil(formData.manualRetailPrice * (1 - discountPercent / 100));
+      }
+      
       setCalculated({ cost, retail, wholesale });
     } else if (formData.type === 'resale') {
       if (!settingsResale) return;
       const cost = formData.purchaseCost || 0;
       const retail = calculateResaleRetailPrice(cost, settingsResale);
-      const wholesale = calculateResaleWholesalePrice(cost, settingsResale);
+      let wholesale = calculateResaleWholesalePrice(cost, settingsResale);
+      
+      if (formData.useManualPrice && formData.manualRetailPrice) {
+        wholesale = Math.ceil(formData.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
+      }
+      
       setCalculated({ cost, retail, wholesale });
     }
-  }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, formData.filamentLines, formData.supplyIds, settings3d, settingsResale, exchangeRate, inventoryMap]);
+  }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, formData.filamentLines, formData.supplyIds, formData.useManualPrice, formData.manualRetailPrice, settings3d, settingsResale, exchangeRate, inventoryMap]);
 
   const handleImagesAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);

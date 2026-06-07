@@ -182,14 +182,14 @@ export const generateClientPDF = (order: Order, business: BusinessSettings) => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
 
-  // Observations block
+  // Observations block - place it safely below the summary box (which takes y to y + 30)
   if (order.observationsPublic) {
     doc.setFont('helvetica', 'bold');
-    doc.text('OBSERVACIONES:', 15, y + 6);
+    doc.text('OBSERVACIONES:', 15, y + 36);
     doc.setFont('helvetica', 'italic');
     setLightText();
     const splitObs = doc.splitTextToSize(order.observationsPublic, 95);
-    doc.text(splitObs, 15, y + 12);
+    doc.text(splitObs, 15, y + 42);
   }
 
   // Footer note

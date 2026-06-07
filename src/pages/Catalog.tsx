@@ -91,8 +91,8 @@ export const Catalog: React.FC = () => {
       </div>
 
       {/* Filters Bar */}
-      <div className="card p-4 sticky top-0 z-20 bg-white shadow-sm border-b border-slate-100">
-        <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+      <div className="card p-4 sticky top-0 z-10 bg-white shadow-md border-b border-slate-200">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
           {/* Search */}
           <div className="relative flex-1 w-full">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

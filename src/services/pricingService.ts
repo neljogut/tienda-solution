@@ -1,5 +1,5 @@
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../types/settings';
-import type { Product, Product3D, PriceTier, FilamentLine, SupplyLine } from '../types/product';
+import type { Product, Product3D, ProductResale, PriceTier, FilamentLine, SupplyLine } from '../types/product';
 import { getFilamentPriceUsdKg } from '../types/inventory';
 import { doc, getDoc, getDocs, collection, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -212,14 +212,27 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
       let wholesale = product.calculatedWholesalePrice || 0;
 
       if (product.type === '3d') {
-        cost = calculate3DCost(product as Product3D, settings3d, exchangeRate, inventoryMap);
-        retail = calculate3DRetailPrice(product as Product3D, settings3d, exchangeRate, inventoryMap);
-        wholesale = calculate3DWholesalePrice(product as Product3D, settings3d, exchangeRate, inventoryMap);
+        const prod3d = product as Product3D;
+        cost = calculate3DCost(prod3d, settings3d, exchangeRate, inventoryMap);
+        retail = calculate3DRetailPrice(prod3d, settings3d, exchangeRate, inventoryMap);
+        if (prod3d.useManualPrice && prod3d.manualRetailPrice) {
+          const discountPercent = prod3d.isKeychain
+            ? settings3d.wholesaleDiscountPercentKeychain
+            : settings3d.wholesaleDiscountPercentNormal;
+          wholesale = Math.ceil(prod3d.manualRetailPrice * (1 - discountPercent / 100));
+        } else {
+          wholesale = calculate3DWholesalePrice(prod3d, settings3d, exchangeRate, inventoryMap);
+        }
       } else if (product.type === 'resale') {
-        const purchaseCost = product.purchaseCost || 0;
+        const prodResale = product as ProductResale;
+        const purchaseCost = prodResale.purchaseCost || 0;
         cost = purchaseCost;
         retail = calculateResaleRetailPrice(purchaseCost, settingsResale);
-        wholesale = calculateResaleWholesalePrice(purchaseCost, settingsResale);
+        if (prodResale.useManualPrice && prodResale.manualRetailPrice) {
+          wholesale = Math.ceil(prodResale.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
+        } else {
+          wholesale = calculateResaleWholesalePrice(purchaseCost, settingsResale);
+        }
       }
 
       // Only update if there is an actual difference to save writes

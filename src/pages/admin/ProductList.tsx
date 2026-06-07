@@ -5,7 +5,7 @@ import type { Product } from '../../types/product';
 import type { Category } from '../../types/category';
 import { dedupeCategories, resolveCategoryId } from '../../utils/categories';
 import { useNavigate } from 'react-router-dom';
-import { Edit, Trash2, Plus, Power, PowerOff } from 'lucide-react';
+import { Edit, Trash2, Plus, Power, PowerOff, Search } from 'lucide-react';
 import { formatPrintTime } from '../../utils/printTime';
 
 function getCategoryLabel(categoryId: string, categories: Category[]): string {
@@ -19,6 +19,7 @@ function getCategoryLabel(categoryId: string, categories: Category[]): string {
 export const ProductList: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,11 +49,17 @@ export const ProductList: React.FC = () => {
     [categories]
   );
 
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) return products;
+    const term = searchTerm.toLowerCase();
+    return products.filter(p => p.name.toLowerCase().includes(term));
+  }, [products, searchTerm]);
+
   const productsByCategory = useMemo(() => {
     const groups = new Map<string, Product[]>();
     const orderMap = new Map(canonicalCategories.map((c) => [c.id, c.order ?? 0]));
 
-    for (const product of products) {
+    for (const product of filteredProducts) {
       const categoryId = resolveCategoryId(product.categoryId, idRemap) ?? 'sin_categoria';
       if (!groups.has(categoryId)) groups.set(categoryId, []);
       groups.get(categoryId)!.push(product);
@@ -80,7 +87,7 @@ export const ProductList: React.FC = () => {
           : getCategoryLabel(categoryId, canonicalCategories),
         products: items,
       }));
-  }, [products, canonicalCategories, idRemap]);
+  }, [filteredProducts, canonicalCategories, idRemap]);
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
     await updateDoc(doc(db, 'products', id), { isActive: !currentStatus });
@@ -106,6 +113,21 @@ export const ProductList: React.FC = () => {
           <Plus size={20} />
           Nuevo Producto
         </button>
+      </div>
+
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between gap-4 items-center">
+        <div className="relative w-full">
+          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+            <Search size={16} />
+          </span>
+          <input
+            type="text"
+            placeholder="Buscar producto por nombre..."
+            className="input pl-10 w-full text-xs"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="card overflow-hidden">

@@ -5,7 +5,7 @@ import type { Product } from '../../types/product';
 import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
 import { migrateClient, getClientLabel } from '../../types/client';
-import type { ExchangeRateData, DepositSettings } from '../../types/settings';
+import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, X } from 'lucide-react';
@@ -44,6 +44,7 @@ export const NewOrder: React.FC = () => {
 
   // Settings & Exchange Rate
   const [depositSettings, setDepositSettings] = useState<DepositSettings | null>(null);
+  const [pricing3dSettings, setPricing3dSettings] = useState<PricingSettings3D | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
   
   // Daily Cash active session
@@ -77,6 +78,11 @@ export const NewOrder: React.FC = () => {
       if (snap.exists()) setExchangeRate((snap.data() as ExchangeRateData).currentUsdToArs);
     });
 
+    // 4b. Live pricing3d settings listener
+    const unsubPricing3d = onSnapshot(doc(db, 'settings', 'pricing3d'), (snap) => {
+      if (snap.exists()) setPricing3dSettings(snap.data() as PricingSettings3D);
+    });
+
     // 5. Live active cash session listener
     const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
     const unsubSession = onSnapshot(qSession, (snap) => {
@@ -92,6 +98,7 @@ export const NewOrder: React.FC = () => {
       unsubClients();
       unsubDeposit();
       unsubRate();
+      unsubPricing3d();
       unsubSession();
     };
   }, []);
@@ -105,10 +112,15 @@ export const NewOrder: React.FC = () => {
   }, [selectedClientId, clients]);
 
   // Compute unit price for a product based on current selected client and cart quantity
-  const calculateItemPrice = (product: Product, quantity: number, client: Client | null) => {
-    const isWholesale = client?.isWholesale ?? false;
+  const calculateItemPrice = (product: Product, quantity: number, client: Client | null, total3DWeight = 0, allAreKeychains = false) => {
+    const isClientWholesale = client?.isWholesale ?? false;
+    const threshold = allAreKeychains
+      ? (pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600)
+      : (pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000);
+    const meetsThreshold = product.type === '3d' && total3DWeight >= threshold;
+    const isWholesale = isClientWholesale || meetsThreshold;
     
-    // 1. If wholesale client, use product calculated wholesale price
+    // 1. If wholesale client or meets weight threshold, use product calculated wholesale price
     if (isWholesale) {
       if (product.calculatedWholesalePrice) {
         // Safeguard: if for some reason the wholesale price in DB is higher than manual retail, apply a default 20% discount
@@ -130,15 +142,37 @@ export const NewOrder: React.FC = () => {
 
   // Recalculate cart item prices whenever the client or items change
   const recalculateCart = (items: any[], client: Client | null) => {
+    // 1. Calculate total weight of 3D products in the items list
+    let total3DWeight = 0;
+    let has3D = false;
+    let allAreKeychains = true;
+    
+    items.forEach(item => {
+      const product = products.find(p => p.id === item.productId);
+      if (product && product.type === '3d') {
+        has3D = true;
+        total3DWeight += (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
+        if (product.category !== 'Llaveros') {
+          allAreKeychains = false;
+        }
+      }
+    });
+    if (!has3D) allAreKeychains = false;
+
+    const threshold = allAreKeychains
+      ? (pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600)
+      : (pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000);
+
     return items.map(item => {
       const product = products.find(p => p.id === item.productId);
       if (!product) return item;
-      const unitPrice = calculateItemPrice(product, (item.quantity as any) === '' ? 1 : Number(item.quantity), client);
+      const unitPrice = calculateItemPrice(product, (item.quantity as any) === '' ? 1 : Number(item.quantity), client, total3DWeight, allAreKeychains);
+      const isWholesaleApplied = (client?.isWholesale ?? false) || (product.type === '3d' && total3DWeight >= threshold);
       return {
         ...item,
         unitPrice,
         unitProfit: unitPrice - (product.calculatedCost || 0),
-        appliedWholesale: (client?.isWholesale ?? false) || !!(product.priceTiers && product.priceTiers.length > 0 && unitPrice < (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice))
+        appliedWholesale: isWholesaleApplied || !!(product.priceTiers && product.priceTiers.length > 0 && unitPrice < (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice))
       };
     });
   };
@@ -148,7 +182,7 @@ export const NewOrder: React.FC = () => {
     if (cartItems.length > 0) {
       setCartItems(prev => recalculateCart(prev, activeClient));
     }
-  }, [selectedClientId, products]);
+  }, [selectedClientId, products, pricing3dSettings]);
 
   // Add item to cart
   const addToCart = (product: Product) => {

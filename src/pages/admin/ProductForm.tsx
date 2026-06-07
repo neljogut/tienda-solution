@@ -12,7 +12,8 @@ import {
   calculate3DRetailPrice,
   calculate3DWholesalePrice,
   calculateResaleRetailPrice,
-  calculateResaleWholesalePrice
+  calculateResaleWholesalePrice,
+  roundPriceUp10
 } from '../../services/pricingService';
 import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star } from 'lucide-react';
 import { getProductImages } from '../../utils/productImages';
@@ -173,7 +174,7 @@ export const ProductForm: React.FC = () => {
         const discountPercent = formData.isKeychain
           ? settings3d.wholesaleDiscountPercentKeychain
           : settings3d.wholesaleDiscountPercentNormal;
-        wholesale = Math.ceil(formData.manualRetailPrice * (1 - discountPercent / 100));
+        wholesale = roundPriceUp10(formData.manualRetailPrice * (1 - discountPercent / 100));
       }
       
       setCalculated({ cost, retail, wholesale });
@@ -184,7 +185,7 @@ export const ProductForm: React.FC = () => {
       let wholesale = calculateResaleWholesalePrice(cost, settingsResale);
       
       if (formData.useManualPrice && formData.manualRetailPrice) {
-        wholesale = Math.ceil(formData.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
+        wholesale = roundPriceUp10(formData.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
       }
       
       setCalculated({ cost, retail, wholesale });

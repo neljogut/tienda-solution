@@ -61,6 +61,11 @@ function filamentCostArs(
   return product.weightGrams * filamentPricePerGramArs(undefined, settings, exchangeRate, inventoryMap);
 }
 
+export function roundPriceUp10(value: number): number {
+  if (isNaN(value) || !isFinite(value) || value <= 0) return 0;
+  return Math.ceil(value / 10) * 10;
+}
+
 // Calculate cost for a 3D printed product (filamento, insumos, energía, mantenimiento)
 export function calculate3DCost(
   product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
@@ -78,36 +83,52 @@ export function calculate3DCost(
   const maintenanceCostPerHour = settings.estimatedSparesCostArs / settings.printerLifespanHours;
   const maintenanceCost = maintenanceCostPerHour * printTimeHours;
 
-  const subtotal = filamentCost + suppliesCost + electricityCost + maintenanceCost;
+  const subtotal = filamentCost + electricityCost + maintenanceCost;
   const errorMargin = subtotal * (settings.errorMarginPercent / 100);
 
-  return Math.ceil(subtotal + errorMargin);
+  return Math.ceil(subtotal + errorMargin + suppliesCost);
 }
 
 // Calculate retail price for a 3D product
 export function calculate3DRetailPrice(
-  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'isKeychain' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
+  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'category' | 'isKeychain' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
   settings: PricingSettings3D,
   exchangeRate: ExchangeRateData,
   inventoryMap?: Map<string, InventoryItem>
 ): number {
-  const cost = calculate3DCost(product, settings, exchangeRate, inventoryMap);
-  const multiplier = product.isKeychain ? settings.multiplierRetailKeychain : settings.multiplierRetailNormal;
-  return Math.ceil(cost * multiplier);
+  const filamentCost = filamentCostArs(product, settings, exchangeRate, inventoryMap);
+  const suppliesCost = suppliesCostArs(product.supplyIds, inventoryMap);
+
+  const printerWattsToKw = settings.printerWatts / 1000;
+  const printTimeHours = product.printTimeMinutes / 60;
+  const electricityCost = printerWattsToKw * printTimeHours * settings.kwhPriceArs;
+
+  const maintenanceCostPerHour = settings.estimatedSparesCostArs / settings.printerLifespanHours;
+  const maintenanceCost = maintenanceCostPerHour * printTimeHours;
+
+  const subtotal = filamentCost + electricityCost + maintenanceCost;
+  const errorMargin = subtotal * (settings.errorMarginPercent / 100);
+
+  const isKeychain = product.category === 'Llaveros';
+  const multiplier = isKeychain ? settings.multiplierRetailKeychain : settings.multiplierRetailNormal;
+  const rawRetail = (subtotal + errorMargin) * multiplier + suppliesCost;
+  return roundPriceUp10(rawRetail);
 }
 
 // Calculate wholesale price for a 3D product
 export function calculate3DWholesalePrice(
-  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'isKeychain' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
+  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'category' | 'isKeychain' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
   settings: PricingSettings3D,
   exchangeRate: ExchangeRateData,
   inventoryMap?: Map<string, InventoryItem>
 ): number {
   const retailPrice = calculate3DRetailPrice(product, settings, exchangeRate, inventoryMap);
-  const discountPercent = product.isKeychain
+  const isKeychain = product.category === 'Llaveros';
+  const discountPercent = isKeychain
     ? settings.wholesaleDiscountPercentKeychain
     : settings.wholesaleDiscountPercentNormal;
-  return Math.ceil(retailPrice * (1 - discountPercent / 100));
+  const rawWholesale = retailPrice * (1 - discountPercent / 100);
+  return roundPriceUp10(rawWholesale);
 }
 
 // Calculate resale product prices
@@ -115,7 +136,8 @@ export function calculateResaleRetailPrice(
   purchaseCost: number,
   settings: PricingSettingsResale
 ): number {
-  return Math.ceil(purchaseCost * (1 + settings.profitMarginPercent / 100));
+  const rawRetail = purchaseCost * (1 + settings.profitMarginPercent / 100);
+  return roundPriceUp10(rawRetail);
 }
 
 export function calculateResaleWholesalePrice(
@@ -124,7 +146,8 @@ export function calculateResaleWholesalePrice(
 ): number {
   if (!settings.enableWholesale) return 0;
   const retailPrice = calculateResaleRetailPrice(purchaseCost, settings);
-  return Math.ceil(retailPrice * (1 - settings.wholesaleDiscountPercent / 100));
+  const rawWholesale = retailPrice * (1 - settings.wholesaleDiscountPercent / 100);
+  return roundPriceUp10(rawWholesale);
 }
 
 // Get the effective price for a quantity considering tiers
@@ -216,10 +239,10 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
         cost = calculate3DCost(prod3d, settings3d, exchangeRate, inventoryMap);
         retail = calculate3DRetailPrice(prod3d, settings3d, exchangeRate, inventoryMap);
         if (prod3d.useManualPrice && prod3d.manualRetailPrice) {
-          const discountPercent = prod3d.isKeychain
+          const discountPercent = (prod3d.category === 'Llaveros')
             ? settings3d.wholesaleDiscountPercentKeychain
             : settings3d.wholesaleDiscountPercentNormal;
-          wholesale = Math.ceil(prod3d.manualRetailPrice * (1 - discountPercent / 100));
+          wholesale = roundPriceUp10(prod3d.manualRetailPrice * (1 - discountPercent / 100));
         } else {
           wholesale = calculate3DWholesalePrice(prod3d, settings3d, exchangeRate, inventoryMap);
         }
@@ -229,7 +252,7 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
         cost = purchaseCost;
         retail = calculateResaleRetailPrice(purchaseCost, settingsResale);
         if (prodResale.useManualPrice && prodResale.manualRetailPrice) {
-          wholesale = Math.ceil(prodResale.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
+          wholesale = roundPriceUp10(prodResale.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
         } else {
           wholesale = calculateResaleWholesalePrice(purchaseCost, settingsResale);
         }

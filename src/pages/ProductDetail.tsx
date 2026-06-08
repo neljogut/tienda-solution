@@ -18,7 +18,7 @@ export const ProductDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
   
-  const { addItem, openDrawer } = useCartStore();
+  const { addItem } = useCartStore();
   const { userData, hasPermission } = useAuth();
   const [quantity, setQuantity] = useState(1);
   
@@ -84,7 +84,6 @@ export const ProductDetail: React.FC = () => {
       quantity: quantity,
       maxStock: product.stock !== undefined ? product.stock : 999
     });
-    openDrawer();
   };
   
   const allImages = getProductImages(product);

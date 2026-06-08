@@ -253,7 +253,11 @@ export const Catalog: React.FC = () => {
                     if (!isCategoryVisible(cat)) return null;
                     
                     const isSelected = selectedCategory === cat.id;
-                    const count = products.filter(p => resolveCategoryId(p.categoryId, idRemap) === cat.id).length;
+                    const catTreeIds = getCategoryTreeIds(canonicalCategories, cat.id);
+                    const count = products.filter(p => {
+                      const resolved = resolveCategoryId(p.categoryId, idRemap);
+                      return resolved && catTreeIds.has(resolved);
+                    }).length;
                     const sales = categorySalesTotals[cat.id] || 0;
                     const hasKids = hasChildren(cat.id);
                     const isExpanded = expandedCategories.has(cat.id);

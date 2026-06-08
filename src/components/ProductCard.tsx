@@ -20,7 +20,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   getCost,
 }) => {
   const navigate = useNavigate();
-  const { addItem, openDrawer } = useCartStore();
+  const { addItem } = useCartStore();
   
   const priceToDisplay = getRetailPrice
     ? getRetailPrice(product)
@@ -65,7 +65,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       imageUrl: product.mainImage,
       maxStock: product.stock !== undefined ? product.stock : 999
     });
-    openDrawer();
   };
 
   return (

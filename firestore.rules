@@ -23,6 +23,20 @@ service cloud.firestore {
       allow write: if isAuth();
     }
 
+    // Reglas para Categorías
+    match /categories/{categoryId} {
+      // Cualquier persona (incluso invitados) puede leer las categorías
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // Reglas para Configuración (Settings)
+    match /settings/{settingId} {
+      // Cualquier persona (incluso invitados) puede leer las configuraciones de negocio y precios
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
     // Reglas para Pedidos
     match /orders/{orderId} {
       // Todos los usuarios logueados pueden interactuar con los pedidos (para simplificar ahora)

@@ -305,20 +305,6 @@ export const BusinessSettingsPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Social handle */}
-              <div>
-                <label className="input-label font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                  <Link size={12} className="text-slate-400" /> Redes Sociales (Instagram/Web)
-                </label>
-                <input 
-                  type="text" 
-                  className="input w-full mt-1.5"
-                  placeholder="Ej: @dualgi3d"
-                  value={formData.socialMedia || ''}
-                  onChange={e => setFormData({ ...formData, socialMedia: e.target.value })}
-                />
-              </div>
-
               {/* Description */}
               <div>
                 <label className="input-label font-bold text-slate-500 uppercase">Descripción de Cabecera</label>
@@ -328,6 +314,66 @@ export const BusinessSettingsPage: React.FC = () => {
                   placeholder="Ej: Impresión 3D y Modelado Digital"
                   value={formData.description || ''}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+
+              {/* Instagram */}
+              <div>
+                <label className="input-label font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span> Instagram (Usuario)
+                </label>
+                <input 
+                  type="text" 
+                  className="input w-full mt-1.5"
+                  placeholder="Ej: dualgi3d"
+                  value={formData.instagram || ''}
+                  onChange={e => setFormData({ ...formData, instagram: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* TikTok */}
+              <div>
+                <label className="input-label font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-900"></span> TikTok (Usuario)
+                </label>
+                <input 
+                  type="text" 
+                  className="input w-full mt-1.5"
+                  placeholder="Ej: dualgi3d"
+                  value={formData.tiktok || ''}
+                  onChange={e => setFormData({ ...formData, tiktok: e.target.value })}
+                />
+              </div>
+
+              {/* WhatsApp */}
+              <div>
+                <label className="input-label font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> WhatsApp (Número con código de país)
+                </label>
+                <input 
+                  type="text" 
+                  className="input w-full mt-1.5"
+                  placeholder="Ej: 5491112345678 (sin el + ni espacios)"
+                  value={formData.whatsapp || ''}
+                  onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Social handle (Web/Legacy fallback) */}
+              <div>
+                <label className="input-label font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <Link size={12} className="text-slate-400" /> Redes Sociales (General / Web)
+                </label>
+                <input 
+                  type="text" 
+                  className="input w-full mt-1.5"
+                  placeholder="Ej: @dualgi3d o enlace web"
+                  value={formData.socialMedia || ''}
+                  onChange={e => setFormData({ ...formData, socialMedia: e.target.value })}
                 />
               </div>
             </div>

@@ -44,4 +44,7 @@ export interface BusinessSettings {
   socialMedia: string;
   description: string;
   logoUrl?: string;
+  instagram?: string;
+  tiktok?: string;
+  whatsapp?: string;
 }

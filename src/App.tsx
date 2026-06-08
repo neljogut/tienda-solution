@@ -55,7 +55,7 @@ function App() {
       const data = snap.exists() ? snap.data() : null;
       
       // Update Title
-      document.title = data?.name ? `${data.name} Platform` : 'Dualgi 3D Platform';
+      document.title = data?.name ? `${data.name} · Impresión 3D y Regalos Personalizados` : 'Dualgi 3D · Impresión 3D y Regalos Personalizados';
       
       // Update Favicon
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;

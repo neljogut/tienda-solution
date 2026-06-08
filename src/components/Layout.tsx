@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CartDrawer } from './CartDrawer';
+import { Footer } from './Footer';
 import { useCartStore } from '../store/cartStore';
 import { ShoppingCart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ForcePasswordChange } from './ForcePasswordChange';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+import type { BusinessSettings } from '../types/settings';
 
 export const Layout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getTotalItems, openDrawer, isDrawerOpen } = useCartStore();
   const { userData } = useAuth();
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
   const totalItems = getTotalItems();
+  const location = useLocation();
+
+  const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/dashboard';
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        setBusinessSettings(snap.data() as BusinessSettings);
+      }
+    });
+    return unsub;
+  }, []);
 
   if (userData?.forcePasswordChange) {
     return <ForcePasswordChange />;
@@ -35,12 +52,13 @@ export const Layout: React.FC = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <Navbar toggleSidebar={() => setMobileMenuOpen(true)} />
+        <Navbar toggleSidebar={() => setMobileMenuOpen(true)} businessSettings={businessSettings} />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 flex flex-col justify-between">
+          <div className="mx-auto max-w-7xl w-full p-4 sm:p-6 lg:p-8 flex-1">
             <Outlet />
           </div>
+          {!isAdminRoute && <Footer settings={businessSettings} />}
         </main>
       </div>
       <CartDrawer />

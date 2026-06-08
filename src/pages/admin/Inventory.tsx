@@ -26,7 +26,7 @@ export const Inventory: React.FC = () => {
   // Filtros filamentos
   const [filamentFilterBrand, setFilamentFilterBrand] = useState('');
   const [filamentFilterMaterial, setFilamentFilterMaterial] = useState('');
-  const [filamentFilterColor, setFilamentFilterColor] = useState('');
+  const [filamentSearchTerm, setFilamentSearchTerm] = useState('');
 
   // Buscador insumos
   const [supplySearchTerm, setSupplySearchTerm] = useState('');
@@ -68,10 +68,6 @@ export const Inventory: React.FC = () => {
   );
   const filamentMaterials = useMemo(
     () => [...new Set(filaments.map(f => f.material).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
-    [filaments]
-  );
-  const filamentColors = useMemo(
-    () => [...new Set(filaments.map(f => f.color).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
     [filaments]
   );
   const supplyCategories = useMemo(
@@ -158,7 +154,7 @@ export const Inventory: React.FC = () => {
   const resetFilamentFilters = () => {
     setFilamentFilterBrand('');
     setFilamentFilterMaterial('');
-    setFilamentFilterColor('');
+    setFilamentSearchTerm('');
   };
 
   const resetSupplyFilters = () => {
@@ -296,7 +292,15 @@ export const Inventory: React.FC = () => {
     const list = filaments.filter(f => {
       if (filamentFilterBrand && f.brand !== filamentFilterBrand) return false;
       if (filamentFilterMaterial && f.material !== filamentFilterMaterial) return false;
-      if (filamentFilterColor && f.color !== filamentFilterColor) return false;
+      
+      const term = filamentSearchTerm.trim().toLowerCase();
+      if (term) {
+        const matchesSearch =
+          f.color.toLowerCase().includes(term) ||
+          f.brand.toLowerCase().includes(term) ||
+          f.material.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
       return true;
     });
 
@@ -321,7 +325,7 @@ export const Inventory: React.FC = () => {
       const hueB = getHexHue(b.hexColor || '#ffffff');
       return hueA - hueB;
     });
-  }, [filaments, filamentFilterBrand, filamentFilterMaterial, filamentFilterColor, sortDirection]);
+  }, [filaments, filamentFilterBrand, filamentFilterMaterial, filamentSearchTerm, sortDirection]);
 
   const filteredSupplies = useMemo(() => {
     const list = supplies.filter(s => {
@@ -345,7 +349,7 @@ export const Inventory: React.FC = () => {
     });
   }, [supplies, supplySearchTerm, supplyFilterCategory, sortDirection]);
 
-  const hasActiveFilamentFilters = !!(filamentFilterBrand || filamentFilterMaterial || filamentFilterColor);
+  const hasActiveFilamentFilters = !!(filamentFilterBrand || filamentFilterMaterial || filamentSearchTerm.trim());
   const hasActiveSupplyFilters = !!(supplySearchTerm.trim() || supplyFilterCategory);
 
   return (
@@ -430,16 +434,18 @@ export const Inventory: React.FC = () => {
                 <option key={material} value={material}>{material}</option>
               ))}
             </select>
-            <select
-              className="input text-xs min-w-[140px]"
-              value={filamentFilterColor}
-              onChange={e => setFilamentFilterColor(e.target.value)}
-            >
-              <option value="">Todos los colores</option>
-              {filamentColors.map(color => (
-                <option key={color} value={color}>{color}</option>
-              ))}
-            </select>
+            <div className="relative flex-1 min-w-[180px] md:w-56">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                placeholder="Buscar color, marca o tipo..."
+                className="input pl-10 w-full text-xs"
+                value={filamentSearchTerm}
+                onChange={e => setFilamentSearchTerm(e.target.value)}
+              />
+            </div>
             {hasActiveFilamentFilters && (
               <button
                 type="button"

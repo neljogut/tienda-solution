@@ -38,5 +38,6 @@ export interface UserData {
   role: Role;
   permissions?: UserPermissions;
   customerId?: string;
+  dni?: string;
   forcePasswordChange?: boolean;
 }

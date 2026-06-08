@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       items: [
         { label: 'Precios', icon: Settings, path: '/pricing-settings', permission: 'viewPriceSettings' },
         { label: 'Negocio', icon: Building2, path: '/business-settings', requiredRole: 'owner' },
-        { label: 'Empleados', icon: UserCog, path: '/employees', requiredRole: 'owner' },
+        { label: 'Roles y Permisos', icon: UserCog, path: '/employees', requiredRole: 'owner' },
       ]
     }
   ];

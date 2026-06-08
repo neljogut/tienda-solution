@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { fetchDollarRate } from '../services/dollarService';
 import type { ExchangeRateData, PricingSettingsResale } from '../types/settings';
+import { unifyClientsAndOrders } from '../utils/unifyClients';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Run database self-healing client unification
+    unifyClientsAndOrders().catch(console.error);
+
     // Fetch exchange rate once on mount to keep it fresh
     fetchDollarRate().catch(console.error);
 

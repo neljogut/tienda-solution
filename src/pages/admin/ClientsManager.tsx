@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { migrateClient, getClientLabel } from '../../types/client';
 import type { Client } from '../../types/client';
 import {
   Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin,
-  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus
+  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert
 } from 'lucide-react';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
@@ -19,6 +19,7 @@ const emptyForm = () => ({
   city: '',
   province: '',
   postalCode: '',
+  dni: '',
   cuit: '',
   isWholesale: false,
   isTrusted: false,
@@ -59,6 +60,18 @@ export const ClientsManager: React.FC = () => {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
 
+  // Merge states
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergeTab, setMergeTab] = useState<'merge' | 'orphans'>('merge');
+  const [mergeSourceId, setMergeSourceId] = useState('');
+  const [mergeTargetId, setMergeTargetId] = useState('');
+  const [mergeLoading, setMergeLoading] = useState(false);
+  const [mergeError, setMergeError] = useState('');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrphanTargets, setSelectedOrphanTargets] = useState<Record<string, string>>({});
+  const [linkOrphanLoading, setLinkOrphanLoading] = useState(false);
+  const [dismissedPairs, setDismissedPairs] = useState<string[]>([]);
+
   /* ── real-time listener ── */
   useEffect(() => {
     const q = query(collection(db, 'clients'), orderBy('lastName', 'asc'));
@@ -70,8 +83,119 @@ export const ClientsManager: React.FC = () => {
       });
       setClients(list);
     });
-    return () => unsubscribe();
+
+    const unsubscribeOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((d) => {
+        list.push({ id: d.id, ...d.data() });
+      });
+      setOrders(list);
+    });
+
+    const unsubscribeDismissed = onSnapshot(doc(db, 'settings', 'dismissed_duplicates'), (snap) => {
+      if (snap.exists()) {
+        setDismissedPairs(snap.data().pairs || []);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeOrders();
+      unsubscribeDismissed();
+    };
   }, []);
+
+  const orphanedOrders = useMemo(() => {
+    const activeClientIds = new Set(clients.map(c => c.id));
+    const orphans: Record<string, { customerId: string; customerName: string; orderCount: number; totalAmount: number }> = {};
+
+    orders.forEach(o => {
+      if (o.customerId && o.customerId !== 'eventual' && !activeClientIds.has(o.customerId)) {
+        const key = o.customerId;
+        if (!orphans[key]) {
+          orphans[key] = {
+            customerId: o.customerId,
+            customerName: o.customerName || 'Cliente sin nombre',
+            orderCount: 0,
+            totalAmount: 0
+          };
+        }
+        orphans[key].orderCount += 1;
+        orphans[key].totalAmount += (o.totalAmount || 0);
+      }
+    });
+
+    return Object.values(orphans);
+  }, [clients, orders]);
+
+  const potentialDuplicates = useMemo(() => {
+    const list: { clientA: Client; clientB: Client; reason: string; key: string }[] = [];
+    const dismissedKeys = new Set(dismissedPairs);
+
+    const clean = (s: string) => {
+      return s.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, "")
+        .split(/\s+/)
+        .filter(w => w.length > 2);
+    };
+
+    for (let i = 0; i < clients.length; i++) {
+      const cA = clients[i];
+      const lastNameA = cA.lastName || '';
+      const wordsA = clean(lastNameA);
+      if (wordsA.length === 0) continue;
+
+      for (let j = i + 1; j < clients.length; j++) {
+        const cB = clients[j];
+        
+        const key1 = `${cA.id}_${cB.id}`;
+        const key2 = `${cB.id}_${cA.id}`;
+        if (dismissedKeys.has(key1) || dismissedKeys.has(key2)) continue;
+
+        const lastNameB = cB.lastName || '';
+        const wordsB = clean(lastNameB);
+        if (wordsB.length === 0) continue;
+
+        const phoneA = cA.phone?.replace(/\D/g, '');
+        const phoneB = cB.phone?.replace(/\D/g, '');
+        const phoneMatch = phoneA && phoneB && phoneA.length > 6 && phoneA === phoneB;
+
+        const dniA = cA.dni?.trim();
+        const dniB = cB.dni?.trim();
+        const dniMatch = dniA && dniB && dniA === dniB;
+
+        const shared = wordsA.filter(w => wordsB.includes(w));
+        const nameMatch = shared.length >= 1; // Coincide al menos una palabra del apellido (ej. "García")
+
+        if (phoneMatch || dniMatch || nameMatch) {
+          let reason = '';
+          if (phoneMatch) reason = 'Mismo número de teléfono';
+          else if (dniMatch) reason = 'Mismo número de DNI';
+          else reason = `Apellidos coincidentes o similares: ${shared.join(', ')}`;
+
+          list.push({
+            clientA: cA,
+            clientB: cB,
+            reason,
+            key: key1
+          });
+        }
+      }
+    }
+    return list;
+  }, [clients, dismissedPairs]);
+
+  const handleDismissDuplicate = async (key: string) => {
+    try {
+      const { setDoc, doc } = await import('firebase/firestore');
+      const newPairs = [...dismissedPairs, key];
+      await setDoc(doc(db, 'settings', 'dismissed_duplicates'), { pairs: newPairs }, { merge: true });
+    } catch (err) {
+      console.error("Error dismissing duplicate:", err);
+    }
+  };
 
   /* ── filtered list ── */
   const filtered = useMemo(() => {
@@ -114,6 +238,7 @@ export const ClientsManager: React.FC = () => {
       city: client.city || '',
       province: client.province || '',
       postalCode: client.postalCode || '',
+      dni: client.dni || '',
       cuit: client.cuit || '',
       isWholesale: client.isWholesale ?? false,
       isTrusted: client.isTrusted ?? false,
@@ -146,6 +271,7 @@ export const ClientsManager: React.FC = () => {
         city: form.city?.trim() || '',
         province: form.province?.trim() || '',
         postalCode: form.postalCode?.trim() || '',
+        dni: form.dni?.trim() || '',
         cuit: form.cuit?.trim() || '',
         isWholesale: form.isWholesale,
         isTrusted: form.isTrusted,
@@ -154,6 +280,23 @@ export const ClientsManager: React.FC = () => {
 
       if (editingClient) {
         await updateDoc(doc(db, 'clients', editingClient.id), data);
+        
+        // Also update customerName in all their orders
+        try {
+          const { query, where, getDocs, collection, writeBatch } = await import('firebase/firestore');
+          const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', editingClient.id));
+          const ordersSnap = await getDocs(ordersQuery);
+          if (!ordersSnap.empty) {
+            const batch = writeBatch(db);
+            const newName = `${form.firstName.trim()} ${form.lastName.trim()}`;
+            ordersSnap.forEach(o => {
+              batch.update(doc(db, 'orders', o.id), { customerName: newName });
+            });
+            await batch.commit();
+          }
+        } catch (e) {
+          console.error("Error updating order customer names:", e);
+        }
       } else {
         await addDoc(collection(db, 'clients'), {
           ...data,
@@ -174,13 +317,199 @@ export const ClientsManager: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await deleteDoc(doc(db, 'clients', deleteTarget.id));
+      const { writeBatch, getDocs, collection, query, where, doc } = await import('firebase/firestore');
+      const batch = writeBatch(db);
+
+      // 1. Delete the client
+      batch.delete(doc(db, 'clients', deleteTarget.id));
+
+      // 2. Convert orders of this client to 'eventual' to preserve financial history
+      const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', deleteTarget.id));
+      const ordersSnap = await getDocs(ordersQuery);
+      const originalName = `${deleteTarget.firstName} ${deleteTarget.lastName}`;
+      ordersSnap.forEach(o => {
+        batch.update(doc(db, 'orders', o.id), {
+          customerId: 'eventual',
+          customerName: `${originalName} (Eliminado)`
+        });
+      });
+
+      // 3. Convert cash movements to 'eventual'
+      const movementsQuery = query(collection(db, 'cash_movements'), where('customerId', '==', deleteTarget.id));
+      const movementsSnap = await getDocs(movementsQuery);
+      movementsSnap.forEach(m => {
+        batch.update(doc(db, 'cash_movements', m.id), {
+          customerId: 'eventual'
+        });
+      });
+
+      await batch.commit();
+      alert('Cliente eliminado con éxito. Sus pedidos históricos se conservaron como ventas eventuales para no afectar los balances.');
     } catch (err) {
       console.error('Error al eliminar cliente:', err);
+      alert('Error al eliminar cliente.');
     } finally {
       setDeleteTarget(null);
     }
   };
+
+  const handleMergeClients = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mergeSourceId || !mergeTargetId) {
+      setMergeError('Por favor selecciona ambos clientes.');
+      return;
+    }
+    if (mergeSourceId === mergeTargetId) {
+      setMergeError('El cliente duplicado y el principal no pueden ser el mismo.');
+      return;
+    }
+
+    setMergeLoading(true);
+    setMergeError('');
+
+    try {
+      const { writeBatch, getDocs, collection, query, where, doc } = await import('firebase/firestore');
+      
+      const sourceClient = clients.find(c => c.id === mergeSourceId);
+      const targetClient = clients.find(c => c.id === mergeTargetId);
+      if (!sourceClient || !targetClient) {
+        throw new Error('Uno o ambos clientes seleccionados no existen.');
+      }
+
+      const batch = writeBatch(db);
+
+      // 1. Update all orders where customerId === sourceId
+      const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', mergeSourceId));
+      const ordersSnap = await getDocs(ordersQuery);
+      const targetName = `${targetClient.firstName} ${targetClient.lastName}`;
+      ordersSnap.forEach(o => {
+        batch.update(doc(db, 'orders', o.id), {
+          customerId: mergeTargetId,
+          customerName: targetName
+        });
+      });
+
+      // 2. Update all cash movements where customerId === sourceId
+      const movementsQuery = query(collection(db, 'cash_movements'), where('customerId', '==', mergeSourceId));
+      const movementsSnap = await getDocs(movementsQuery);
+      movementsSnap.forEach(m => {
+        batch.update(doc(db, 'cash_movements', m.id), {
+          customerId: mergeTargetId
+        });
+      });
+
+      // 3. Update target client links if needed (userId or email)
+      const targetUpdates: any = {};
+      if (!targetClient.userId && sourceClient.userId) {
+        targetUpdates.userId = sourceClient.userId;
+        
+        // Also update users collection mapping
+        const userRef = doc(db, 'users', sourceClient.userId);
+        batch.update(userRef, { customerId: mergeTargetId });
+      }
+      if (!targetClient.email && sourceClient.email) {
+        targetUpdates.email = sourceClient.email;
+      }
+      
+      // Update target balances
+      const totalPurchased = (targetClient.totalPurchased || 0) + (sourceClient.totalPurchased || 0);
+      const totalOwed = (targetClient.totalOwed || 0) + (sourceClient.totalOwed || 0);
+      targetUpdates.totalPurchased = totalPurchased;
+      targetUpdates.totalOwed = totalOwed;
+
+      batch.update(doc(db, 'clients', mergeTargetId), targetUpdates);
+
+      // 4. Delete source client
+      batch.delete(doc(db, 'clients', mergeSourceId));
+
+      await batch.commit();
+
+      // Reset & close
+      setMergeSourceId('');
+      setMergeTargetId('');
+      setIsMergeModalOpen(false);
+      alert('Clientes fusionados exitosamente.');
+    } catch (err: any) {
+      console.error(err);
+      setMergeError(err.message || 'Error al fusionar clientes.');
+    } finally {
+      setMergeLoading(false);
+    }
+  };
+
+  const handleLinkOrphanedOrders = async (orphanId: string, targetClientId: string) => {
+    if (!targetClientId) {
+      alert('Por favor selecciona un cliente para vincular.');
+      return;
+    }
+    setLinkOrphanLoading(true);
+    try {
+      const { writeBatch, getDocs, collection, query, where, doc } = await import('firebase/firestore');
+      
+      const targetClient = clients.find(c => c.id === targetClientId);
+      if (!targetClient) {
+        throw new Error('El cliente seleccionado no existe.');
+      }
+
+      const batch = writeBatch(db);
+      const targetName = `${targetClient.firstName} ${targetClient.lastName}`;
+
+      // 1. Update all orders with this old customerId
+      const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', orphanId));
+      const ordersSnap = await getDocs(ordersQuery);
+      
+      let addedPurchased = 0;
+      let addedOwed = 0;
+
+      ordersSnap.forEach(o => {
+        const orderData = o.data();
+        batch.update(doc(db, 'orders', o.id), {
+          customerId: targetClientId,
+          customerName: targetName
+        });
+        if (orderData.orderStatus !== 'cancelled') {
+          addedPurchased += (orderData.totalAmount || 0);
+          addedOwed += (orderData.pendingAmount || 0);
+        }
+      });
+
+      // 2. Update cash movements
+      const movementsQuery = query(collection(db, 'cash_movements'), where('customerId', '==', orphanId));
+      const movementsSnap = await getDocs(movementsQuery);
+      movementsSnap.forEach(m => {
+        batch.update(doc(db, 'cash_movements', m.id), {
+          customerId: targetClientId
+        });
+      });
+
+      // 3. Update client statistics
+      const newPurchased = (targetClient.totalPurchased || 0) + addedPurchased;
+      const newOwed = (targetClient.totalOwed || 0) + addedOwed;
+
+      batch.update(doc(db, 'clients', targetClientId), {
+        totalPurchased: newPurchased,
+        totalOwed: newOwed
+      });
+
+      await batch.commit();
+      
+      // Remove this orphan from selectedOrphanTargets
+      setSelectedOrphanTargets(prev => {
+        const copy = { ...prev };
+        delete copy[orphanId];
+        return copy;
+      });
+
+      alert('Pedidos vinculados exitosamente y nombres unificados.');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Error al vincular los pedidos.');
+    } finally {
+      setLinkOrphanLoading(false);
+    }
+  };
+
+
 
   /* ── active filter label ── */
   const activeFilterLabels: string[] = [];
@@ -209,11 +538,68 @@ export const ClientsManager: React.FC = () => {
             Administra tu cartera de clientes, datos de contacto y clasificación.
           </p>
         </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
-          <Plus size={20} />
-          Nuevo Cliente
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsMergeModalOpen(true)}
+            className="btn-secondary flex items-center justify-center gap-2 text-xs py-2 px-4 whitespace-nowrap"
+          >
+            Fusionar Duplicados
+          </button>
+          <button onClick={openAdd} className="btn-primary flex items-center gap-2 text-xs py-2 px-4">
+            <Plus size={20} />
+            Nuevo Cliente
+          </button>
+        </div>
       </div>
+
+      {/* ─── Alerta de Posibles Duplicados ─── */}
+      {potentialDuplicates.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 shadow-sm space-y-3 animate-fadeIn">
+          <div className="flex items-center gap-2 text-amber-800">
+            <ShieldAlert size={20} className="flex-shrink-0" />
+            <h3 className="font-extrabold text-sm">Posibles clientes duplicados detectados</h3>
+            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {potentialDuplicates.length} {potentialDuplicates.length === 1 ? 'aviso' : 'avisos'}
+            </span>
+          </div>
+          <p className="text-xs text-amber-700/90 leading-relaxed">
+            Hemos encontrado coincidencias en nombres o datos de contacto. Puedes fusionarlos en un único perfil para conservar todos sus pedidos y cuentas corrientes unificados, o desestimar el aviso si se trata de personas diferentes.
+          </p>
+          <div className="divide-y divide-amber-100/60 max-h-[220px] overflow-y-auto pr-1">
+            {potentialDuplicates.map(dup => (
+              <div key={dup.key} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs first:pt-1 last:pb-1">
+                <div>
+                  <div className="flex flex-wrap items-center gap-1.5 font-bold text-slate-800">
+                    <span>{dup.clientA.firstName} {dup.clientA.lastName}</span>
+                    <span className="text-slate-400 font-normal">y</span>
+                    <span>{dup.clientB.firstName} {dup.clientB.lastName}</span>
+                  </div>
+                  <p className="text-[10px] text-amber-700 font-medium mt-0.5">Motivo: {dup.reason}</p>
+                </div>
+                <div className="flex gap-2 self-start sm:self-center">
+                  <button
+                    onClick={() => {
+                      setMergeSourceId(dup.clientA.id);
+                      setMergeTargetId(dup.clientB.id);
+                      setMergeTab('merge');
+                      setIsMergeModalOpen(true);
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] shadow-sm transition-all cursor-pointer"
+                  >
+                    Fusionar...
+                  </button>
+                  <button
+                    onClick={() => handleDismissDuplicate(dup.key)}
+                    className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 font-bold px-3 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer"
+                  >
+                    Desestimar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ─── Search & Filter Bar ─── */}
       <div className="card p-4 space-y-3">
@@ -427,6 +813,12 @@ export const ClientsManager: React.FC = () => {
                                     <span className="text-slate-400">Nombre:</span>{' '}
                                     <span className="font-medium text-slate-700">{client.firstName} {client.lastName}</span>
                                   </p>
+                                  {client.dni && (
+                                    <p>
+                                      <span className="text-slate-400">DNI:</span>{' '}
+                                      <span className="font-medium text-slate-700">{client.dni}</span>
+                                    </p>
+                                  )}
                                   {client.cuit && (
                                     <p>
                                       <span className="text-slate-400">CUIT:</span>{' '}
@@ -821,16 +1213,28 @@ export const ClientsManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* CUIT */}
-              <div>
-                <label className="input-label">CUIT</label>
-                <input
-                  name="cuit"
-                  className="input"
-                  placeholder="Ej: 20-12345678-9"
-                  value={form.cuit}
-                  onChange={handleChange}
-                />
+              {/* DNI & CUIT */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="input-label">DNI (no obligatorio)</label>
+                  <input
+                    name="dni"
+                    className="input text-sm"
+                    placeholder="Ej: 12345678"
+                    value={form.dni}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label className="input-label">CUIT (no obligatorio)</label>
+                  <input
+                    name="cuit"
+                    className="input text-sm"
+                    placeholder="Ej: 20-12345678-9"
+                    value={form.cuit}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
 
               {/* ── Classification toggles ── */}
@@ -941,6 +1345,7 @@ export const ClientsManager: React.FC = () => {
       )}
 
       {/* ══════════════ Delete Confirmation Modal ══════════════ */}
+      {/* ══════════════ Delete Confirmation Modal ══════════════ */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
@@ -968,6 +1373,175 @@ export const ClientsManager: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ Merge Duplicates / Orphans Modal ══════════════ */}
+      {isMergeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setIsMergeModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fadeIn p-6">
+            <div className="flex items-center justify-between border-b pb-3 mb-3">
+              <h3 className="text-base font-extrabold text-slate-800">Herramientas de Unificación</h3>
+              <button 
+                onClick={() => setIsMergeModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b mb-4 text-xs font-bold">
+              <button
+                type="button"
+                className={`flex-1 pb-2 border-b-2 transition-all ${mergeTab === 'merge' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                onClick={() => setMergeTab('merge')}
+              >
+                Fusionar Clientes
+              </button>
+              <button
+                type="button"
+                className={`flex-1 pb-2 border-b-2 transition-all flex justify-center items-center gap-1.5 ${mergeTab === 'orphans' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                onClick={() => setMergeTab('orphans')}
+              >
+                Pedidos Huérfanos
+                {orphanedOrders.length > 0 && (
+                  <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-black">
+                    {orphanedOrders.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {mergeTab === 'merge' ? (
+              <form onSubmit={handleMergeClients} className="space-y-4 text-xs">
+                {mergeError && (
+                  <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-lg">
+                    {mergeError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                    1. Cliente Duplicado (Se eliminará)
+                  </label>
+                  <select
+                    value={mergeSourceId}
+                    onChange={e => setMergeSourceId(e.target.value)}
+                    className="input w-full"
+                    required
+                  >
+                    <option value="">-- Selecciona el duplicado a eliminar --</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.lastName}, {c.firstName} {c.email ? `(${c.email})` : '(Sin email)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                    2. Cliente Principal (Se conservará)
+                  </label>
+                  <select
+                    value={mergeTargetId}
+                    onChange={e => setMergeTargetId(e.target.value)}
+                    className="input w-full"
+                    required
+                  >
+                    <option value="">-- Selecciona el cliente principal a conservar --</option>
+                    {clients.filter(c => c.id !== mergeSourceId).map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.lastName}, {c.firstName} {c.email ? `(${c.email})` : '(Sin email)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-amber-800 space-y-1.5 leading-relaxed">
+                  <p className="font-bold flex items-center gap-1">⚠️ Importante:</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    <li>Todos los pedidos e historial de pagos se transferirán al principal.</li>
+                    <li>Si el principal no tiene email/usuario y el duplicado sí, se transferirá su vinculación de acceso.</li>
+                    <li>El perfil duplicado será borrado definitivamente de la lista.</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-3 w-full mt-4 pt-3 border-t">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsMergeModalOpen(false)} 
+                    className="btn-secondary flex-1"
+                    disabled={mergeLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary flex-1 flex justify-center items-center gap-1.5"
+                    disabled={mergeLoading || !mergeSourceId || !mergeTargetId}
+                  >
+                    {mergeLoading ? 'Fusionando...' : 'Fusionar Clientes'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4 text-xs max-h-[400px] overflow-y-auto pr-1">
+                <p className="text-slate-500 leading-normal">
+                  Aquí aparecen grupos de pedidos enlazados a códigos de cliente que fueron borrados del sistema. Elige a qué cliente activo deseas vincularlos para unificar su historial.
+                </p>
+
+                {orphanedOrders.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 border border-dashed rounded-xl">
+                    No hay pedidos huérfanos. Todos los pedidos están correctamente vinculados a clientes activos.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {orphanedOrders.map(orphan => (
+                      <div key={orphan.customerId} className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-2.5">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-slate-800 text-sm">{orphan.customerName}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">ID Anterior: {orphan.customerId}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-block bg-blue-50 text-blue-600 border border-blue-100 rounded px-1.5 py-0.5 text-[10px] font-bold">
+                              {orphan.orderCount} {orphan.orderCount === 1 ? 'pedido' : 'pedidos'}
+                            </span>
+                            <p className="text-[10px] text-slate-500 font-bold mt-0.5">Total: ${orphan.totalAmount.toLocaleString('es-AR')}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 items-center">
+                          <select
+                            value={selectedOrphanTargets[orphan.customerId] || ''}
+                            onChange={e => setSelectedOrphanTargets(prev => ({ ...prev, [orphan.customerId]: e.target.value }))}
+                            className="input bg-white text-[11px] flex-1 py-1 px-2 h-8"
+                          >
+                            <option value="">-- Vincular a cliente activo --</option>
+                            {clients.map(c => (
+                              <option key={c.id} value={c.id}>
+                                {c.lastName}, {c.firstName}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleLinkOrphanedOrders(orphan.customerId, selectedOrphanTargets[orphan.customerId])}
+                            disabled={linkOrphanLoading || !selectedOrphanTargets[orphan.customerId]}
+                            className="btn-primary text-[10px] py-1 px-3 h-8 whitespace-nowrap"
+                          >
+                            Vincular
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

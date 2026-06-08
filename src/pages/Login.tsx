@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 
@@ -106,8 +106,18 @@ export const Login: React.FC = () => {
           </button>
         </form>
         
-        <div className="mt-6 text-center">
-          <a href="/catalog" className="text-sm text-blue-600 hover:underline">Continuar como invitado al catálogo</a>
+        <div className="mt-6 text-center space-y-3">
+          <div>
+            <Link to="/catalog" className="text-sm text-blue-600 hover:underline">
+              Continuar como invitado al catálogo
+            </Link>
+          </div>
+          <div className="text-xs text-slate-500 pt-3 border-t border-slate-100">
+            ¿No tienes una cuenta?{' '}
+            <Link to="/register" className="text-blue-600 font-semibold hover:underline">
+              Regístrate aquí
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -6,32 +6,59 @@ import { ShoppingCart, Package, Clock, CheckCircle, XCircle } from 'lucide-react
 import type { Order } from '../../types/order';
 
 export const MyOrders: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentUser) return;
 
-    // Use onSnapshot to get real-time updates for this user's orders
-    const q = query(
-      collection(db, 'orders'),
-      where('customerId', '==', currentUser.uid)
-    );
+    let unsubscribe: (() => void) | null = null;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedOrders: Order[] = [];
-      snapshot.forEach((doc) => {
-        fetchedOrders.push({ id: doc.id, ...doc.data() } as Order);
+    const fetchAndListen = async () => {
+      let resolvedCustomerId = userData?.customerId || '';
+      
+      if (!resolvedCustomerId) {
+        try {
+          const { query, where, getDocs, collection } = await import('firebase/firestore');
+          const clientQuery = query(collection(db, 'clients'), where('userId', '==', currentUser.uid));
+          const clientSnap = await getDocs(clientQuery);
+          if (!clientSnap.empty) {
+            resolvedCustomerId = clientSnap.docs[0].id;
+          } else {
+            const emailQuery = query(collection(db, 'clients'), where('email', '==', currentUser.email));
+            const emailSnap = await getDocs(emailQuery);
+            if (!emailSnap.empty) {
+              resolvedCustomerId = emailSnap.docs[0].id;
+            }
+          }
+        } catch (e) {
+          console.error("Error resolving customerId:", e);
+        }
+      }
+
+      const q = query(
+        collection(db, 'orders'),
+        where('customerId', '==', resolvedCustomerId || currentUser.uid)
+      );
+
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedOrders: Order[] = [];
+        snapshot.forEach((doc) => {
+          fetchedOrders.push({ id: doc.id, ...doc.data() } as Order);
+        });
+        fetchedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setOrders(fetchedOrders);
+        setLoading(false);
       });
-      // Sort in memory because querying by multiple fields needs composite index in Firestore
-      fetchedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setOrders(fetchedOrders);
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, [currentUser]);
+    fetchAndListen();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentUser, userData]);
 
   const getStatusConfig = (status: Order['orderStatus']) => {
     switch (status) {

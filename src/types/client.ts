@@ -11,6 +11,7 @@ export interface Client {
   city?: string;
   province?: string;
   postalCode?: string;
+  dni?: string;
   cuit?: string;
   observations?: string;
   createdAt: string;

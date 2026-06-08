@@ -15,7 +15,8 @@
     "fix:product-materials": "node scripts/fix-product-materials.mjs",
     "fix:product-materials:execute": "node scripts/fix-product-materials.mjs --execute",
     "fix:filament-prices": "node scripts/fix-filament-prices.mjs --execute",
-    "fix:product-categories": "node scripts/fix-product-categories.mjs --execute"
+    "fix:product-categories": "node scripts/fix-product-categories.mjs --execute",
+    "build:dualgi": "node scripts/build-dualgi.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

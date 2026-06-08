@@ -26,6 +26,7 @@ import { CashHistory } from './pages/admin/CashHistory';
 import { InventoryMovements } from './pages/admin/InventoryMovements';
 import { BusinessSettingsPage } from './pages/admin/BusinessSettings';
 import { Employees } from './pages/admin/Employees';
+import { MyAccountBalance } from './pages/client/MyAccountBalance';
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -82,8 +83,21 @@ function App() {
             <Route path="catalog/:id" element={<ProductDetail />} />
             
             {/* Client routes */}
-            <Route path="my-orders" element={<MyOrders />} />
-            <Route path="my-account" element={<MyAccount />} />
+            <Route path="my-orders" element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            } />
+            <Route path="my-account-balance" element={
+              <ProtectedRoute>
+                <MyAccountBalance />
+              </ProtectedRoute>
+            } />
+            <Route path="my-account" element={
+              <ProtectedRoute>
+                <MyAccount />
+              </ProtectedRoute>
+            } />
             
             {/* Owner / Employee protected routes */}
             <Route path="dashboard" element={

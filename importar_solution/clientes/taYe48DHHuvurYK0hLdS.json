@@ -1,0 +1,19 @@
+{
+  "id": "taYe48DHHuvurYK0hLdS",
+  "phone": "3468640444",
+  "isWholesale": false,
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T15:05:16.992Z"
+  },
+  "email": "",
+  "notes": null,
+  "status": "activo",
+  "totalOrders": 0,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T15:00:42.638Z"
+  },
+  "fullName": "JUAN"
+}

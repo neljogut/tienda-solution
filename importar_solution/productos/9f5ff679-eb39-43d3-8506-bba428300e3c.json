@@ -1,0 +1,56 @@
+{
+  "id": "9f5ff679-eb39-43d3-8506-bba428300e3c",
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "priceKeychain": 25000,
+  "code": "PROD-20260503-8AEE",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 5,
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/bO6oFxc.jpeg"
+  ],
+  "filamentLines": [],
+  "stock": 14,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:47:42.201Z"
+  },
+  "category": "Filamento",
+  "gramsFilament": 0,
+  "purchaseCost": 14350,
+  "quantityTiers": [
+    {
+      "unitPriceRetail": 23000,
+      "maxUnits": 4,
+      "minUnits": 3,
+      "unitPriceWholesale": null
+    },
+    {
+      "minUnits": 5,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 21000,
+      "maxUnits": 9
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T21:03:09.856Z"
+  },
+  "name": "FILAR PLA BLANCO MATE",
+  "insumoLines": [],
+  "resaleScanCode": "7798394090716",
+  "printingTimeHours": 0,
+  "productKind": "reventa",
+  "isDraft": false,
+  "imageUrl": null,
+  "manualPricing": true,
+  "resaleMarkupPercentOnCost": 30,
+  "description": ""
+}

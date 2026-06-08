@@ -1,0 +1,19 @@
+{
+  "id": "G2tc7kcYY2TetZWuBA5k",
+  "status": "activo",
+  "totalOrders": 0,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:59:17.897Z"
+  },
+  "fullName": "ANTONELLA VITELLI",
+  "phone": "3462365078",
+  "isWholesale": false,
+  "address": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T15:03:52.118Z"
+  },
+  "email": "",
+  "notes": null
+}

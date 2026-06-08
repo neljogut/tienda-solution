@@ -1,0 +1,56 @@
+{
+  "id": "949ebc0a-6ff6-4006-b48b-2afd62eccde9",
+  "productKind": "reventa",
+  "imageUrl": null,
+  "isDraft": false,
+  "manualPricing": true,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "resaleScanCode": "",
+  "printingTimeHours": 0,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T20:42:26.981Z"
+  },
+  "quantityTiers": [
+    {
+      "unitPriceRetail": 23000,
+      "maxUnits": 4,
+      "minUnits": 3,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceRetail": 21000,
+      "maxUnits": 9,
+      "minUnits": 5,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "name": "FILAR PLA AZUL MATE",
+  "insumoLines": [],
+  "gramsFilament": 0,
+  "purchaseCost": 14350,
+  "category": "Filamento",
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/9yuT5pS.jpeg"
+  ],
+  "filamentLines": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-18T20:56:50.108Z"
+  },
+  "stock": 5,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "priceKeychain": 25000,
+  "code": "PROD-20260503-5A7F",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 5
+}

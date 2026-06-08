@@ -1,0 +1,56 @@
+{
+  "id": "166fc7a3-f1e4-4955-9abc-9f4d820f6c39",
+  "category": "Filamento",
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/XJLZquA.jpeg"
+  ],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-18T20:47:44.857Z"
+  },
+  "stock": 5,
+  "subcategory": "Filar>PLA",
+  "priceWholesale": 22500,
+  "code": "PROD-20260506-6274",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 5,
+  "priceKeychain": 25000,
+  "productKind": "reventa",
+  "imageUrl": null,
+  "isDraft": false,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true,
+  "resaleScanCode": "7798394090181",
+  "printingTimeHours": 0,
+  "quantityTiers": [
+    {
+      "unitPriceRetail": 23000,
+      "maxUnits": 4,
+      "minUnits": 3,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 5,
+      "maxUnits": 9,
+      "unitPriceRetail": 21000
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 10,
+      "maxUnits": null,
+      "unitPriceRetail": 20000
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-06T19:11:37.261Z"
+  },
+  "insumoLines": [],
+  "name": "FILAR PLA ROJO DE CARRERAS",
+  "gramsFilament": 0,
+  "purchaseCost": 14350
+}

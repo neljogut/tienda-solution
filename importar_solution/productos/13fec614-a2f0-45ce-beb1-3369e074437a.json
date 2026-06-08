@@ -1,0 +1,56 @@
+{
+  "id": "13fec614-a2f0-45ce-beb1-3369e074437a",
+  "category": "Filamento",
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/Mk0wNrL.jpeg"
+  ],
+  "filamentLines": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-30T19:02:46.319Z"
+  },
+  "stock": 0,
+  "subcategory": "Filar>PETG",
+  "priceWholesale": 22500,
+  "priceKeychain": 25000,
+  "code": "PROD-20260503-5CB1",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 5,
+  "productKind": "reventa",
+  "imageUrl": null,
+  "isDraft": false,
+  "manualPricing": true,
+  "description": "",
+  "resaleMarkupPercentOnCost": 30,
+  "resaleScanCode": "",
+  "printingTimeHours": 0,
+  "quantityTiers": [
+    {
+      "minUnits": 3,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 23000,
+      "maxUnits": 4
+    },
+    {
+      "unitPriceRetail": 21000,
+      "maxUnits": 9,
+      "minUnits": 5,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T20:44:28.540Z"
+  },
+  "name": "FILAR PLA NEGRO AZABACHE",
+  "insumoLines": [],
+  "gramsFilament": 0,
+  "purchaseCost": 14350
+}

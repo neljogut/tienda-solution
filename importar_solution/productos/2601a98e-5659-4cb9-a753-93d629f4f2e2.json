@@ -1,0 +1,56 @@
+{
+  "id": "2601a98e-5659-4cb9-a753-93d629f4f2e2",
+  "insumoLines": [],
+  "name": "FILAR PLA NARANJA TIGRE",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:49:18.985Z"
+  },
+  "quantityTiers": [
+    {
+      "minUnits": 3,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 23000,
+      "maxUnits": 4
+    },
+    {
+      "unitPriceRetail": 21000,
+      "maxUnits": 9,
+      "minUnits": 5,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "description": "",
+  "resaleMarkupPercentOnCost": 30,
+  "manualPricing": true,
+  "isDraft": false,
+  "imageUrl": null,
+  "productKind": "reventa",
+  "printingTimeHours": 0,
+  "resaleScanCode": "7798394090105",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-18T20:55:45.166Z"
+  },
+  "stock": 5,
+  "filamentLines": [],
+  "imageUrls": [
+    "https://i.imgur.com/h6oKG3Y.jpeg"
+  ],
+  "priceRetail": 25000,
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "code": "PROD-20260503-9782",
+  "priceKeychain": 25000,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "category": "Filamento"
+}

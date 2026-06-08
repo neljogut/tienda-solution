@@ -1,0 +1,56 @@
+{
+  "id": "3558316f-fe7e-4b93-97e6-f623a267fc3f",
+  "gramsFilament": 0,
+  "purchaseCost": 14350,
+  "quantityTiers": [
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 3,
+      "maxUnits": 4,
+      "unitPriceRetail": 23000
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 5,
+      "maxUnits": 9,
+      "unitPriceRetail": 21000
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:53:00.346Z"
+  },
+  "name": "FILAR PETG CIAN",
+  "insumoLines": [],
+  "printingTimeHours": 0,
+  "resaleScanCode": "7798394090501",
+  "isDraft": false,
+  "imageUrl": null,
+  "productKind": "reventa",
+  "manualPricing": true,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "subcategory": "Filar>PETG",
+  "priceWholesale": 22500,
+  "priceKeychain": 25000,
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "code": "PROD-20260503-6D09",
+  "imageUrls": [
+    "https://i.imgur.com/naaU7WJ.jpeg"
+  ],
+  "priceRetail": 25000,
+  "filamentLines": [],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T19:31:56.725Z"
+  },
+  "stock": 0,
+  "category": "Filamento"
+}

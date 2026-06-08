@@ -1,0 +1,56 @@
+{
+  "id": "bdae557e-208f-418f-bcbb-b8b0723c5437",
+  "category": "Filamento",
+  "stock": 4,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:47:42.201Z"
+  },
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/dQRnFod.jpeg"
+  ],
+  "filamentLines": [],
+  "priceKeychain": 25000,
+  "code": "PROD-20260503-D4A6",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "manualPricing": true,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "productKind": "reventa",
+  "imageUrl": null,
+  "isDraft": false,
+  "resaleScanCode": "7798394090075",
+  "printingTimeHours": 0,
+  "name": "FILAR PLA VIOLETA JACARANDA",
+  "insumoLines": [],
+  "quantityTiers": [
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 3,
+      "maxUnits": 4,
+      "unitPriceRetail": 23000
+    },
+    {
+      "minUnits": 5,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 21000,
+      "maxUnits": 9
+    },
+    {
+      "minUnits": 10,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 20000,
+      "maxUnits": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:48:28.543Z"
+  },
+  "purchaseCost": 14350,
+  "gramsFilament": 0
+}

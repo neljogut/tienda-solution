@@ -1,0 +1,44 @@
+{
+  "id": "40883f97-76d7-465e-aa45-c7c73331e314",
+  "items": [
+    {
+      "totalPrice": 25000,
+      "productKind": "reventa",
+      "quantity": 1,
+      "productName": "FILAR PLA BLANCO MATE",
+      "supplyUsage": [],
+      "productCode": "PROD-20260503-8AEE",
+      "isCustomLine": false,
+      "productImage": "https://i.imgur.com/bO6oFxc.jpeg",
+      "unitPrice": 25000,
+      "productId": "9f5ff679-eb39-43d3-8506-bba428300e3c"
+    }
+  ],
+  "suppliesRestoredToStock": {},
+  "suppliesDeducted": true,
+  "clientEmail": "",
+  "status": "delivered",
+  "ledgerKind": "catalogSale",
+  "amountPaid": 25000,
+  "productsRestoredToStock": {},
+  "productStockDeducted": true,
+  "clientId": "G2tc7kcYY2TetZWuBA5k",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-07T15:29:58.267Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-08T23:35:54.549Z"
+  },
+  "totalAmount": 25000,
+  "notes": null,
+  "paymentStatus": "paid",
+  "paymentBreakdownByMethod": {
+    "cash": 25000
+  },
+  "paymentMethod": "cash",
+  "clientPhone": "3462365078",
+  "clientName": "ANTONELLA VITELLI",
+  "clientAddress": ""
+}

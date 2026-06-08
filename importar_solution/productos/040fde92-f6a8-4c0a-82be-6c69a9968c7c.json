@@ -1,0 +1,56 @@
+{
+  "id": "040fde92-f6a8-4c0a-82be-6c69a9968c7c",
+  "gramsFilament": 0,
+  "purchaseCost": 14350,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:34:57.568Z"
+  },
+  "quantityTiers": [
+    {
+      "unitPriceRetail": 23000,
+      "maxUnits": 4,
+      "minUnits": 3,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 5,
+      "maxUnits": 9,
+      "unitPriceRetail": 21000
+    },
+    {
+      "maxUnits": null,
+      "unitPriceRetail": 20000,
+      "unitPriceWholesale": null,
+      "minUnits": 10
+    }
+  ],
+  "insumoLines": [],
+  "name": "FILAR PLA ROJO MATE",
+  "resaleScanCode": "7798394090822",
+  "printingTimeHours": 0,
+  "productKind": "reventa",
+  "isDraft": false,
+  "imageUrl": null,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true,
+  "subcategory": "Filar>PLA",
+  "priceWholesale": 22500,
+  "code": "PROD-20260503-46FD",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 5,
+  "priceKeychain": 25000,
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/XJLZquA.jpeg"
+  ],
+  "stock": 0,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-14T14:54:06.249Z"
+  },
+  "category": "Filamento"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "8IAOMFzWmkjRSVLKtpaP",
+  "isWholesale": false,
+  "phone": "",
+  "notes": null,
+  "email": "",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-11T21:14:48.608Z"
+  },
+  "address": null,
+  "totalOrders": 0,
+  "status": "activo",
+  "fullName": "MARCOS",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-11T21:09:59.927Z"
+  }
+}

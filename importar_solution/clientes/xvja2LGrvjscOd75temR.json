@@ -1,0 +1,19 @@
+{
+  "id": "xvja2LGrvjscOd75temR",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T18:48:22.545Z"
+  },
+  "fullName": "JOAQUIN PEREZ",
+  "totalOrders": 0,
+  "status": "activo",
+  "email": "",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T18:48:21.090Z"
+  },
+  "address": null,
+  "notes": null,
+  "phone": "3462645956",
+  "isWholesale": false
+}

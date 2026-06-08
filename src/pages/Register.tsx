@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, getCountFromServer } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { Loader2 } from 'lucide-react';
 
@@ -38,12 +38,24 @@ export const Register: React.FC = () => {
         displayName: name
       });
 
-      // Create user document in Firestore with role 'client'
+      // Check if this is the first user in the system
+      let resolvedRole = 'client';
+      try {
+        const usersColl = collection(db, 'users');
+        const countSnap = await getCountFromServer(usersColl);
+        if (countSnap.data().count === 0) {
+          resolvedRole = 'owner';
+        }
+      } catch (e) {
+        console.warn("Error checking users count, defaulting to client:", e);
+      }
+
+      // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
         displayName: name,
-        role: 'client', // Automatically register as a client
+        role: resolvedRole,
         createdAt: new Date().toISOString()
       });
 

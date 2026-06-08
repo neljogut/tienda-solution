@@ -1,0 +1,56 @@
+{
+  "id": "fac9f4fa-7e68-4d78-97c2-ba462ad25cbc",
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "insumoLines": [],
+  "name": "FILAR PLA GRIS PLATA",
+  "quantityTiers": [
+    {
+      "maxUnits": 4,
+      "unitPriceRetail": 23000,
+      "unitPriceWholesale": null,
+      "minUnits": 3
+    },
+    {
+      "maxUnits": 9,
+      "unitPriceRetail": 21000,
+      "unitPriceWholesale": null,
+      "minUnits": 5
+    },
+    {
+      "minUnits": 10,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 20000,
+      "maxUnits": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:35:50.432Z"
+  },
+  "resaleScanCode": "7798394090242",
+  "printingTimeHours": 0,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true,
+  "productKind": "reventa",
+  "isDraft": false,
+  "imageUrl": null,
+  "code": "PROD-20260503-578A",
+  "minimumStock": 3,
+  "resaleWholesaleDiscountPercent": 10,
+  "priceKeychain": 25000,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-07T15:24:39.280Z"
+  },
+  "stock": 3,
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/y5Zm80i.jpeg"
+  ],
+  "category": "Filamento"
+}

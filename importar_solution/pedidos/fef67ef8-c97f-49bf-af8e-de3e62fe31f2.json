@@ -1,0 +1,44 @@
+{
+  "id": "fef67ef8-c97f-49bf-af8e-de3e62fe31f2",
+  "productsRestoredToStock": {},
+  "productStockDeducted": true,
+  "ledgerKind": "commercialSale",
+  "amountPaid": 27007,
+  "items": [
+    {
+      "productImage": null,
+      "isCustomLine": true,
+      "productId": "",
+      "unitPrice": 127000,
+      "quantity": 1,
+      "totalPrice": 127000,
+      "productCode": "REG-COM",
+      "supplyUsage": [],
+      "productName": "Cuenta"
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "clientEmail": "",
+  "status": "delivered",
+  "cashSessionId": "9bAdAgv6OWnPdAHPQEh9",
+  "clientName": "ANTONELLA VITELLI",
+  "clientAddress": "",
+  "paymentMethod": "cash",
+  "paymentBreakdownByMethod": {
+    "cash": 27007
+  },
+  "clientPhone": "3462365078",
+  "clientId": "G2tc7kcYY2TetZWuBA5k",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-06T14:49:14.127Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-27T14:54:00.151Z"
+  },
+  "totalAmount": 127000,
+  "notes": "Registro comercial · Venta o servicio\nMotivo: cuenta\nConcepto: Cuenta",
+  "paymentStatus": "partial"
+}

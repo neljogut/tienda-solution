@@ -1,0 +1,44 @@
+{
+  "id": "80c6b018-79fa-4dcd-bd44-099137899bf9",
+  "clientAddress": "URUGUAY 564",
+  "clientName": "SOLUTION",
+  "paymentBreakdownByMethod": {
+    "cash": 25000
+  },
+  "paymentMethod": "cash",
+  "clientPhone": "",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T19:37:13.233Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-21T19:31:56.725Z"
+  },
+  "clientId": "RfuzIudAC4zm8o6otXbV",
+  "totalAmount": 25000,
+  "notes": null,
+  "paymentStatus": "paid",
+  "productsRestoredToStock": {},
+  "productStockDeducted": true,
+  "ledgerKind": "catalogSale",
+  "amountPaid": 25000,
+  "suppliesRestoredToStock": {},
+  "items": [
+    {
+      "productId": "3558316f-fe7e-4b93-97e6-f623a267fc3f",
+      "unitPrice": 25000,
+      "isCustomLine": false,
+      "productImage": "https://i.imgur.com/naaU7WJ.jpeg",
+      "productName": "FILAR PETG CIAN",
+      "supplyUsage": [],
+      "productCode": "PROD-20260503-6D09",
+      "productKind": "reventa",
+      "totalPrice": 25000,
+      "quantity": 1
+    }
+  ],
+  "suppliesDeducted": true,
+  "clientEmail": "",
+  "status": "delivered"
+}

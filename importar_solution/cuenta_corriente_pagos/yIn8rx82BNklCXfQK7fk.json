@@ -1,0 +1,16 @@
+{
+  "id": "yIn8rx82BNklCXfQK7fk",
+  "note": null,
+  "mode": "fifo",
+  "totalAmount": 25000,
+  "clientId": "iNyeTQ1xwCVe9TiMD6SE",
+  "clientName": "LUCIO SOSA",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-12T13:30:19.285Z"
+  },
+  "method": "cash",
+  "allocations": {
+    "548f7d4a-dae3-4548-85bc-fc0cda4c2a3b": 25000
+  }
+}

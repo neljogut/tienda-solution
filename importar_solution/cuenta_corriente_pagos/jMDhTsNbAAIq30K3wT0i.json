@@ -1,0 +1,16 @@
+{
+  "id": "jMDhTsNbAAIq30K3wT0i",
+  "method": "cash",
+  "allocations": {
+    "6c6297fe-a7dc-4112-a4c0-503a23c5d1dd": 39000
+  },
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-04T21:05:42.653Z"
+  },
+  "clientName": "TRINI",
+  "mode": "fifo",
+  "totalAmount": 39000,
+  "clientId": "cdicyY4UVGpzWeCoY2f9",
+  "note": null
+}

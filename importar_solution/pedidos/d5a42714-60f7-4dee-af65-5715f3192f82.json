@@ -1,0 +1,54 @@
+{
+  "id": "d5a42714-60f7-4dee-af65-5715f3192f82",
+  "status": "delivered",
+  "clientEmail": "",
+  "items": [
+    {
+      "supplyUsage": [],
+      "productCode": "PROD-20260503-8AEE",
+      "productName": "FILAR PLA BLANCO MATE",
+      "quantity": 2,
+      "productKind": "reventa",
+      "totalPrice": 46000,
+      "productId": "9f5ff679-eb39-43d3-8506-bba428300e3c",
+      "unitPrice": 23000,
+      "productImage": "https://i.imgur.com/bO6oFxc.jpeg",
+      "isCustomLine": false
+    },
+    {
+      "quantity": 1,
+      "totalPrice": 23000,
+      "productKind": "reventa",
+      "productCode": "PROD-20260503-37D4",
+      "supplyUsage": [],
+      "productName": "FILAR PLA NEGRO MATE",
+      "productImage": "https://i.imgur.com/l7M997d.jpeg",
+      "isCustomLine": false,
+      "unitPrice": 23000,
+      "productId": "a26c2b0a-70e7-4fbb-acc5-9039e7be17e8"
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "amountPaid": 0,
+  "ledgerKind": "catalogSale",
+  "productStockDeducted": true,
+  "productsRestoredToStock": {},
+  "paymentStatus": "unpaid",
+  "totalAmount": 69000,
+  "notes": null,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T22:38:18.812Z"
+  },
+  "clientId": "cdicyY4UVGpzWeCoY2f9",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-22T22:33:00.118Z"
+  },
+  "clientPhone": "3462467397",
+  "paymentBreakdownByMethod": {},
+  "paymentMethod": "cash",
+  "clientName": "TRINIDAD MIGHETTO",
+  "clientAddress": ""
+}

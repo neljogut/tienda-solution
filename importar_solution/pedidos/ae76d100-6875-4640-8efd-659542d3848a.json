@@ -1,0 +1,45 @@
+{
+  "id": "ae76d100-6875-4640-8efd-659542d3848a",
+  "clientEmail": "",
+  "cashSessionId": "9bAdAgv6OWnPdAHPQEh9",
+  "status": "delivered",
+  "items": [
+    {
+      "quantity": 1,
+      "totalPrice": 25000,
+      "productKind": "reventa",
+      "supplyUsage": [],
+      "productCode": "PROD-20260506-40FD",
+      "productName": "FILAR PLA CELESTE MATE",
+      "productImage": "https://i.imgur.com/YfeLKqG.jpeg",
+      "isCustomLine": false,
+      "unitPrice": 25000,
+      "productId": "daaf08bb-0244-4708-9ce3-b8d89cb0a1b3"
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "amountPaid": 25000,
+  "ledgerKind": "catalogSale",
+  "productStockDeducted": true,
+  "productsRestoredToStock": {},
+  "paymentStatus": "paid",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T21:07:37.709Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T21:03:03.033Z"
+  },
+  "clientId": "RfuzIudAC4zm8o6otXbV",
+  "notes": null,
+  "totalAmount": 25000,
+  "clientPhone": "",
+  "paymentMethod": "cash",
+  "paymentBreakdownByMethod": {
+    "cash": 25000
+  },
+  "clientName": "SOLUTION",
+  "clientAddress": "URUGUAY 564"
+}

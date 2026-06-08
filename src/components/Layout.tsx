@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CartDrawer } from './CartDrawer';
@@ -19,6 +19,7 @@ export const Layout: React.FC = () => {
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
   const totalItems = getTotalItems();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/dashboard';
 
@@ -56,6 +57,23 @@ export const Layout: React.FC = () => {
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 flex flex-col justify-between">
           <div className="mx-auto max-w-7xl w-full p-4 sm:p-6 lg:p-8 flex-1">
+            {userData?.role === 'owner' && (!businessSettings || businessSettings.name === 'Dualgi 3D') && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between text-xs text-amber-800 animate-fadeIn shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <h4 className="font-bold text-amber-900">Configuración Inicial Pendiente</h4>
+                    <p className="mt-0.5 text-amber-700 font-medium">Por favor, ve a la sección <strong>Configuración del Negocio</strong> para personalizar el nombre, contacto y redes de tu tienda.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => navigate('/business-settings')}
+                  className="btn-primary py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded-lg shadow-md shadow-amber-600/20 flex-shrink-0"
+                >
+                  Configurar
+                </button>
+              </div>
+            )}
             <Outlet />
           </div>
           {!isAdminRoute && <Footer settings={businessSettings} />}

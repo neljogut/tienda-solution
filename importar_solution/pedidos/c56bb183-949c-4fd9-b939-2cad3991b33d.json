@@ -1,0 +1,43 @@
+{
+  "id": "c56bb183-949c-4fd9-b939-2cad3991b33d",
+  "clientPhone": "3462466033",
+  "paymentBreakdownByMethod": {
+    "cash": 170000
+  },
+  "paymentMethod": "cash",
+  "paymentStatus": "paid",
+  "totalAmount": 85000,
+  "notes": "Registro comercial · Venta o servicio\nMotivo: REPARACIÓN IMPRESORA\nConcepto: REPARACIÓN IMPRESORA",
+  "clientId": "HNdloOoPTigxaddgCGCJ",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T18:46:01.528Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-08T14:21:30.830Z"
+  },
+  "clientName": "VANESA",
+  "clientAddress": "",
+  "amountPaid": 85000,
+  "ledgerKind": "commercialSale",
+  "status": "delivered",
+  "clientEmail": "",
+  "items": [
+    {
+      "productName": "REPARACIÓN IMPRESORA",
+      "supplyUsage": [],
+      "productCode": "REG-COM",
+      "totalPrice": 85000,
+      "quantity": 1,
+      "productId": "",
+      "unitPrice": 85000,
+      "isCustomLine": true,
+      "productImage": null
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": true,
+  "productsRestoredToStock": {}
+}

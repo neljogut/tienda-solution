@@ -1,0 +1,56 @@
+{
+  "id": "7b01418e-58c3-406d-8370-b463a9c50961",
+  "category": "Filamento",
+  "code": "PROD-20260503-9AD6",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "priceKeychain": 25000,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PETG",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-30T19:09:54.796Z"
+  },
+  "stock": 0,
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/2I81GmB.jpeg"
+  ],
+  "resaleScanCode": "7798394090525",
+  "printingTimeHours": 0,
+  "description": "",
+  "resaleMarkupPercentOnCost": 30,
+  "manualPricing": true,
+  "productKind": "reventa",
+  "isDraft": false,
+  "imageUrl": null,
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "insumoLines": [],
+  "name": "FILAR PETG ROJO CARMESI",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:54:13.767Z"
+  },
+  "quantityTiers": [
+    {
+      "unitPriceRetail": 23000,
+      "maxUnits": 4,
+      "minUnits": 3,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 5,
+      "maxUnits": 9,
+      "unitPriceRetail": 21000
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 10,
+      "maxUnits": null,
+      "unitPriceRetail": 20000
+    }
+  ]
+}

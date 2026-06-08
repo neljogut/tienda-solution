@@ -1,0 +1,56 @@
+{
+  "id": "a26c2b0a-70e7-4fbb-acc5-9039e7be17e8",
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "name": "FILAR PLA NEGRO MATE",
+  "insumoLines": [],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T20:40:10.320Z"
+  },
+  "quantityTiers": [
+    {
+      "minUnits": 3,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 23000,
+      "maxUnits": 4
+    },
+    {
+      "minUnits": 5,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 21000,
+      "maxUnits": 9
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "printingTimeHours": 0,
+  "resaleScanCode": "7798394090723",
+  "manualPricing": true,
+  "description": "",
+  "resaleMarkupPercentOnCost": 30,
+  "isDraft": false,
+  "imageUrl": null,
+  "productKind": "reventa",
+  "priceKeychain": 25000,
+  "minimumStock": 5,
+  "resaleWholesaleDiscountPercent": 10,
+  "code": "PROD-20260503-37D4",
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PETG",
+  "stock": 8,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:43:22.948Z"
+  },
+  "imageUrls": [
+    "https://i.imgur.com/l7M997d.jpeg"
+  ],
+  "priceRetail": 25000,
+  "filamentLines": [],
+  "category": "Filamento"
+}

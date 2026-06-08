@@ -1,0 +1,56 @@
+{
+  "id": "f9a0e1b1-5d70-410e-9927-09379a09cd43",
+  "resaleScanCode": "7798394090617",
+  "printingTimeHours": 0,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true,
+  "productKind": "reventa",
+  "isDraft": false,
+  "imageUrl": null,
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "insumoLines": [],
+  "name": "FILAR PLA CAFE CON LECHE",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:38:50.290Z"
+  },
+  "quantityTiers": [
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 3,
+      "maxUnits": 4,
+      "unitPriceRetail": 23000
+    },
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 5,
+      "maxUnits": 9,
+      "unitPriceRetail": 21000
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "category": "Filamento",
+  "code": "PROD-20260503-5716",
+  "minimumStock": 3,
+  "resaleWholesaleDiscountPercent": 10,
+  "priceKeychain": 25000,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-30T19:11:47.622Z"
+  },
+  "stock": 5,
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/sgMs9cA.jpeg"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "cdicyY4UVGpzWeCoY2f9",
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T15:09:13.871Z"
+  },
+  "email": "",
+  "address": null,
+  "notes": null,
+  "phone": "3462467397",
+  "isWholesale": false,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-08T22:31:45.284Z"
+  },
+  "fullName": "TRINIDAD MIGHETTO",
+  "totalOrders": 0,
+  "status": "activo"
+}

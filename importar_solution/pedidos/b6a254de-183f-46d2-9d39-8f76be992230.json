@@ -1,0 +1,44 @@
+{
+  "id": "b6a254de-183f-46d2-9d39-8f76be992230",
+  "clientEmail": "",
+  "status": "delivered",
+  "items": [
+    {
+      "unitPrice": 25000,
+      "productId": "9f5ff679-eb39-43d3-8506-bba428300e3c",
+      "productImage": "https://i.imgur.com/bO6oFxc.jpeg",
+      "isCustomLine": false,
+      "productCode": "PROD-20260503-8AEE",
+      "supplyUsage": [],
+      "productName": "FILAR PLA BLANCO MATE",
+      "quantity": 1,
+      "totalPrice": 25000,
+      "productKind": "reventa"
+    }
+  ],
+  "suppliesRestoredToStock": {},
+  "suppliesDeducted": true,
+  "amountPaid": 25000,
+  "ledgerKind": "catalogSale",
+  "productStockDeducted": true,
+  "productsRestoredToStock": {},
+  "paymentStatus": "paid",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-25T22:51:40.978Z"
+  },
+  "clientId": "RfuzIudAC4zm8o6otXbV",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-25T22:46:14.252Z"
+  },
+  "totalAmount": 25000,
+  "notes": null,
+  "clientPhone": "",
+  "paymentBreakdownByMethod": {
+    "cash": 25000
+  },
+  "paymentMethod": "cash",
+  "clientAddress": "URUGUAY 564",
+  "clientName": "SOLUTION"
+}

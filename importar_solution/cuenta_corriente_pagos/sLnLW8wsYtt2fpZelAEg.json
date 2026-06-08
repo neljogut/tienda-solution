@@ -1,0 +1,16 @@
+{
+  "id": "sLnLW8wsYtt2fpZelAEg",
+  "clientName": "ANTONELLA VITELLI",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-07T21:10:23.240Z"
+  },
+  "method": "cash",
+  "allocations": {
+    "40883f97-76d7-465e-aa45-c7c73331e314": 25000
+  },
+  "note": null,
+  "totalAmount": 25000,
+  "mode": "manual",
+  "clientId": "G2tc7kcYY2TetZWuBA5k"
+}

@@ -1,0 +1,44 @@
+{
+  "id": "afae9523-b9b2-4dff-ab93-ec2c6874d694",
+  "clientName": "PATRICIO LUPICH",
+  "clientAddress": "",
+  "notes": null,
+  "totalAmount": 69000,
+  "clientId": "NnLqdGGO0ffLlf3sNKBX",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:49:14.613Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:43:37.111Z"
+  },
+  "paymentStatus": "paid",
+  "paymentMethod": "cash",
+  "paymentBreakdownByMethod": {
+    "cash": 69000
+  },
+  "clientPhone": "3462501277",
+  "productsRestoredToStock": {},
+  "productStockDeducted": true,
+  "items": [
+    {
+      "unitPrice": 23000,
+      "productId": "a26c2b0a-70e7-4fbb-acc5-9039e7be17e8",
+      "productImage": "https://i.imgur.com/l7M997d.jpeg",
+      "isCustomLine": false,
+      "productCode": "PROD-20260503-37D4",
+      "supplyUsage": [],
+      "productName": "FILAR PLA NEGRO MATE",
+      "quantity": 3,
+      "productKind": "reventa",
+      "totalPrice": 69000
+    }
+  ],
+  "suppliesRestoredToStock": {},
+  "suppliesDeducted": true,
+  "status": "delivered",
+  "clientEmail": "",
+  "ledgerKind": "catalogSale",
+  "amountPaid": 69000
+}

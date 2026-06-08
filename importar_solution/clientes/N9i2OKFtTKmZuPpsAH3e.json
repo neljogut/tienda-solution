@@ -1,0 +1,19 @@
+{
+  "id": "N9i2OKFtTKmZuPpsAH3e",
+  "totalOrders": 0,
+  "status": "activo",
+  "fullName": "MARCELO PRAMPARO",
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T15:02:29.678Z"
+  },
+  "isWholesale": false,
+  "phone": "3462508416",
+  "notes": null,
+  "fechaRegistro": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T15:07:03.555Z"
+  },
+  "email": "",
+  "address": null
+}

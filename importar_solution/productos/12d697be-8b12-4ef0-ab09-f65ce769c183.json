@@ -1,0 +1,56 @@
+{
+  "id": "12d697be-8b12-4ef0-ab09-f65ce769c183",
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "insumoLines": [],
+  "name": "FILAR PLA CELESTE CIELO",
+  "quantityTiers": [
+    {
+      "maxUnits": 4,
+      "unitPriceRetail": 23000,
+      "unitPriceWholesale": null,
+      "minUnits": 3
+    },
+    {
+      "maxUnits": 9,
+      "unitPriceRetail": 21000,
+      "unitPriceWholesale": null,
+      "minUnits": 5
+    },
+    {
+      "minUnits": 10,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 20000,
+      "maxUnits": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-05T22:13:10.771Z"
+  },
+  "resaleScanCode": "",
+  "printingTimeHours": 0,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true,
+  "productKind": "reventa",
+  "imageUrl": null,
+  "isDraft": false,
+  "code": "PROD-20260505-F847",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "priceKeychain": 25000,
+  "subcategory": "Filar>PLA",
+  "priceWholesale": 22500,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:47:42.201Z"
+  },
+  "stock": 1,
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/YfeLKqG.jpeg"
+  ],
+  "category": "Filamento"
+}

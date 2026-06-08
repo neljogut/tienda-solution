@@ -1,0 +1,68 @@
+{
+  "id": "00befa4f-073d-436b-8f3f-53f7793be318",
+  "productStockDeducted": true,
+  "productsRestoredToStock": {},
+  "amountPaid": 69000,
+  "ledgerKind": "catalogSale",
+  "status": "delivered",
+  "clientEmail": "",
+  "items": [
+    {
+      "quantity": 1,
+      "productKind": "reventa",
+      "totalPrice": 23000,
+      "productCode": "PROD-20260503-D4A6",
+      "supplyUsage": [],
+      "productName": "FILAR PLA VIOLETA JACARANDA",
+      "productImage": "https://i.imgur.com/dQRnFod.jpeg",
+      "isCustomLine": false,
+      "productId": "bdae557e-208f-418f-bcbb-b8b0723c5437",
+      "unitPrice": 23000
+    },
+    {
+      "supplyUsage": [],
+      "productCode": "PROD-20260503-8AEE",
+      "productName": "FILAR PLA BLANCO MATE",
+      "quantity": 1,
+      "totalPrice": 23000,
+      "productKind": "reventa",
+      "productId": "9f5ff679-eb39-43d3-8506-bba428300e3c",
+      "unitPrice": 23000,
+      "productImage": "https://i.imgur.com/bO6oFxc.jpeg",
+      "isCustomLine": false
+    },
+    {
+      "productKind": "reventa",
+      "totalPrice": 23000,
+      "quantity": 1,
+      "productName": "FILAR PLA CELESTE CIELO",
+      "supplyUsage": [],
+      "productCode": "PROD-20260505-F847",
+      "isCustomLine": false,
+      "productImage": "https://i.imgur.com/YfeLKqG.jpeg",
+      "unitPrice": 23000,
+      "productId": "12d697be-8b12-4ef0-ab09-f65ce769c183"
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "clientName": "CESAR COENTE",
+  "clientAddress": "",
+  "clientPhone": "3462419357",
+  "paymentBreakdownByMethod": {
+    "cash": 69000
+  },
+  "paymentMethod": "cash",
+  "paymentStatus": "paid",
+  "totalAmount": 69000,
+  "notes": null,
+  "clientId": "2IOBoGSipPo0V9UTtEtQ",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:53:33.961Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-06-05T19:47:42.201Z"
+  }
+}

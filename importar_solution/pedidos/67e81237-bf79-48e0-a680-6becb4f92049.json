@@ -1,0 +1,57 @@
+{
+  "id": "67e81237-bf79-48e0-a680-6becb4f92049",
+  "clientPhone": "3468640444",
+  "paymentMethod": "cash",
+  "paymentBreakdownByMethod": {
+    "cash": 20000
+  },
+  "paymentStatus": "partial",
+  "notes": null,
+  "totalAmount": 75000,
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T14:44:22.857Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-12T13:25:53.967Z"
+  },
+  "clientId": "taYe48DHHuvurYK0hLdS",
+  "clientName": "JUAN",
+  "clientAddress": "",
+  "amountPaid": 20000,
+  "ledgerKind": "catalogSale",
+  "cashSessionId": "9bAdAgv6OWnPdAHPQEh9",
+  "status": "delivered",
+  "clientEmail": "",
+  "items": [
+    {
+      "isCustomLine": false,
+      "productImage": "https://i.imgur.com/l7M997d.jpeg",
+      "productId": "a26c2b0a-70e7-4fbb-acc5-9039e7be17e8",
+      "unitPrice": 25000,
+      "totalPrice": 50000,
+      "productKind": "reventa",
+      "quantity": 2,
+      "productName": "FILAR PLA NEGRO MATE",
+      "supplyUsage": [],
+      "productCode": "PROD-20260503-37D4"
+    },
+    {
+      "isCustomLine": false,
+      "productImage": "https://i.imgur.com/sgMs9cA.jpeg",
+      "unitPrice": 25000,
+      "productId": "f9a0e1b1-5d70-410e-9927-09379a09cd43",
+      "totalPrice": 25000,
+      "productKind": "reventa",
+      "quantity": 1,
+      "productName": "FILAR PLA CAFE CON LECHE",
+      "supplyUsage": [],
+      "productCode": "PROD-20260503-5716"
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "productStockDeducted": true,
+  "productsRestoredToStock": {}
+}

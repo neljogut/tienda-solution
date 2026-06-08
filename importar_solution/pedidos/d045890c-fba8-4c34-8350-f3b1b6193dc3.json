@@ -1,0 +1,43 @@
+{
+  "id": "d045890c-fba8-4c34-8350-f3b1b6193dc3",
+  "clientAddress": "",
+  "clientName": "DARIO",
+  "paymentMethod": "cash",
+  "paymentBreakdownByMethod": {
+    "cash": 36000
+  },
+  "clientPhone": "3462699884",
+  "clientId": "nsTeudovLbOzdMxkWtrB",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T18:06:17.115520Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-12T20:38:18.106Z"
+  },
+  "notes": "Registro comercial · Venta o servicio\nMotivo: COMPRA\nConcepto: INSUMOS Y FILAMENTOS",
+  "totalAmount": 18000,
+  "paymentStatus": "paid",
+  "productsRestoredToStock": {},
+  "productStockDeducted": true,
+  "ledgerKind": "commercialSale",
+  "amountPaid": 18000,
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "items": [
+    {
+      "productName": "INSUMOS Y FILAMENTOS",
+      "productCode": "REG-COM",
+      "supplyUsage": [],
+      "totalPrice": 18000,
+      "quantity": 1,
+      "productId": "",
+      "unitPrice": 18000,
+      "isCustomLine": true,
+      "productImage": null
+    }
+  ],
+  "clientEmail": "",
+  "status": "delivered"
+}

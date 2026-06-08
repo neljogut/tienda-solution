@@ -1,0 +1,16 @@
+{
+  "id": "jbOqhKP1WVbc1r5SUsVe",
+  "method": "cash",
+  "allocations": {
+    "c56bb183-949c-4fd9-b939-2cad3991b33d": 21000
+  },
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-08T14:26:17Z"
+  },
+  "clientName": "VANESA",
+  "totalAmount": 21000,
+  "mode": "fifo",
+  "clientId": "HNdloOoPTigxaddgCGCJ",
+  "note": null
+}

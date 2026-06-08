@@ -1,0 +1,35 @@
+{
+  "id": "9bAdAgv6OWnPdAHPQEh9",
+  "atCloseIngressSalesByMethod": {
+    "creditCard": 0,
+    "cash": 174007,
+    "bankTransfer": 0
+  },
+  "closedByLabel": "Nelson Jose Gutierrez (NeJGuS)",
+  "atCloseCommercialPaymentOutByMethod": {
+    "bankTransfer": 0,
+    "cash": 0,
+    "creditCard": 0
+  },
+  "variance": -174207,
+  "atCloseManualMovementNet": 100,
+  "closedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-11T21:10:14.995Z"
+  },
+  "status": "closed",
+  "openedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T07:04:48.359Z"
+  },
+  "openingFloat": 100,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-11T21:10:14.995Z"
+  },
+  "openedByLabel": "Nelson Jose Gutierrez (NeJGuS)",
+  "closingCountedCash": 0,
+  "expectedCashAtClose": 174207,
+  "openedByUid": "6myRkqWXNEgUA0MK08X90QiajKI3",
+  "closedByUid": "6myRkqWXNEgUA0MK08X90QiajKI3"
+}

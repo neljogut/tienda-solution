@@ -1,0 +1,56 @@
+{
+  "id": "36623b3b-bdc0-45d7-81a4-58bcb187712b",
+  "subcategory": "Filar>PLA",
+  "priceWholesale": 22500,
+  "code": "PROD-20260503-B211",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "priceKeychain": 25000,
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/ZFOEXbh.jpeg"
+  ],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T20:54:07.214Z"
+  },
+  "stock": 3,
+  "category": "Filamento",
+  "gramsFilament": 0,
+  "purchaseCost": 14350,
+  "quantityTiers": [
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 3,
+      "maxUnits": 4,
+      "unitPriceRetail": 23000
+    },
+    {
+      "unitPriceRetail": 21000,
+      "maxUnits": 9,
+      "minUnits": 5,
+      "unitPriceWholesale": null
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:30:02.407Z"
+  },
+  "insumoLines": [],
+  "name": "FILAR PLA ROSA FLAMENCO",
+  "resaleScanCode": "7798394090129",
+  "printingTimeHours": 0,
+  "productKind": "reventa",
+  "imageUrl": null,
+  "isDraft": false,
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true
+}

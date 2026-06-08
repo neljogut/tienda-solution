@@ -1,0 +1,16 @@
+{
+  "id": "WZfhkxysB0gsoDpisZLL",
+  "clientName": "PATRICIO LUPICH",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-07T21:19:24.946Z"
+  },
+  "method": "cash",
+  "allocations": {
+    "26b40f8a-d2b2-48aa-a881-4d8c0e706d6d": 69000
+  },
+  "note": null,
+  "mode": "fifo",
+  "totalAmount": 69000,
+  "clientId": "NnLqdGGO0ffLlf3sNKBX"
+}

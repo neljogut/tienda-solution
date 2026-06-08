@@ -1,0 +1,56 @@
+{
+  "id": "daaf08bb-0244-4708-9ce3-b8d89cb0a1b3",
+  "filamentLines": [],
+  "priceRetail": 25000,
+  "imageUrls": [
+    "https://i.imgur.com/YfeLKqG.jpeg"
+  ],
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-18T20:55:17.197Z"
+  },
+  "stock": 5,
+  "priceWholesale": 22500,
+  "subcategory": "Filar>PLA",
+  "code": "PROD-20260506-40FD",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "priceKeychain": 25000,
+  "category": "Filamento",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-06T19:18:28.665Z"
+  },
+  "quantityTiers": [
+    {
+      "unitPriceWholesale": null,
+      "minUnits": 3,
+      "maxUnits": 4,
+      "unitPriceRetail": 23000
+    },
+    {
+      "minUnits": 5,
+      "unitPriceWholesale": null,
+      "unitPriceRetail": 21000,
+      "maxUnits": 9
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "insumoLines": [],
+  "name": "FILAR PLA CELESTE MATE",
+  "gramsFilament": 0,
+  "purchaseCost": 14350,
+  "productKind": "reventa",
+  "isDraft": false,
+  "imageUrl": null,
+  "description": "",
+  "resaleMarkupPercentOnCost": 30,
+  "manualPricing": true,
+  "resaleScanCode": "7798394090747",
+  "printingTimeHours": 0
+}

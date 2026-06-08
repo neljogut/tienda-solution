@@ -1,0 +1,56 @@
+{
+  "id": "cf4e6dd0-997d-4b8d-b07e-f9bdef2207e6",
+  "resaleWholesaleDiscountPercent": 10,
+  "minimumStock": 3,
+  "code": "PROD-20260503-7214",
+  "priceKeychain": 25000,
+  "subcategory": "Filar>PLA",
+  "priceWholesale": 22500,
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T20:51:54.927Z"
+  },
+  "stock": 4,
+  "filamentLines": [],
+  "imageUrls": [
+    "https://i.imgur.com/DxJwUdt.jpeg"
+  ],
+  "priceRetail": 25000,
+  "category": "Filamento",
+  "purchaseCost": 14350,
+  "gramsFilament": 0,
+  "insumoLines": [],
+  "name": "FILAR PLA GRIS CENIZA",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T14:34:04.126Z"
+  },
+  "quantityTiers": [
+    {
+      "maxUnits": 4,
+      "unitPriceRetail": 23000,
+      "unitPriceWholesale": null,
+      "minUnits": 3
+    },
+    {
+      "maxUnits": 9,
+      "unitPriceRetail": 21000,
+      "unitPriceWholesale": null,
+      "minUnits": 5
+    },
+    {
+      "unitPriceRetail": 20000,
+      "maxUnits": null,
+      "minUnits": 10,
+      "unitPriceWholesale": null
+    }
+  ],
+  "printingTimeHours": 0,
+  "resaleScanCode": "7798394090150",
+  "resaleMarkupPercentOnCost": 30,
+  "description": "",
+  "manualPricing": true,
+  "isDraft": false,
+  "imageUrl": null,
+  "productKind": "reventa"
+}

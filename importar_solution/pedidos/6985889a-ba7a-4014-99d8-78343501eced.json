@@ -1,0 +1,43 @@
+{
+  "id": "6985889a-ba7a-4014-99d8-78343501eced",
+  "status": "delivered",
+  "clientEmail": "",
+  "items": [
+    {
+      "totalPrice": 86000,
+      "quantity": 1,
+      "productName": "Filamentos TPU",
+      "supplyUsage": [],
+      "productCode": "REG-COM",
+      "isCustomLine": true,
+      "productImage": null,
+      "productId": "",
+      "unitPrice": 86000
+    }
+  ],
+  "suppliesRestoredToStock": {},
+  "suppliesDeducted": true,
+  "amountPaid": 42000,
+  "ledgerKind": "commercialSale",
+  "productStockDeducted": true,
+  "productsRestoredToStock": {},
+  "paymentStatus": "partial",
+  "totalAmount": 86000,
+  "notes": "Registro comercial · Venta o servicio\nMotivo: tpu pal 500g / tpu grilon 1kg\nConcepto: Filamentos TPU",
+  "clientId": "nsTeudovLbOzdMxkWtrB",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-06T20:02:50.453Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-12T20:38:18.106Z"
+  },
+  "clientPhone": "3462699884",
+  "paymentBreakdownByMethod": {
+    "cash": 42000
+  },
+  "paymentMethod": "cash",
+  "clientName": "DARIO",
+  "clientAddress": ""
+}

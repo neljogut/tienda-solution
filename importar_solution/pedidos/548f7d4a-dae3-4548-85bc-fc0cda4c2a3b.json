@@ -1,0 +1,43 @@
+{
+  "id": "548f7d4a-dae3-4548-85bc-fc0cda4c2a3b",
+  "productStockDeducted": true,
+  "productsRestoredToStock": {},
+  "status": "delivered",
+  "clientEmail": "",
+  "items": [
+    {
+      "isCustomLine": true,
+      "productImage": null,
+      "unitPrice": 25000,
+      "productId": "",
+      "totalPrice": 25000,
+      "quantity": 1,
+      "productName": "VENTA FILAMENTOS",
+      "productCode": "REG-COM",
+      "supplyUsage": []
+    }
+  ],
+  "suppliesDeducted": true,
+  "suppliesRestoredToStock": {},
+  "amountPaid": 25000,
+  "ledgerKind": "commercialSale",
+  "clientAddress": "",
+  "clientName": "LUCIO SOSA",
+  "paymentStatus": "paid",
+  "totalAmount": 25000,
+  "notes": "Registro comercial · Venta o servicio\nMotivo: FILAMENTOS\nConcepto: VENTA FILAMENTOS",
+  "clientId": "iNyeTQ1xwCVe9TiMD6SE",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-03T18:14:35.553Z"
+  },
+  "updatedAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-12T13:25:24.009Z"
+  },
+  "clientPhone": "3462339399",
+  "paymentMethod": "cash",
+  "paymentBreakdownByMethod": {
+    "cash": 50000
+  }
+}

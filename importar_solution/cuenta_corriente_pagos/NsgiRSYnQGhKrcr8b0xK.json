@@ -1,0 +1,19 @@
+{
+  "id": "NsgiRSYnQGhKrcr8b0xK",
+  "note": null,
+  "clientId": "taYe48DHHuvurYK0hLdS",
+  "totalAmount": 40000,
+  "mode": "fifo",
+  "clientName": "JUAN",
+  "allocations": {
+    "196a7ba4-8750-49c3-b59d-ee67fffe11ed": 5000,
+    "b6627cca-4fa4-4bf5-b75f-5915c3f905c2": 10000,
+    "d9611ed1-7b04-453a-a256-9f4271368cc0": 5000,
+    "67e81237-bf79-48e0-a680-6becb4f92049": 20000
+  },
+  "method": "cash",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-09T18:09:54.201Z"
+  }
+}

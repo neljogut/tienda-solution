@@ -1,0 +1,16 @@
+{
+  "id": "kcSNyyu5WyvW5Va8I1az",
+  "clientName": "TRINIDAD MIGHETTO",
+  "createdAt": {
+    "__type": "Timestamp",
+    "iso": "2026-05-08T22:41:12.842Z"
+  },
+  "allocations": {
+    "6fa22eba-4303-40eb-b986-acfa200fdb75": 25000
+  },
+  "method": "cash",
+  "note": null,
+  "clientId": "cdicyY4UVGpzWeCoY2f9",
+  "totalAmount": 25000,
+  "mode": "fifo"
+}

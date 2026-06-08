@@ -277,29 +277,33 @@ export const InventoryMovements: React.FC = () => {
     return (
       <div
         key={key}
-        className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-colors"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-colors"
       >
-        {info?.image ? (
-          <img src={info.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0" />
-        ) : (
-          <div className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-            {line.itemType === 'filament' ? <Droplet size={18} /> : line.itemType === 'product' ? <ShoppingBag size={18} /> : <Package size={18} />}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-slate-800 text-sm truncate">{info?.name || 'Ítem eliminado'}</p>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-[10px] font-bold uppercase text-slate-400">{info?.type || 'Desconocido'}</span>
-            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[9px] font-bold ${lineBadge.bgColor}`}>
-              {lineBadge.label}
-            </span>
+        <div className="flex items-center gap-3 min-w-0">
+          {info?.image ? (
+            <img src={info.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+              {line.itemType === 'filament' ? <Droplet size={16} /> : line.itemType === 'product' ? <ShoppingBag size={16} /> : <Package size={16} />}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-slate-800 text-xs sm:text-sm truncate" title={info?.name}>{info?.name || 'Ítem eliminado'}</p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400">{info?.type || 'Desconocido'}</span>
+              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[9px] font-bold ${lineBadge.bgColor}`}>
+                {lineBadge.label}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className={`font-black text-sm ${isOut ? 'text-rose-600' : 'text-emerald-600'}`}>
+        
+        {/* Quantity/Stock block */}
+        <div className="flex sm:flex-col justify-between items-center sm:items-end border-t border-slate-100 sm:border-0 pt-2 sm:pt-0 shrink-0">
+          <p className={`font-black text-xs sm:text-sm ${isOut ? 'text-rose-600' : 'text-emerald-600'}`}>
             {formatDelta(line.modifiedQuantity, unit)}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
+          <p className="text-[10px] text-slate-400 font-medium">
             Stock: {formatStockRange(line.previousQuantity, line.finalQuantity, unit)}
           </p>
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { CashSession, CashMovement } from '../../types/cash';
 import { History, Calendar, User, ChevronDown, ChevronUp, Clock, AlertTriangle, CheckCircle, Loader2, PlusCircle } from 'lucide-react';
@@ -16,11 +16,12 @@ export const CashHistory: React.FC = () => {
       try {
         const q = query(
           collection(db, 'cash_sessions'),
-          where('status', '==', 'closed'),
-          orderBy('closedAt', 'desc')
+          where('status', '==', 'closed')
         );
         const snap = await getDocs(q);
-        setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession)));
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
+        list.sort((a, b) => new Date(b.closedAt || '').getTime() - new Date(a.closedAt || '').getTime());
+        setSessions(list);
       } catch (err) {
         console.error('Error fetching closed cash sessions:', err);
       } finally {
@@ -36,11 +37,11 @@ export const CashHistory: React.FC = () => {
     try {
       const q = query(
         collection(db, 'cash_movements'),
-        where('sessionId', '==', sessionId),
-        orderBy('date', 'asc')
+        where('sessionId', '==', sessionId)
       );
       const snap = await getDocs(q);
       const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashMovement));
+      movements.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setSessionMovements(prev => ({ ...prev, [sessionId]: movements }));
     } catch (err) {
       console.error('Error fetching movements:', err);
@@ -256,19 +257,19 @@ export const CashHistory: React.FC = () => {
                             sessionMovements[session.id].map(mov => {
                               const isIncome = ['sale_income', 'account_payment', 'deposit', 'manual_income'].includes(mov.type);
                               return (
-                                <div key={mov.id} className="p-3 flex justify-between items-center hover:bg-slate-50 transition-colors text-xs">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 rounded-lg ${isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                <div key={mov.id} className="p-3 flex justify-between items-center hover:bg-slate-50 transition-colors text-xs gap-3">
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className={`p-1.5 rounded-lg shrink-0 ${isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                       {isIncome ? <PlusCircle size={14} /> : <AlertTriangle size={14} />}
                                     </div>
-                                    <div>
-                                      <p className="font-semibold text-slate-700">{mov.observation}</p>
-                                      <p className="text-[10px] text-slate-400 mt-0.5">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-semibold text-slate-700 truncate" title={mov.observation}>{mov.observation}</p>
+                                      <p className="text-[10px] text-slate-400 mt-0.5 truncate">
                                         {new Date(mov.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - Método: {mov.paymentMethod} - Operador: {mov.userName}
                                       </p>
                                     </div>
                                   </div>
-                                  <div className={`font-bold text-sm ${isIncome ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  <div className={`font-bold text-sm shrink-0 ${isIncome ? 'text-emerald-600' : 'text-red-600'}`}>
                                     {isIncome ? '+' : '-'}${mov.amount.toLocaleString('es-AR')}
                                   </div>
                                 </div>

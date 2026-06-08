@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { UserData } from '../types/user';
 
@@ -29,16 +29,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeDoc: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = null;
+      }
+      
       if (user) {
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          
-          if (userDocSnap.exists()) {
-            setUserData({ uid: user.uid, ...userDocSnap.data() } as UserData);
+        const userDocRef = doc(db, 'users', user.uid);
+        unsubscribeDoc = onSnapshot(userDocRef, (snap) => {
+          if (snap.exists()) {
+            setUserData({ uid: user.uid, ...snap.data() } as UserData);
           } else {
             // Default to client if no document found, or guest
             setUserData({
@@ -48,18 +53,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: 'client'
             });
           }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
+          setLoading(false);
+        }, (error) => {
+          console.error("Error listening to user data:", error);
           setUserData(null);
-        }
+          setLoading(false);
+        });
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, []);
 
   const hasPermission = (permission: keyof NonNullable<UserData['permissions']>) => {

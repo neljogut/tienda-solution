@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Product } from '../types/product';
 import type { Category } from '../types/category';
@@ -8,20 +8,23 @@ import { useAuth } from '../context/AuthContext';
 import { usePricingData } from '../hooks/usePricingData';
 import {
   getCategoryTreeIds,
-  flattenCategoriesForSelect,
   dedupeCategories,
   resolveCategoryId,
+  getSortedCategoryTree,
 } from '../utils/categories';
-import { Search, Package, X } from 'lucide-react';
+import { Search, Package, X, ChevronRight, ChevronDown } from 'lucide-react';
 
 export const Catalog: React.FC = () => {
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
 
   const isAdminView = userData?.role === 'owner' || userData?.role === 'employee';
   const { getRetailPrice, getCost } = usePricingData();
@@ -48,6 +51,46 @@ export const Catalog: React.FC = () => {
     return () => { unsubscribe(); catUnsub(); };
   }, []);
 
+  const [orders, setOrders] = useState<any[]>([]);
+
+  // Fetch orders once on load to compute sales scores
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchOrders = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'orders'));
+        const ords: any[] = [];
+        snap.forEach((doc) => {
+          ords.push({ id: doc.id, ...doc.data() });
+        });
+        setOrders(ords);
+      } catch (err) {
+        console.warn("No se pudieron cargar los pedidos para ranking de ventas:", err);
+      }
+    };
+    fetchOrders();
+  }, [currentUser]);
+
+  const salesScores = useMemo(() => {
+    const scores: Record<string, number> = {};
+    orders.forEach((order) => {
+      if (order.orderStatus === 'cancelled') return;
+      order.items?.forEach((item: any) => {
+        const pId = item.productId;
+        if (!pId) return;
+        
+        const prod = products.find(p => p.id === pId);
+        const isLlavero = prod
+          ? (prod.type === '3d' && (prod as any).isKeychain)
+          : (item.isKeychain || item.category?.toLowerCase() === 'llaveros');
+          
+        const contribution = isLlavero ? 1 : (item.quantity || 0);
+        scores[pId] = (scores[pId] || 0) + contribution;
+      });
+    });
+    return scores;
+  }, [orders, products]);
+
   const { canonical: canonicalCategories, idRemap } = useMemo(
     () => dedupeCategories(categories),
     [categories]
@@ -58,10 +101,20 @@ export const Catalog: React.FC = () => {
     return getCategoryTreeIds(canonicalCategories, selectedCategory);
   }, [selectedCategory, canonicalCategories]);
 
-  const categoryOptions = useMemo(
-    () => flattenCategoriesForSelect(canonicalCategories),
-    [canonicalCategories]
-  );
+  // Compute category sales totals
+  const categorySalesTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    products.forEach((p) => {
+      const catId = resolveCategoryId(p.categoryId, idRemap) ?? 'sin_categoria';
+      totals[catId] = (totals[catId] || 0) + (salesScores[p.id] || 0);
+    });
+    return totals;
+  }, [products, salesScores, idRemap]);
+
+  // Sort canonical categories using DFS tree helper to preserve parent-child hierarchy
+  const sortedCategories = useMemo(() => {
+    return getSortedCategoryTree(canonicalCategories, categorySalesTotals);
+  }, [canonicalCategories, categorySalesTotals]);
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -74,6 +127,28 @@ export const Catalog: React.FC = () => {
     return matchesSearch && matchesCategory && matchesType;
   });
 
+  // Sort products by category position in the sorted tree, then by sales score
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const catIdA = resolveCategoryId(a.categoryId, idRemap) ?? 'sin_categoria';
+      const catIdB = resolveCategoryId(b.categoryId, idRemap) ?? 'sin_categoria';
+      
+      const indexA = sortedCategories.findIndex(c => c.id === catIdA);
+      const indexB = sortedCategories.findIndex(c => c.id === catIdB);
+      
+      const idxA = indexA === -1 ? 9999 : indexA;
+      const idxB = indexB === -1 ? 9999 : indexB;
+      
+      if (idxA !== idxB) return idxA - idxB;
+      
+      const scoreA = salesScores[a.id] || 0;
+      const scoreB = salesScores[b.id] || 0;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      
+      return a.name.localeCompare(b.name, 'es');
+    });
+  }, [filteredProducts, sortedCategories, salesScores, idRemap]);
+
   const activeFilters = (selectedCategory !== 'all' ? 1 : 0) + (selectedType !== 'all' ? 1 : 0);
 
   const clearFilters = () => {
@@ -82,16 +157,45 @@ export const Catalog: React.FC = () => {
     setSearchTerm('');
   };
 
+  const isCategoryVisible = (cat: Category) => {
+    let currentParentId = cat.parentId;
+    while (currentParentId) {
+      if (!expandedCategories.has(currentParentId)) {
+        return false;
+      }
+      const parent = canonicalCategories.find(c => c.id === currentParentId);
+      currentParentId = parent ? parent.parentId : null;
+    }
+    return true;
+  };
+
+  const hasChildren = (catId: string) => {
+    return canonicalCategories.some(c => c.parentId === catId);
+  };
+
+  const toggleExpandCategory = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <div>
         <h1 className="page-title">Catálogo</h1>
-        <p className="page-subtitle">Explorá nuestros productos de impresión 3D y reventa</p>
+        <p className="page-subtitle">Explorá nuestros productos de impresión 3D y artículos varios</p>
       </div>
 
       {/* Filters Bar */}
-      <div className="card p-4 sticky top-16 z-10 bg-white shadow-md border-b border-slate-200">
+      <div className="card p-4 bg-white">
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
           {/* Search */}
           <div className="relative flex-1 w-full">
@@ -105,31 +209,126 @@ export const Catalog: React.FC = () => {
             />
           </div>
 
-          {/* Category filter */}
-          <select 
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="input w-full md:w-48"
-          >
-            <option value="all">Todas las categorías</option>
-            {categoryOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>{opt.label}</option>
-            ))}
-          </select>
+          {/* Collapsible Categories Dropdown Selector */}
+          <div className="relative w-full md:w-auto">
+            <button
+              onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+              className="btn-secondary w-full md:w-60 flex items-center justify-between gap-2 text-xs"
+            >
+              <span className="truncate">
+                {selectedCategory === 'all'
+                  ? 'Todas las categorías'
+                  : canonicalCategories.find(c => c.id === selectedCategory)?.name || 'Categoría'}
+              </span>
+              <ChevronDown size={16} className={`transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showCategoryMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-20" 
+                  onClick={() => setShowCategoryMenu(false)} 
+                />
+                <div className="absolute right-0 md:left-0 mt-2 w-72 bg-white border border-slate-200 shadow-xl rounded-xl p-3 z-30 max-h-80 overflow-y-auto space-y-1 text-xs">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setShowCategoryMenu(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold transition-all border text-left ${
+                      selectedCategory === 'all'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>Todas las categorías</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {products.length}
+                    </span>
+                  </button>
+                  
+                  {sortedCategories.map(cat => {
+                    if (!isCategoryVisible(cat)) return null;
+                    
+                    const isSelected = selectedCategory === cat.id;
+                    const count = products.filter(p => resolveCategoryId(p.categoryId, idRemap) === cat.id).length;
+                    const sales = categorySalesTotals[cat.id] || 0;
+                    const hasKids = hasChildren(cat.id);
+                    const isExpanded = expandedCategories.has(cat.id);
+                    
+                    return (
+                      <div
+                        key={cat.id}
+                        style={{ paddingLeft: `${cat.depth * 0.75}rem` }}
+                        className="flex items-center gap-1 w-full"
+                      >
+                        {hasKids ? (
+                          <button
+                            onClick={(e) => toggleExpandCategory(cat.id, e)}
+                            className="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors flex-shrink-0"
+                          >
+                            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                          </button>
+                        ) : (
+                          <div className="w-5 flex-shrink-0" />
+                        )}
+                        
+                        <button
+                          onClick={() => {
+                            setSelectedCategory(cat.id);
+                            if (hasKids) {
+                              setExpandedCategories(prev => {
+                                const next = new Set(prev);
+                                next.add(cat.id);
+                                return next;
+                              });
+                            } else {
+                              setShowCategoryMenu(false);
+                            }
+                          }}
+                          className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-lg font-semibold transition-all border text-left ${
+                            isSelected
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="truncate">{cat.name}</span>
+                          <div className="flex items-center gap-1">
+                            <span className={`text-[9px] px-1 py-0.1 rounded-full ${
+                              isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
+                            }`}>
+                              {count}
+                            </span>
+                            {sales > 0 && (
+                              <span className="text-[9px] font-bold text-emerald-500">
+                                ★{sales}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Type filter */}
           <select 
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="input w-full md:w-40"
+            className="input w-full md:w-40 text-xs"
           >
             <option value="all">Todos los tipos</option>
             <option value="3d">Impresión 3D</option>
-            <option value="resale">Reventa</option>
+            <option value="resale">Artículos Varios</option>
           </select>
 
           {activeFilters > 0 && (
-            <button onClick={clearFilters} className="btn-ghost flex items-center gap-1 text-sm text-red-500 hover:text-red-700">
+            <button onClick={clearFilters} className="btn-ghost flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
               <X size={14} />
               Limpiar ({activeFilters})
             </button>
@@ -140,7 +339,7 @@ export const Catalog: React.FC = () => {
       {/* Results info */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          {loading ? 'Cargando...' : `${filteredProducts.length} producto${filteredProducts.length !== 1 ? 's' : ''} encontrado${filteredProducts.length !== 1 ? 's' : ''}`}
+          {loading ? 'Cargando...' : `${sortedProducts.length} producto${sortedProducts.length !== 1 ? 's' : ''} encontrado${sortedProducts.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -149,7 +348,7 @@ export const Catalog: React.FC = () => {
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
         </div>
-      ) : filteredProducts.length === 0 ? (
+      ) : sortedProducts.length === 0 ? (
         <div className="card p-16 flex flex-col items-center justify-center text-center">
           <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
             <Package size={40} className="text-slate-300" />
@@ -160,8 +359,8 @@ export const Catalog: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filteredProducts.map(product => (
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+          {sortedProducts.map(product => (
             <ProductCard
               key={product.id}
               product={product}

@@ -159,7 +159,7 @@ export const ProductDetail: React.FC = () => {
             ) : (
               <>
                 <SpecItem icon={Box} label="Stock" value={`${product.stock || 0} unid.`} />
-                <SpecItem icon={Wrench} label="Tipo" value="Producto de Reventa" />
+                <SpecItem icon={Wrench} label="Tipo" value="Artículo Vario" />
               </>
             )}
           </div>

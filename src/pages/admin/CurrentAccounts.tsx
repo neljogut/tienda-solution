@@ -231,7 +231,7 @@ export const CurrentAccounts: React.FC = () => {
       </div>
 
       {/* Debt list grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {loading ? (
           <div className="col-span-full py-16 text-center text-slate-400">
             <Loader2 className="animate-spin text-blue-500 mx-auto mb-3" size={32} />
@@ -251,56 +251,56 @@ export const CurrentAccounts: React.FC = () => {
             const pendingOrders = getClientPendingOrders(client.id);
 
             return (
-              <div key={client.id} className="card p-5 border-t-4 border-amber-500 flex flex-col justify-between">
+              <div key={client.id} className="card p-4 sm:p-5 border-t-4 border-amber-500 flex flex-col justify-between shadow-sm">
                 <div>
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
                     <div>
-                      <h3 className="font-bold text-slate-800 text-base leading-tight">
+                      <h3 className="font-bold text-slate-800 text-sm sm:text-base leading-tight">
                         {client.firstName} {client.lastName}
                       </h3>
-                      {client.phone && <p className="text-xs text-slate-400 mt-0.5">{client.phone}</p>}
+                      {client.phone && <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">{client.phone}</p>}
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 flex-shrink-0">
                       {client.isWholesale && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-100">
+                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-100">
                           Mayorista
                         </span>
                       )}
                       {client.isTrusted && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
+                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
                           Confianza
                         </span>
                       )}
                       {!client.isWholesale && !client.isTrusted && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
                           Minorista
                         </span>
                       )}
                     </div>
                   </div>
                   
-                  <div className="mb-4">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total adeudado:</p>
-                    <p className="text-3xl font-extrabold text-amber-600 mt-0.5">${client.totalOwed?.toLocaleString('es-AR')}</p>
+                  <div className="mb-3 sm:mb-4">
+                    <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider font-semibold">Total adeudado:</p>
+                    <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-0.5">${client.totalOwed?.toLocaleString('es-AR')}</p>
                   </div>
                   
                   {/* Expandable Order List */}
-                  <div className="border-t border-slate-100 pt-3 mt-3">
+                  <div className="border-t border-slate-100 pt-2.5 mt-2.5">
                     <button 
                       onClick={() => setExpandedClientId(isExpanded ? null : client.id)}
-                      className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-800"
+                      className="flex items-center justify-between w-full text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-800"
                     >
                       <span>Pedidos Pendientes ({pendingOrders.length})</span>
-                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      {isExpanded ? <ChevronUp size={12} className="sm:w-3.5 sm:h-3.5" /> : <ChevronDown size={12} className="sm:w-3.5 sm:h-3.5" />}
                     </button>
                     
                     {isExpanded && (
-                      <div className="space-y-2 mt-3 max-h-[160px] overflow-y-auto pr-1 no-scrollbar animate-fadeIn">
-                        {pendingOrders.length === 0 && <p className="text-xs text-slate-400 italic">No hay pedidos pendientes de cobro.</p>}
+                      <div className="space-y-1.5 mt-2.5 max-h-[120px] sm:max-h-[160px] overflow-y-auto pr-1 no-scrollbar animate-fadeIn">
+                        {pendingOrders.length === 0 && <p className="text-[11px] sm:text-xs text-slate-400 italic">No hay pedidos pendientes de cobro.</p>}
                         {pendingOrders.map(o => (
-                          <div key={o.id} className="flex justify-between items-center text-xs bg-slate-50 p-2 rounded border">
+                          <div key={o.id} className="flex justify-between items-center text-[11px] sm:text-xs bg-slate-50 p-1.5 sm:p-2 rounded border">
                             <span className="text-slate-600 font-medium flex items-center gap-1">
-                              <Receipt size={12} className="text-slate-400" />
+                              <Receipt size={11} className="text-slate-400 sm:w-3 sm:h-3" />
                               Pedido #{String(o.orderNumber).padStart(5,'0')}
                             </span>
                             <span className="font-bold text-slate-800">${o.pendingAmount.toLocaleString('es-AR')}</span>
@@ -311,12 +311,12 @@ export const CurrentAccounts: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-slate-100">
+                <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100">
                   <button 
                     onClick={() => openPaymentModal(client)}
-                    className="w-full btn-primary py-2 text-sm flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25"
+                    className="w-full btn-primary py-2 text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25"
                   >
-                    <DollarSign size={16} /> Registrar Pago
+                    <DollarSign size={14} className="sm:w-4 sm:h-4" /> Registrar Pago
                   </button>
                 </div>
               </div>

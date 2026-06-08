@@ -126,3 +126,69 @@ export function flattenCategoriesForSelect(categories: Category[]): { id: string
   walk(null, 0);
   return result;
 }
+
+/**
+ * Retorna la lista de categorías aplanada siguiendo el orden jerárquico (DFS).
+ * Las categorías raíz se ordenan entre sí por sus ventas acumuladas (incluyendo subcategorías).
+ * Las subcategorías de cada nodo se ordenan entre sí del mismo modo.
+ */
+export function getSortedCategoryTree(
+  categories: Category[],
+  categorySalesTotals: Record<string, number>
+): (Category & { depth: number })[] {
+  // Build parent-child relationships
+  const byParent = new Map<string | null, Category[]>();
+  for (const cat of categories) {
+    const list = byParent.get(cat.parentId) ?? [];
+    list.push(cat);
+    byParent.set(cat.parentId, list);
+  }
+
+  // Calculate cumulative sales for each category (self + descendants)
+  const memoCumulativeSales = new Map<string, number>();
+  const getCumulativeSales = (catId: string): number => {
+    if (memoCumulativeSales.has(catId)) return memoCumulativeSales.get(catId)!;
+    let sum = categorySalesTotals[catId] || 0;
+    const children = byParent.get(catId) ?? [];
+    for (const child of children) {
+      sum += getCumulativeSales(child.id);
+    }
+    memoCumulativeSales.set(catId, sum);
+    return sum;
+  };
+
+  // Sort function for a list of categories
+  const sortCategories = (cats: Category[]) => {
+    cats.sort((a, b) => {
+      const salesA = getCumulativeSales(a.id);
+      const salesB = getCumulativeSales(b.id);
+      if (salesA !== salesB) return salesB - salesA;
+      
+      // Fallback exceptions
+      if (a.name.toLowerCase().includes('generales')) return -1;
+      if (b.name.toLowerCase().includes('generales')) return 1;
+      if (a.name.toLowerCase().includes('llaveros')) return 1;
+      if (b.name.toLowerCase().includes('llaveros')) return -1;
+      return a.name.localeCompare(b.name, 'es');
+    });
+  };
+
+  // Sort root categories and all children lists
+  const rootCats = byParent.get(null) ?? [];
+  sortCategories(rootCats);
+  for (const [, list] of byParent) {
+    sortCategories(list);
+  }
+
+  // Flatten using DFS
+  const result: (Category & { depth: number })[] = [];
+  const walk = (parentId: string | null, depth: number) => {
+    const children = byParent.get(parentId) ?? [];
+    for (const cat of children) {
+      result.push({ ...cat, depth });
+      walk(cat.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return result;
+}

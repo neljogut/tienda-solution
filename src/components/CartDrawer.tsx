@@ -4,6 +4,55 @@ import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, addDoc, doc, writeBatch, getDoc, getCountFromServer, onSnapshot } from 'firebase/firestore';
+interface QuantityInputProps {
+  productId: string;
+  quantity: number;
+  maxStock: number;
+  updateQuantity: (id: string, qty: number) => void;
+}
+
+const QuantityInput: React.FC<QuantityInputProps> = ({ productId, quantity, maxStock, updateQuantity }) => {
+  const [localVal, setLocalVal] = useState<string>(quantity.toString());
+
+  useEffect(() => {
+    setLocalVal(quantity.toString());
+  }, [quantity]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setLocalVal(text);
+
+    const parsed = parseInt(text, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      const clamped = Math.min(parsed, maxStock);
+      updateQuantity(productId, clamped);
+    }
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInt(localVal, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      updateQuantity(productId, 1);
+      setLocalVal("1");
+    } else {
+      const clamped = Math.min(parsed, maxStock);
+      updateQuantity(productId, clamped);
+      setLocalVal(clamped.toString());
+    }
+  };
+
+  return (
+    <input 
+      type="number"
+      min="1"
+      max={maxStock}
+      value={localVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className="w-12 text-center text-sm font-semibold bg-transparent border-none focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-800"
+    />
+  );
+};
 
 export const CartDrawer: React.FC = () => {
   const { isDrawerOpen, closeDrawer, items, getTotalPrice, removeItem, updateQuantity, clearCart } = useCartStore();
@@ -319,9 +368,9 @@ export const CartDrawer: React.FC = () => {
                   <div>
                     <h4 className="font-semibold text-slate-800 line-clamp-1">{item.name}</h4>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-sm font-medium text-blue-600">${item.price.toLocaleString('es-AR')}</p>
+                      <p className="text-sm font-medium text-blue-600">${(item.price || 0).toLocaleString('es-AR')}</p>
                       {item.price < item.basePrice && (
-                        <p className="text-xs text-slate-400 line-through">${item.basePrice.toLocaleString('es-AR')}</p>
+                        <p className="text-xs text-slate-400 line-through">${(item.basePrice || 0).toLocaleString('es-AR')}</p>
                       )}
                     </div>
 
@@ -342,7 +391,7 @@ export const CartDrawer: React.FC = () => {
                           )}
                           {nextTier ? (
                             <p className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 inline-block font-medium">
-                              Llevá {nextTier.minQty - item.quantity} más para pagar ${nextTier.unitPrice.toLocaleString('es-AR')} c/u
+                              Llevá {nextTier.minQty - item.quantity} más para pagar ${(nextTier.unitPrice || 0).toLocaleString('es-AR')} c/u
                             </p>
                           ) : (
                             <p className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 inline-block font-medium">
@@ -363,7 +412,12 @@ export const CartDrawer: React.FC = () => {
                       >
                         <Minus size={14} />
                       </button>
-                      <span className="text-sm font-medium w-4 text-center">{item.quantity}</span>
+                      <QuantityInput 
+                        productId={item.productId}
+                        quantity={item.quantity}
+                        maxStock={item.maxStock}
+                        updateQuantity={updateQuantity}
+                      />
                       <button 
                         onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                         className="p-1 text-slate-500 hover:bg-slate-200 rounded"
@@ -390,7 +444,7 @@ export const CartDrawer: React.FC = () => {
           <div className="flex justify-between items-center mb-4">
             <span className="text-slate-600 font-medium">Total a pagar:</span>
             <span className="text-2xl font-bold text-emerald-600">
-              ${getTotalPrice().toLocaleString('es-AR')}
+              ${(getTotalPrice() || 0).toLocaleString('es-AR')}
             </span>
           </div>
           

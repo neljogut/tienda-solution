@@ -375,7 +375,7 @@ export const ProductForm: React.FC = () => {
                   disabled={!isNew}
                 >
                   <option value="3d">Impresión 3D</option>
-                  <option value="resale">Reventa</option>
+                  <option value="resale">Artículos Varios</option>
                 </select>
               </div>
               <div className="col-span-2 sm:col-span-1">

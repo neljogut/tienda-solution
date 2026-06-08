@@ -116,16 +116,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
         
-        {/* Overlay on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {/* Overlay on hover (Desktop only) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 hidden md:block" />
 
         {/* Top badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          <span className={`badge text-[10px] ${product.type === '3d' ? 'badge-blue' : 'badge-green'}`}>
-            {product.type === '3d' ? 'Impresión 3D' : 'Reventa'}
+        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-10">
+          <span className={`badge text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5 ${product.type === '3d' ? 'badge-blue' : 'badge-green'}`}>
+            <span className="hidden sm:inline">{product.type === '3d' ? 'Impresión 3D' : 'Artículos Varios'}</span>
+            <span className="inline sm:hidden">{product.type === '3d' ? '3D' : 'Varios'}</span>
           </span>
           {isAdminView && product.useManualPrice && (
-            <span className="badge badge-yellow text-[10px]">Manual</span>
+            <span className="badge badge-yellow text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5">Manual</span>
           )}
         </div>
 
@@ -136,8 +137,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        {/* Bottom action on hover */}
-        <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 flex gap-2">
+        {/* Bottom action on hover (Desktop only) */}
+        <div className="absolute bottom-2 left-2 right-2 opacity-0 md:group-hover:opacity-100 translate-y-2 md:group-hover:translate-y-0 transition-all duration-300 hidden md:flex gap-2">
           <button 
             className="flex-1 py-2 rounded-xl bg-white/90 backdrop-blur-sm text-slate-800 text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-white transition-colors shadow-lg"
             onClick={(e) => { e.stopPropagation(); navigate(`/catalog/${product.id}`); }}
@@ -156,19 +157,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
       
       {/* Content */}
-      <div className="p-4 flex flex-col flex-1">
-        <p className="text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1">{product.category}</p>
-        <h3 className="font-semibold text-slate-800 line-clamp-2 leading-snug mb-3 flex-1">{product.name}</h3>
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
+        <p className="text-[9px] sm:text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1">{product.category}</p>
+        <h3 className="font-semibold text-slate-800 line-clamp-2 leading-snug mb-2 flex-1 text-xs sm:text-base">{product.name}</h3>
         
-        <div className="flex items-end justify-between">
+        <div className="flex items-center justify-between gap-2 mt-auto">
           <div>
-            <span className="text-xl font-bold text-slate-900">
+            <span className="text-base sm:text-xl font-bold text-slate-900">
               ${priceToDisplay?.toLocaleString('es-AR') || '0'}
             </span>
             {product.stock !== undefined && product.stock > 0 && (
-              <p className="text-[11px] text-slate-400 mt-0.5">{product.stock} disponibles</p>
+              <p className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5">{product.stock} disponibles</p>
             )}
           </div>
+          {!isOutOfStock && (
+            <button
+              onClick={handleAddToCart}
+              className="p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-md shadow-blue-500/20 flex-shrink-0"
+              title="Añadir al carrito"
+            >
+              <ShoppingCart size={15} />
+            </button>
+          )}
         </div>
 
         {/* Admin cost info */}

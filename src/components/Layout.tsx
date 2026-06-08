@@ -5,11 +5,18 @@ import { Navbar } from './Navbar';
 import { CartDrawer } from './CartDrawer';
 import { useCartStore } from '../store/cartStore';
 import { ShoppingCart } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { ForcePasswordChange } from './ForcePasswordChange';
 
 export const Layout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getTotalItems, openDrawer, isDrawerOpen } = useCartStore();
+  const { userData } = useAuth();
   const totalItems = getTotalItems();
+
+  if (userData?.forcePasswordChange) {
+    return <ForcePasswordChange />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">

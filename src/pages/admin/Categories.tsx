@@ -122,11 +122,11 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       {/* Category row */}
       <div
         className={`
-          group flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200
+          group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-200
           hover:bg-blue-50/60 cursor-default
           ${isRoot ? 'bg-slate-50/50' : ''}
         `}
-        style={{ marginLeft: `${depth * 24}px` }}
+        style={{ marginLeft: `calc(${depth} * var(--indent-step))` } as React.CSSProperties}
       >
         {/* Expand / collapse toggle */}
         <button
@@ -140,84 +140,84 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         >
           {hasChildren ? (
             isExpanded ? (
-              <ChevronDown size={16} />
+              <ChevronDown size={14} className="sm:w-4 sm:h-4" />
             ) : (
-              <ChevronRight size={16} />
+              <ChevronRight size={14} className="sm:w-4 sm:h-4" />
             )
           ) : (
-            <ChevronRight size={16} />
+            <ChevronRight size={14} className="sm:w-4 sm:h-4" />
           )}
         </button>
-
+ 
         {/* Folder icon */}
         {hasChildren && isExpanded ? (
-          <FolderOpen size={18} className="text-blue-500 flex-shrink-0" />
+          <FolderOpen size={16} className="text-blue-500 flex-shrink-0 sm:w-[18px] sm:h-[18px]" />
         ) : hasChildren ? (
-          <Folder size={18} className="text-blue-400 flex-shrink-0" />
+          <Folder size={16} className="text-blue-400 flex-shrink-0 sm:w-[18px] sm:h-[18px]" />
         ) : (
-          <Tag size={16} className="text-slate-400 flex-shrink-0" />
+          <Tag size={14} className="text-slate-400 flex-shrink-0 sm:w-4 sm:h-4" />
         )}
-
+ 
         {/* Name */}
         <span
-          className={`flex-1 truncate ${
-            isRoot ? 'font-bold text-slate-900 text-sm' : 'font-medium text-slate-700 text-sm'
+          className={`flex-1 truncate text-xs sm:text-sm ${
+            isRoot ? 'font-bold text-slate-900' : 'font-medium text-slate-700'
           }`}
         >
           {category.name}
         </span>
-
+ 
         {/* Product count badge */}
         <span
           className={`badge ${
             productCount > 0 ? 'badge-blue' : 'badge-gray'
-          } text-[11px] tabular-nums`}
+          } text-[9px] sm:text-[11px] tabular-nums`}
         >
-          {productCount} {productCount === 1 ? 'producto' : 'productos'}
+          {productCount} <span className="hidden sm:inline">{productCount === 1 ? 'producto' : 'productos'}</span><span className="inline sm:hidden">p.</span>
         </span>
-
-        {/* Actions — visible on hover */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+ 
+        {/* Actions — visible on hover / always on mobile */}
+        <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
           <button
             onClick={() => onMoveUp(category)}
             disabled={siblingIndex === 0}
-            className="btn-icon !p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="btn-icon !p-1 sm:!p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Subir"
           >
-            <ArrowUp size={14} />
+            <ArrowUp size={12} className="sm:w-3.5 sm:h-3.5" />
           </button>
           <button
             onClick={() => onMoveDown(category)}
             disabled={siblingIndex === siblingCount - 1}
-            className="btn-icon !p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="btn-icon !p-1 sm:!p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Bajar"
           >
-            <ArrowDown size={14} />
+            <ArrowDown size={12} className="sm:w-3.5 sm:h-3.5" />
           </button>
           <button
             onClick={() => onEdit(category)}
-            className="btn-icon !p-1.5 hover:!text-blue-600 hover:!bg-blue-50"
+            className="btn-icon !p-1 sm:!p-1.5 hover:!text-blue-600 hover:!bg-blue-50"
             title="Editar"
           >
-            <Edit size={14} />
+            <Edit size={12} className="sm:w-3.5 sm:h-3.5" />
           </button>
           <button
             onClick={() => onDelete(category)}
-            className="btn-icon !p-1.5 hover:!text-red-600 hover:!bg-red-50"
+            className="btn-icon !p-1 sm:!p-1.5 hover:!text-red-600 hover:!bg-red-50"
             title="Eliminar"
           >
-            <Trash2 size={14} />
+            <Trash2 size={12} className="sm:w-3.5 sm:h-3.5" />
           </button>
         </div>
       </div>
-
+ 
       {/* Children (recursive) */}
       {hasChildren && isExpanded && (
         <div className="relative">
           {/* Connector line */}
           <div
-            className="absolute top-0 bottom-4 border-l-2 border-slate-200/80"
-            style={{ left: `${depth * 24 + 28}px` }}
+            className="absolute top-0 bottom-4 border-l border-slate-200/80"
+            style={{ left: `calc((${depth} * var(--indent-step)) + 16px)` } as React.CSSProperties}
           />
           {children.map((child, idx) => (
             <TreeNode
@@ -435,7 +435,7 @@ export const Categories: React.FC = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn [--indent-step:10px] sm:[--indent-step:24px]">
       {/* Header */}
       <div className="page-header">
         <div>

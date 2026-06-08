@@ -497,134 +497,243 @@ export const Orders: React.FC = () => {
             <p className="text-sm font-medium">Cargando listado de pedidos...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderNumber')}>
-                    Nº Pedido {renderSortIndicator('orderNumber')}
-                  </th>
-                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('customerName')}>
-                    Cliente {renderSortIndicator('customerName')}
-                  </th>
-                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('date')}>
-                    Fecha {renderSortIndicator('date')}
-                  </th>
-                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderStatus')}>
-                    Estado {renderSortIndicator('orderStatus')}
-                  </th>
-                  <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('paymentStatus')}>
-                    Pago {renderSortIndicator('paymentStatus')}
-                  </th>
-                  <th className="p-4 text-right cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('totalAmount')}>
-                    Total {renderSortIndicator('totalAmount')}
-                  </th>
-                  <th className="p-4 text-right select-none">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {sortedOrders.length === 0 ? (
+          <>
+            {/* Desktop View: Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                   <tr>
-                    <td colSpan={7} className="p-12 text-center text-slate-400">
-                      No se encontraron pedidos registrados.
-                    </td>
+                    <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderNumber')}>
+                      Nº Pedido {renderSortIndicator('orderNumber')}
+                    </th>
+                    <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('customerName')}>
+                      Cliente {renderSortIndicator('customerName')}
+                    </th>
+                    <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('date')}>
+                      Fecha {renderSortIndicator('date')}
+                    </th>
+                    <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderStatus')}>
+                      Estado {renderSortIndicator('orderStatus')}
+                    </th>
+                    <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('paymentStatus')}>
+                      Pago {renderSortIndicator('paymentStatus')}
+                    </th>
+                    <th className="p-4 text-right cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('totalAmount')}>
+                      Total {renderSortIndicator('totalAmount')}
+                    </th>
+                    <th className="p-4 text-right select-none">Acciones</th>
                   </tr>
-                ) : (
-                  sortedOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-slate-50/40 transition-colors">
-                      {/* Order Number */}
-                      <td className="p-4 font-bold text-slate-800">
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  {sortedOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center text-slate-400">
+                        No se encontraron pedidos registrados.
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedOrders.map(order => (
+                      <tr key={order.id} className="hover:bg-slate-50/40 transition-colors">
+                        {/* Order Number */}
+                        <td className="p-4 font-bold text-slate-800">
+                          #{String(order.orderNumber).padStart(5, '0')}
+                        </td>
+                        
+                        {/* Customer */}
+                        <td className="p-4 font-semibold text-slate-700">
+                          {order.customerName}
+                        </td>
+                        
+                        {/* Date */}
+                        <td className="p-4 text-slate-500">
+                          {new Date(order.date).toLocaleDateString('es-AR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        
+                        {/* Status */}
+                        <td className="p-4">{getStatusBadge(order.orderStatus)}</td>
+
+                        {/* Payment Status */}
+                        <td className="p-4">
+                          <div>
+                            {getPaymentBadge(order.paymentStatus)}
+                            {order.paymentStatus === 'partial' && (
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                <p>${order.paidAmount.toLocaleString('es-AR')} abonado</p>
+                                <p className="font-semibold text-amber-700">Resta: ${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</p>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        
+                        {/* Total Amount */}
+                        <td className="p-4 font-black text-slate-800 text-right">
+                          ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                        </td>
+                        
+                        {/* Actions */}
+                        <td className="p-4 text-right">
+                          <div className="flex justify-end items-center gap-1">
+                            {canEditOrder && (
+                              <button
+                                onClick={() => openEditModal(order)}
+                                disabled={savingId === order.id}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
+                                title="Editar estado y pago"
+                              >
+                                {savingId === order.id ? (
+                                  <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                  <Edit2 size={16} />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => generateClientPDF(order, business)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
+                              title="Comprobante Cliente"
+                            >
+                              <FileDown size={16} />
+                            </button>
+                            <button
+                              onClick={() => generateInternalPDF(order, business)}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
+                              title="Balance Interno"
+                            >
+                              <FileText size={16} />
+                            </button>
+                            {canEditOrder && (
+                              <button
+                                onClick={() => {
+                                  setDeletingOrder(order);
+                                  setRestoreStock(true);
+                                  setRestoreFilament(true);
+                                  setRestoreSupplies(true);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                title="Eliminar Pedido"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View: Cards */}
+            <div className="block md:hidden divide-y divide-slate-100 text-xs">
+              {sortedOrders.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  No se encontraron pedidos registrados.
+                </div>
+              ) : (
+                sortedOrders.map(order => (
+                  <div key={order.id} className="p-4 space-y-3">
+                    {/* Row 1: Order Number & Date */}
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-800 text-sm">
                         #{String(order.orderNumber).padStart(5, '0')}
-                      </td>
-                      
-                      {/* Customer */}
-                      <td className="p-4 font-semibold text-slate-700">
-                        {order.customerName}
-                      </td>
-                      
-                      {/* Date */}
-                      <td className="p-4 text-slate-500">
+                      </span>
+                      <span className="text-slate-500">
                         {new Date(order.date).toLocaleDateString('es-AR', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric'
                         })}
-                      </td>
-                      
-                      {/* Status */}
-                      <td className="p-4">{getStatusBadge(order.orderStatus)}</td>
+                      </span>
+                    </div>
 
-                      {/* Payment Status */}
-                      <td className="p-4">
-                        <div>
-                          {getPaymentBadge(order.paymentStatus)}
-                          {order.paymentStatus === 'partial' && (
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              <p>${order.paidAmount.toLocaleString('es-AR')} abonado</p>
-                              <p className="font-semibold text-amber-700">Resta: ${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</p>
-                            </div>
-                          )}
+                    {/* Row 2: Customer Name */}
+                    <div>
+                      <h3 className="font-semibold text-slate-700 text-sm">{order.customerName}</h3>
+                    </div>
+
+                    {/* Row 3: Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {getStatusBadge(order.orderStatus)}
+                      {getPaymentBadge(order.paymentStatus)}
+                    </div>
+
+                    {/* Row 4: Partial Payment Info */}
+                    {order.paymentStatus === 'partial' && (
+                      <div className="bg-amber-50/50 border border-amber-100/50 rounded-lg p-2 text-slate-600 space-y-0.5">
+                        <div className="flex justify-between">
+                          <span>Abonado:</span>
+                          <span className="font-medium">${order.paidAmount.toLocaleString('es-AR')}</span>
                         </div>
-                      </td>
-                      
-                      {/* Total Amount */}
-                      <td className="p-4 font-black text-slate-800 text-right">
-                        ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
-                      </td>
-                      
-                      {/* Actions */}
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end items-center gap-1">
-                          {canEditOrder && (
-                            <button
-                              onClick={() => openEditModal(order)}
-                              disabled={savingId === order.id}
-                              className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
-                              title="Editar estado y pago"
-                            >
-                              {savingId === order.id ? (
-                                <Loader2 size={16} className="animate-spin" />
-                              ) : (
-                                <Edit2 size={16} />
-                              )}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => generateClientPDF(order, business)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
-                            title="Comprobante Cliente"
-                          >
-                            <FileDown size={16} />
-                          </button>
-                          <button
-                            onClick={() => generateInternalPDF(order, business)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
-                            title="Balance Interno"
-                          >
-                            <FileText size={16} />
-                          </button>
-                          {canEditOrder && (
-                            <button
-                              onClick={() => {
-                                setDeletingOrder(order);
-                                setRestoreStock(true);
-                                setRestoreFilament(true);
-                                setRestoreSupplies(true);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                              title="Eliminar Pedido"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
+                        <div className="flex justify-between text-amber-700 font-bold">
+                          <span>Resta:</span>
+                          <span>${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    )}
+
+                    {/* Row 5: Total & Actions */}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total</span>
+                        <span className="font-black text-slate-800 text-sm">
+                          ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {canEditOrder && (
+                          <button
+                            onClick={() => openEditModal(order)}
+                            disabled={savingId === order.id}
+                            className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 border border-slate-100 transition-colors disabled:opacity-50 animate-fadeIn"
+                            title="Editar estado y pago"
+                          >
+                            {savingId === order.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Edit2 size={14} />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => generateClientPDF(order, business)}
+                          className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                          title="Comprobante Cliente"
+                        >
+                          <FileDown size={14} />
+                        </button>
+                        <button
+                          onClick={() => generateInternalPDF(order, business)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                          title="Balance Interno"
+                        >
+                          <FileText size={14} />
+                        </button>
+                        {canEditOrder && (
+                          <button
+                            onClick={() => {
+                              setDeletingOrder(order);
+                              setRestoreStock(true);
+                              setRestoreFilament(true);
+                              setRestoreSupplies(true);
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
+                            title="Eliminar Pedido"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
         )}
       </div>
 

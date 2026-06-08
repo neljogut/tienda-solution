@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, limit } from 'firebase/firestore';
+import { createPortal } from 'react-dom';
 import { db } from '../../firebase';
 import type { CashSession, CashMovement, PaymentMethod } from '../../types/cash';
 import { useAuth } from '../../context/AuthContext';
@@ -36,10 +37,12 @@ export const Cash: React.FC = () => {
         const session = { id: snap.docs[0].id, ...snap.docs[0].data() } as CashSession;
         setActiveSession(session);
         
-        // 2. Cargar movimientos de esa caja
-        const qMovs = query(collection(db, 'cash_movements'), where('sessionId', '==', session.id), orderBy('date', 'desc'));
+        // 2. Cargar movimientos de esa caja (sorted in-memory to prevent composite index requirement)
+        const qMovs = query(collection(db, 'cash_movements'), where('sessionId', '==', session.id));
         const unsubMovs = onSnapshot(qMovs, (snapMovs) => {
-          setMovements(snapMovs.docs.map(d => ({ id: d.id, ...d.data() } as CashMovement)));
+          const list = snapMovs.docs.map(d => ({ id: d.id, ...d.data() } as CashMovement));
+          list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setMovements(list);
         });
         setLoading(false);
         return () => unsubMovs();
@@ -219,11 +222,11 @@ export const Cash: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Movimientos */}
             <div className="card overflow-hidden flex flex-col h-[70vh]">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50">
                 <h3 className="font-semibold text-slate-800 text-sm">Movimientos del Turno</h3>
                 <button 
                   onClick={() => setManualModalOpen(true)}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 transition-colors"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 transition-colors w-full sm:w-auto justify-center"
                 >
                   <PlusCircle size={14} /> Ingreso / Egreso Manual
                 </button>
@@ -319,11 +322,11 @@ export const Cash: React.FC = () => {
       )}
 
       {/* ══════════════ Manual Movement Modal ══════════════ */}
-      {manualModalOpen && activeSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setManualModalOpen(false)} />
+      {manualModalOpen && activeSession && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setManualModalOpen(false)}>
+          <div className="absolute inset-0" />
           
-          <form onSubmit={handleRegisterManualMovement} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn overflow-hidden">
+          <form onSubmit={handleRegisterManualMovement} className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn overflow-hidden" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
@@ -413,7 +416,8 @@ export const Cash: React.FC = () => {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Toast Notification */}

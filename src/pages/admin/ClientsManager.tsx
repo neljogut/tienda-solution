@@ -288,7 +288,8 @@ export const ClientsManager: React.FC = () => {
 
       {/* ─── Client Table ─── */}
       <div className="table-container">
-        <div className="overflow-x-auto">
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="table-header">
@@ -534,6 +535,161 @@ export const ClientsManager: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: Cards */}
+        <div className="block md:hidden divide-y divide-slate-100 text-xs">
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-slate-400">
+              No se encontraron clientes con esos filtros.
+            </div>
+          ) : (
+            filtered.map((client) => {
+              const badges = getClientBadges(client);
+              const isExpanded = expandedId === client.id;
+              return (
+                <div key={client.id} className="p-4 space-y-3">
+                  {/* Row 1: Profile Initials & Name */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                      {client.firstName[0]}{client.lastName[0]}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {client.lastName}, {client.firstName}
+                      </p>
+                      {client.cuit && (
+                        <p className="text-[10px] text-slate-400">CUIT: {client.cuit}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 2: Badges */}
+                  <div className="flex flex-wrap gap-1">
+                    {badges.map((b, i) => (
+                      <span key={i} className={b.className}>
+                        {b.icon}
+                        {b.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Row 3: Contacts */}
+                  <div className="grid grid-cols-1 gap-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
+                    {client.phone ? (
+                      <span className="flex items-center gap-1.5 text-slate-600">
+                        <Phone size={12} className="text-slate-400" />
+                        {client.phone}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300 italic">Sin teléfono</span>
+                    )}
+                    {client.email ? (
+                      <span className="flex items-center gap-1.5 text-slate-600 break-all">
+                        <Mail size={12} className="text-slate-400" />
+                        {client.email}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300 italic">Sin email</span>
+                    )}
+                  </div>
+
+                  {/* Expanded Section */}
+                  {isExpanded && (
+                    <div className="pt-2 border-t border-slate-100 space-y-3 mt-2 animate-fadeIn text-xs">
+                      {/* Address Info */}
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Dirección</span>
+                        {client.address || client.city || client.province ? (
+                          <p className="text-slate-700 flex items-start gap-1">
+                            <MapPin size={12} className="text-slate-400 mt-0.5 flex-shrink-0" />
+                            <span>
+                              {client.address && `${client.address}, `}
+                              {[client.city, client.province].filter(Boolean).join(', ')}
+                              {client.postalCode && ` (C.P. ${client.postalCode})`}
+                            </span>
+                          </p>
+                        ) : (
+                          <p className="text-slate-400 italic">Sin dirección registrada</p>
+                        )}
+                      </div>
+
+                      {/* Account Stats */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-emerald-50/50 border border-emerald-100/50 rounded-lg p-2">
+                          <span className="text-[9px] text-slate-400 block uppercase font-bold">Total comprado</span>
+                          <span className="font-bold text-emerald-600 text-sm">
+                            ${(client.totalPurchased ?? 0).toLocaleString('es-AR')}
+                          </span>
+                        </div>
+                        <div className={`border rounded-lg p-2 ${
+                          (client.totalOwed ?? 0) > 0 
+                            ? 'bg-red-50/50 border-red-100/50' 
+                            : 'bg-slate-50/50 border-slate-100/50'
+                        }`}>
+                          <span className="text-[9px] text-slate-400 block uppercase font-bold">Total adeudado</span>
+                          <span className={`font-bold text-sm ${
+                            (client.totalOwed ?? 0) > 0 ? 'text-red-600' : 'text-slate-600'
+                          }`}>
+                            ${(client.totalOwed ?? 0).toLocaleString('es-AR')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Observations */}
+                      {client.observations && (
+                        <div className="p-2.5 bg-amber-50 border border-amber-200/60 rounded-xl text-amber-800">
+                          <span className="font-semibold block text-[10px] uppercase mb-0.5">Observaciones</span>
+                          {client.observations}
+                        </div>
+                      )}
+
+                      {/* Created date */}
+                      {client.createdAt && (
+                        <div className="text-[10px] text-slate-400">
+                          Registrado el {new Date(client.createdAt).toLocaleDateString('es-AR', {
+                            day: '2-digit',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions Row */}
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                    <span className="text-[10px] text-slate-400">
+                      {client.city ? `${client.city}` : 'Sin ciudad'}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : client.id)}
+                        className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                        title="Ver detalle"
+                      >
+                        {isExpanded ? <ChevronUp size={14} /> : <Eye size={14} />}
+                      </button>
+                      <button
+                        onClick={() => openEdit(client)}
+                        className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 border border-slate-100 transition-colors"
+                        title="Editar"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(client)}
+                        className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

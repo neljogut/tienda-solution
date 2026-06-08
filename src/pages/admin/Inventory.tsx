@@ -449,7 +449,8 @@ export const Inventory: React.FC = () => {
         </div>
 
         <div className="card overflow-hidden border border-slate-200/80 shadow-sm">
-          <div className="overflow-x-auto">
+          {/* Desktop View: Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <tr>
@@ -579,12 +580,128 @@ export const Inventory: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile View: Cards */}
+          <div className="block md:hidden divide-y divide-slate-100 text-xs">
+            {filteredFilaments.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 animate-fadeIn">
+                {hasActiveFilamentFilters
+                  ? 'No hay filamentos que coincidan con los filtros.'
+                  : 'No se encontraron filamentos registrados.'}
+              </div>
+            ) : (
+              filteredFilaments.map(f => {
+                const minStock = f.minStockGrams ?? 0;
+                const isLowStock = f.availableWeightGrams <= minStock;
+                const draftMin = getMinStockValue(f.id, minStock);
+                const hasUnsavedMin = minStockDrafts[f.id] !== undefined && (draftMin === '' ? 0 : Number(draftMin)) !== minStock;
+                return (
+                  <div key={f.id} className="p-4 space-y-3 animate-fadeIn">
+                    {/* Header: Color & Material & Brand */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        {f.mainImage ? (
+                          <img 
+                            src={f.mainImage} 
+                            alt={f.color} 
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400 flex-shrink-0">
+                            <Droplet size={18} style={{ color: f.hexColor || '#94a3b8' }} />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm flex items-center gap-1.5 leading-tight">
+                            {f.color}
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full border border-slate-300 shadow-inner flex-shrink-0" 
+                              style={{ backgroundColor: f.hexColor || '#ccc' }} 
+                            />
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{f.material} • {f.brand}</p>
+                        </div>
+                      </div>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        f.isActive 
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                          : 'bg-slate-100 text-slate-400 border border-slate-200'
+                      }`}>
+                        {f.isActive ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
+
+                    {/* Stock & Cost info row */}
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Peso Disp.</span>
+                        <span className={`font-extrabold text-xs flex items-center gap-1 ${isLowStock ? 'text-red-500' : 'text-slate-800'}`}>
+                          {formatWeightGrams(f.availableWeightGrams)}
+                          {isLowStock && <AlertTriangle size={12} className="text-red-500 shrink-0" />}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Precio USD/Kg</span>
+                        <span className="font-bold text-slate-800">
+                          U$D {getFilamentPriceUsdKg(f, pricing3D.filamentPriceUsdKg).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {!hasCustomFilamentPrice(f) && (
+                          <span className="block text-[8px] text-blue-500 font-bold">Global Parámetros</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Editable Minimum Alert */}
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-2 text-xs">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Mín. Alerta:</span>
+                      <div className={`inline-flex items-center gap-1 justify-end ${hasUnsavedMin ? 'ring-2 ring-amber-300 rounded-lg p-0.5' : ''}`}>
+                        <WeightKgGramsInput
+                          compact
+                          valueGrams={draftMin}
+                          onChangeGrams={val => setMinStockDrafts(prev => ({ ...prev, [f.id]: val }))}
+                          onBlur={() => saveFilamentMinStock(f.id)}
+                          disabled={savingMinId === f.id}
+                        />
+                        {savingMinId === f.id && (
+                          <Loader2 size={12} className="animate-spin text-slate-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions and purchase date row */}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                      <span className="text-[10px] text-slate-400">
+                        {f.provider ? `Proveedor: ${f.provider}` : 'Sin proveedor'}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button 
+                          onClick={() => openModal(f)} 
+                          className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                          title="Editar"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(f.id, `${f.brand} ${f.color}`, 'filament', f.availableWeightGrams)} 
+                          className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
         </>
       ) : (
         /* Supplies list */
         <div className="card overflow-hidden border border-slate-200/80 shadow-sm">
-          <div className="overflow-x-auto">
+          {/* Desktop View: Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <tr>
@@ -697,6 +814,107 @@ export const Inventory: React.FC = () => {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile View: Cards */}
+          <div className="block md:hidden divide-y divide-slate-100 text-xs">
+            {filteredSupplies.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 animate-fadeIn">
+                {hasActiveSupplyFilters
+                  ? 'No hay insumos que coincidan con la búsqueda.'
+                  : 'No se encontraron insumos registrados.'}
+              </div>
+            ) : (
+              filteredSupplies.map(s => {
+                const minStock = s.minStock ?? 0;
+                const isLowStock = s.currentStock <= minStock;
+                const draftMin = getMinStockValue(s.id, minStock);
+                const hasUnsavedMin = minStockDrafts[s.id] !== undefined && (draftMin === '' ? 0 : Number(draftMin)) !== minStock;
+                const unit = s.unitOfMeasure || 'u';
+                return (
+                  <div key={s.id} className="p-4 space-y-3 animate-fadeIn">
+                    {/* Header: Name & Category */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        {s.mainImage ? (
+                          <img 
+                            src={s.mainImage} 
+                            alt={s.name} 
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400 flex-shrink-0">
+                            <Package size={18} />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm leading-tight">{s.name}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{s.category} • {s.provider || 'Sin proveedor'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stock & Cost info row */}
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Stock Actual</span>
+                        <span className={`font-extrabold text-xs flex items-center gap-1 ${isLowStock ? 'text-red-500' : 'text-slate-800'}`}>
+                          {s.currentStock.toLocaleString('es-AR')} {unit}
+                          {isLowStock && <AlertTriangle size={12} className="text-red-500 shrink-0" />}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Costo Unitario</span>
+                        <span className="font-bold text-slate-850">
+                          ${s.unitCostArs.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Editable Minimum Alert */}
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-2 text-xs">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Mín. Alerta ({unit}):</span>
+                      <div className="inline-flex items-center gap-1">
+                        <NumericInput
+                          className={`input w-20 text-right text-xs py-1.5 ${hasUnsavedMin ? 'ring-2 ring-amber-300' : ''}`}
+                          value={draftMin}
+                          onChange={val => setMinStockDrafts(prev => ({ ...prev, [s.id]: val }))}
+                          onBlur={() => saveSupplyMinStock(s.id)}
+                          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          disabled={savingMinId === s.id}
+                        />
+                        {savingMinId === s.id && (
+                          <Loader2 size={12} className="animate-spin text-slate-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Observations and actions row */}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-50 gap-2">
+                      <span className="text-[10px] text-slate-400 italic truncate max-w-[150px]">
+                        {s.observations || 'Sin observaciones'}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button 
+                          onClick={() => openModal(s)} 
+                          className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                          title="Editar"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(s.id, s.name, 'supply', s.currentStock)} 
+                          className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

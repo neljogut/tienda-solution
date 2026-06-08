@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product } from '../../types/product';
 import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
 import { migrateClient, getClientLabel } from '../../types/client';
+import type { Category } from '../../types/category';
+import { dedupeCategories, resolveCategoryId, getCategoryTreeIds, getSortedCategoryTree } from '../../utils/categories';
 import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, X } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice, recalculateAllProductsInFirestore } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
@@ -16,8 +18,13 @@ import { NumericInput } from '../../components/NumericInput';
 export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState('');
 
   // Sort and filter clients alphabetically
@@ -50,7 +57,7 @@ export const NewOrder: React.FC = () => {
   // Daily Cash active session
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
 
-  const { userData } = useAuth();
+  const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
 
   // Load products, clients, settings, active cash session in real-time
@@ -66,6 +73,11 @@ export const NewOrder: React.FC = () => {
     // 2. Live clients listener
     const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
       setClients(snap.docs.map(d => migrateClient({ id: d.id, ...d.data() }) as Client));
+    });
+
+    // 2b. Live categories listener
+    const unsubCategories = onSnapshot(collection(db, 'categories'), (snap) => {
+      setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
     });
 
     // 3. Live deposit settings listener
@@ -96,6 +108,7 @@ export const NewOrder: React.FC = () => {
     return () => {
       unsubProducts();
       unsubClients();
+      unsubCategories();
       unsubDeposit();
       unsubRate();
       unsubPricing3d();
@@ -103,8 +116,131 @@ export const NewOrder: React.FC = () => {
     };
   }, []);
 
-  // Filter products by name
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Fetch orders once on load to compute sales scores
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchOrders = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'orders'));
+        const ords: any[] = [];
+        snap.forEach((doc) => {
+          ords.push({ id: doc.id, ...doc.data() });
+        });
+        setOrders(ords);
+      } catch (err) {
+        console.warn("No se pudieron cargar los pedidos para ranking de ventas:", err);
+      }
+    };
+    fetchOrders();
+  }, [currentUser]);
+
+  const salesScores = useMemo(() => {
+    const scores: Record<string, number> = {};
+    orders.forEach((order) => {
+      if (order.orderStatus === 'cancelled') return;
+      order.items?.forEach((item: any) => {
+        const pId = item.productId;
+        if (!pId) return;
+        
+        const prod = products.find(p => p.id === pId);
+        const isLlavero = prod
+          ? (prod.type === '3d' && (prod as any).isKeychain)
+          : (item.isKeychain || item.category?.toLowerCase() === 'llaveros');
+          
+        const contribution = isLlavero ? 1 : (item.quantity || 0);
+        scores[pId] = (scores[pId] || 0) + contribution;
+      });
+    });
+    return scores;
+  }, [orders, products]);
+
+  const { canonical: canonicalCategories, idRemap } = useMemo(
+    () => dedupeCategories(categories),
+    [categories]
+  );
+
+  const categoryFilterIds = useMemo(() => {
+    if (selectedCategory === 'all') return null;
+    return getCategoryTreeIds(canonicalCategories, selectedCategory);
+  }, [selectedCategory, canonicalCategories]);
+
+  // Compute category sales totals
+  const categorySalesTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    products.forEach((p) => {
+      const catId = resolveCategoryId(p.categoryId, idRemap) ?? 'sin_categoria';
+      totals[catId] = (totals[catId] || 0) + (salesScores[p.id] || 0);
+    });
+    return totals;
+  }, [products, salesScores, idRemap]);
+
+  // Sort canonical categories using DFS tree helper to preserve parent-child hierarchy
+  const sortedCategories = useMemo(() => {
+    return getSortedCategoryTree(canonicalCategories, categorySalesTotals);
+  }, [canonicalCategories, categorySalesTotals]);
+
+  // Filter products by name and category
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const resolvedCategoryId = resolveCategoryId(p.categoryId, idRemap);
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        (resolvedCategoryId && categoryFilterIds?.has(resolvedCategoryId));
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory, categoryFilterIds, idRemap]);
+
+  // Sort products by category position in the sorted tree, then by sales score
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const catIdA = resolveCategoryId(a.categoryId, idRemap) ?? 'sin_categoria';
+      const catIdB = resolveCategoryId(b.categoryId, idRemap) ?? 'sin_categoria';
+      
+      const indexA = sortedCategories.findIndex(c => c.id === catIdA);
+      const indexB = sortedCategories.findIndex(c => c.id === catIdB);
+      
+      const idxA = indexA === -1 ? 9999 : indexA;
+      const idxB = indexB === -1 ? 9999 : indexB;
+      
+      if (idxA !== idxB) return idxA - idxB;
+      
+      const scoreA = salesScores[a.id] || 0;
+      const scoreB = salesScores[b.id] || 0;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      
+      return a.name.localeCompare(b.name, 'es');
+    });
+  }, [filteredProducts, sortedCategories, salesScores, idRemap]);
+
+  const isCategoryVisible = (cat: Category) => {
+    let currentParentId = cat.parentId;
+    while (currentParentId) {
+      if (!expandedCategories.has(currentParentId)) {
+        return false;
+      }
+      const parent = canonicalCategories.find(c => c.id === currentParentId);
+      currentParentId = parent ? parent.parentId : null;
+    }
+    return true;
+  };
+
+  const hasChildren = (catId: string) => {
+    return canonicalCategories.some(c => c.parentId === catId);
+  };
+
+  const toggleExpandCategory = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Active client details
   const activeClient = useMemo(() => {
@@ -542,22 +678,129 @@ export const NewOrder: React.FC = () => {
           <div className="card p-5 flex flex-col h-[72vh]">
             <h3 className="font-bold text-slate-800 text-base mb-3 flex items-center gap-2">
               <ShoppingCart size={18} className="text-blue-500" />
-              Selección de Productos
             </h3>
-            
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-3 text-slate-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Buscar producto por nombre..."
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
-              />
+            <div className="flex gap-2 items-center mb-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 text-slate-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar producto por nombre..."
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-slate-50/50 text-sm"
+                />
+              </div>
+
+              {/* Collapsible Categories Dropdown Selector */}
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+                  className="btn-secondary flex items-center justify-between gap-1.5 text-xs py-2 px-3 border rounded-lg h-[38px]"
+                >
+                  <span className="truncate max-w-[120px]">
+                    {selectedCategory === 'all'
+                      ? 'Todas'
+                      : canonicalCategories.find(c => c.id === selectedCategory)?.name || 'Cat'}
+                  </span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showCategoryMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-20" 
+                      onClick={() => setShowCategoryMenu(false)} 
+                    />
+                    <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-lg p-2 z-30 max-h-60 overflow-y-auto space-y-1 text-xs">
+                      <button
+                        onClick={() => {
+                          setSelectedCategory('all');
+                          setShowCategoryMenu(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md font-semibold transition-all border text-left ${
+                          selectedCategory === 'all'
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>Todas las categorías</span>
+                        <span className={`text-[9px] px-1 py-0.1 rounded-full ${
+                          selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          {products.length}
+                        </span>
+                      </button>
+                      
+                      {sortedCategories.map(cat => {
+                        if (!isCategoryVisible(cat)) return null;
+                        
+                        const isSelected = selectedCategory === cat.id;
+                        const count = products.filter(p => resolveCategoryId(p.categoryId, idRemap) === cat.id).length;
+                        const sales = categorySalesTotals[cat.id] || 0;
+                        const hasKids = hasChildren(cat.id);
+                        const isExpanded = expandedCategories.has(cat.id);
+                        
+                        return (
+                          <div
+                            key={cat.id}
+                            style={{ paddingLeft: `${cat.depth * 0.75}rem` }}
+                            className="flex items-center gap-1 w-full"
+                          >
+                            {hasKids ? (
+                              <button
+                                onClick={(e) => toggleExpandCategory(cat.id, e)}
+                                className="p-0.5 hover:bg-slate-100 rounded text-slate-500 transition-colors flex-shrink-0"
+                              >
+                                {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                              </button>
+                            ) : (
+                              <div className="w-4 flex-shrink-0" />
+                            )}
+                            
+                            <button
+                              onClick={() => {
+                                setSelectedCategory(cat.id);
+                                if (hasKids) {
+                                  setExpandedCategories(prev => {
+                                    const next = new Set(prev);
+                                    next.add(cat.id);
+                                    return next;
+                                  });
+                                } else {
+                                  setShowCategoryMenu(false);
+                                }
+                              }}
+                              className={`flex-1 flex items-center justify-between px-2 py-1 rounded-md font-semibold transition-all border text-left ${
+                                isSelected
+                                  ? 'bg-blue-600 border-blue-600 text-white'
+                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span className="truncate">{cat.name}</span>
+                              <div className="flex items-center gap-1">
+                                <span className={`text-[9px] px-1 py-0.1 rounded-full ${
+                                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
+                                }`}>
+                                  {count}
+                                </span>
+                                {sales > 0 && (
+                                  <span className="text-[9px] font-bold text-emerald-500">
+                                    ★{sales}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 no-scrollbar">
-              {filteredProducts.map(p => {
+              {sortedProducts.map(p => {
                 const basePrice = p.useManualPrice ? p.manualRetailPrice : p.calculatedRetailPrice;
                 const wholesalePrice = p.calculatedWholesalePrice || basePrice;
                 const isOutOfStock = p.stock <= 0;

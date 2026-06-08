@@ -5,12 +5,13 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import type { Filament, Supply, InventoryMovementType } from '../../types/inventory';
 import { getFilamentPriceUsdKg, hasCustomFilamentPrice } from '../../types/inventory';
-import type { PricingSettings3D } from '../../types/settings';
+import type { PricingSettings3D, BusinessSettings } from '../../types/settings';
 import { default3D } from '../../constants/defaults';
 import { recalculateAllProductsInFirestore } from '../../services/pricingService';
+import { generateInventoryOrderPDF } from '../../services/pdfService';
 import { 
   Plus, Edit, Trash2, Droplet, Package, AlertTriangle, 
-  Search, Image, X, Settings, Loader2
+  Search, Image, X, Settings, Loader2, ArrowUpDown, FileText, CheckSquare, Square
 } from 'lucide-react';
 import { NumericInput } from '../../components/NumericInput';
 import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
@@ -43,6 +44,22 @@ export const Inventory: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
+  // Sorting and Business Settings States
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [business, setBusiness] = useState<BusinessSettings>({
+    name: 'Dualgi 3D',
+    ownerName: 'Maxi',
+    phone: '+54 9 11 1234-5678',
+    email: 'contacto@dualgi3d.com',
+    address: 'Calle Falsa 123',
+    city: 'Buenos Aires',
+    province: 'CABA',
+    cuit: '20-12345678-9',
+    socialMedia: '@dualgi3d',
+    description: 'Materializando tus ideas en 3D'
+  });
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
   const { currentUser } = useAuth();
 
   const filamentBrands = useMemo(
@@ -68,7 +85,15 @@ export const Inventory: React.FC = () => {
         setPricing3D({ ...default3D, ...snap.data() } as PricingSettings3D);
       }
     });
-    return () => unsubPricing();
+    const unsubBusiness = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        setBusiness(snap.data() as BusinessSettings);
+      }
+    });
+    return () => {
+      unsubPricing();
+      unsubBusiness();
+    };
   }, []);
 
   useEffect(() => {
@@ -248,25 +273,77 @@ export const Inventory: React.FC = () => {
     }
   };
 
-  const filteredFilaments = filaments.filter(f => {
-    if (filamentFilterBrand && f.brand !== filamentFilterBrand) return false;
-    if (filamentFilterMaterial && f.material !== filamentFilterMaterial) return false;
-    if (filamentFilterColor && f.color !== filamentFilterColor) return false;
-    return true;
-  });
-
-  const filteredSupplies = supplies.filter(s => {
-    const term = supplySearchTerm.trim().toLowerCase();
-    if (term) {
-      const matchesSearch =
-        s.name.toLowerCase().includes(term) ||
-        s.category.toLowerCase().includes(term) ||
-        (s.provider && s.provider.toLowerCase().includes(term));
-      if (!matchesSearch) return false;
+  // Helper to convert HEX color to HSL Hue (0-360)
+  const getHexHue = (hex: string) => {
+    let r = parseInt(hex.substring(1, 3), 16) / 255;
+    let g = parseInt(hex.substring(3, 5), 16) / 255;
+    let b = parseInt(hex.substring(5, 7), 16) / 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0;
+    if (max !== min) {
+      let d = max - min;
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
     }
-    if (supplyFilterCategory && s.category !== supplyFilterCategory) return false;
-    return true;
-  });
+    return h * 360;
+  };
+
+  const filteredFilaments = useMemo(() => {
+    const list = filaments.filter(f => {
+      if (filamentFilterBrand && f.brand !== filamentFilterBrand) return false;
+      if (filamentFilterMaterial && f.material !== filamentFilterMaterial) return false;
+      if (filamentFilterColor && f.color !== filamentFilterColor) return false;
+      return true;
+    });
+
+    // Logical Sort:
+    // 1. Quantity (descending/ascending based on sortDirection)
+    // 2. Brand
+    // 3. Material
+    // 4. Color hue (HSL)
+    return list.sort((a, b) => {
+      const qA = a.availableWeightGrams;
+      const qB = b.availableWeightGrams;
+      if (qA !== qB) {
+        return sortDirection === 'desc' ? qB - qA : qA - qB;
+      }
+      const bComp = a.brand.localeCompare(b.brand, 'es');
+      if (bComp !== 0) return bComp;
+
+      const mComp = a.material.localeCompare(b.material, 'es');
+      if (mComp !== 0) return mComp;
+
+      const hueA = getHexHue(a.hexColor || '#ffffff');
+      const hueB = getHexHue(b.hexColor || '#ffffff');
+      return hueA - hueB;
+    });
+  }, [filaments, filamentFilterBrand, filamentFilterMaterial, filamentFilterColor, sortDirection]);
+
+  const filteredSupplies = useMemo(() => {
+    const list = supplies.filter(s => {
+      const term = supplySearchTerm.trim().toLowerCase();
+      if (term) {
+        const matchesSearch =
+          s.name.toLowerCase().includes(term) ||
+          s.category.toLowerCase().includes(term) ||
+          (s.provider && s.provider.toLowerCase().includes(term));
+        if (!matchesSearch) return false;
+      }
+      if (supplyFilterCategory && s.category !== supplyFilterCategory) return false;
+      return true;
+    });
+
+    // Ordered by Quantity
+    return list.sort((a, b) => {
+      const qA = a.currentStock;
+      const qB = b.currentStock;
+      return sortDirection === 'desc' ? qB - qA : qA - qB;
+    });
+  }, [supplies, supplySearchTerm, supplyFilterCategory, sortDirection]);
 
   const hasActiveFilamentFilters = !!(filamentFilterBrand || filamentFilterMaterial || filamentFilterColor);
   const hasActiveSupplyFilters = !!(supplySearchTerm.trim() || supplyFilterCategory);
@@ -284,13 +361,23 @@ export const Inventory: React.FC = () => {
             Control de stock de filamentos e insumos generales de producción.
           </p>
         </div>
-        <button 
-          onClick={() => openModal()} 
-          className="btn-primary flex items-center gap-2 w-full md:w-auto justify-center"
-        >
-          <Plus size={20} />
-          Nuevo {activeTab === 'filaments' ? 'Filamento' : 'Insumo'}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <button 
+            onClick={() => setIsOrderModalOpen(true)}
+            className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 flex items-center gap-2 justify-center"
+            title="Armar Pedido de Reposición"
+          >
+            <FileText size={18} className="text-slate-500" />
+            Armar Pedido
+          </button>
+          <button 
+            onClick={() => openModal()} 
+            className="btn-primary flex items-center gap-2 justify-center"
+          >
+            <Plus size={20} />
+            Nuevo {activeTab === 'filaments' ? 'Filamento' : 'Insumo'}
+          </button>
+        </div>
       </div>
 
       {/* Search and Tabs Bar */}
@@ -362,6 +449,15 @@ export const Inventory: React.FC = () => {
                 Limpiar
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-650 hover:bg-slate-50 flex items-center gap-1.5"
+              title="Alternar Orden de Stock (Mayor a Menor / Menor a Mayor)"
+            >
+              <ArrowUpDown size={14} />
+              Stock: {sortDirection === 'desc' ? 'Mayor a Menor' : 'Menor a Mayor'}
+            </button>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
@@ -396,6 +492,15 @@ export const Inventory: React.FC = () => {
                 Limpiar
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-650 hover:bg-slate-50 flex items-center gap-1.5"
+              title="Alternar Orden de Stock (Mayor a Menor / Menor a Mayor)"
+            >
+              <ArrowUpDown size={14} />
+              Stock: {sortDirection === 'desc' ? 'Mayor a Menor' : 'Menor a Mayor'}
+            </button>
           </div>
         )}
       </div>
@@ -926,6 +1031,16 @@ export const Inventory: React.FC = () => {
           onClose={() => setIsModalOpen(false)} 
           userId={currentUser?.uid || 'system'}
           defaultFilamentPriceUsdKg={pricing3D.filamentPriceUsdKg}
+        />
+      )}
+
+      {isOrderModalOpen && (
+        <OrderModal
+          activeTab={activeTab}
+          filaments={filteredFilaments}
+          supplies={filteredSupplies}
+          business={business}
+          onClose={() => setIsOrderModalOpen(false)}
         />
       )}
     </div>
@@ -1468,3 +1583,201 @@ const InventoryModal = ({
     document.body
   );
 };
+
+// Order Pre-Checkout/Preview modal for low stock items
+const OrderModal = ({
+  activeTab,
+  filaments,
+  supplies,
+  business,
+  onClose,
+}: {
+  activeTab: 'filaments' | 'supplies';
+  filaments: Filament[];
+  supplies: Supply[];
+  business: BusinessSettings;
+  onClose: () => void;
+}) => {
+  // Pre-filter items that have low stock (available weight/stock <= minimum stock)
+  const lowStockItemsInitial = useMemo(() => {
+    if (activeTab === 'filaments') {
+      return filaments
+        .filter(f => f.availableWeightGrams <= (f.minStockGrams ?? 0))
+        .map(f => {
+          // Calculate deficit to cover minimum stock. Spools are typically 1000g (1kg).
+          // We calculate spools needed = ceil((minStockGrams - availableWeightGrams) / 1000)
+          const deficitGrams = Math.max(0, (f.minStockGrams ?? 0) - f.availableWeightGrams);
+          const spoolsNeeded = Math.max(1, Math.ceil(deficitGrams / 1000));
+          return {
+            id: f.id,
+            name: f.color,
+            brandOrCategory: f.brand,
+            typeDetail: f.material,
+            quantity: spoolsNeeded,
+            unit: 'bobina',
+            selected: true
+          };
+        });
+    } else {
+      return supplies
+        .filter(s => s.currentStock <= (s.minStock ?? 0))
+        .map(s => ({
+          id: s.id,
+          name: s.name,
+          brandOrCategory: s.category,
+          typeDetail: 'Insumo',
+          quantity: Math.max(1, (s.minStock ?? 0) - s.currentStock), // Deficit needed to cover minimum stock
+          unit: s.unitOfMeasure || 'unidad',
+          selected: true
+        }));
+    }
+  }, [activeTab, filaments, supplies]);
+
+  const [orderLines, setOrderLines] = useState(lowStockItemsInitial);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  const toggleSelect = (id: string) => {
+    setOrderLines(prev =>
+      prev.map(line => (line.id === id ? { ...line, selected: !line.selected } : line))
+    );
+  };
+
+  const updateQuantity = (id: string, qty: number) => {
+    setOrderLines(prev =>
+      prev.map(line => (line.id === id ? { ...line, quantity: Math.max(1, qty) } : line))
+    );
+  };
+
+  const handleGenerate = () => {
+    const selectedLines = orderLines.filter(line => line.selected);
+    if (selectedLines.length === 0) {
+      alert('Por favor selecciona al menos un ítem para generar el pedido.');
+      return;
+    }
+    generateInventoryOrderPDF(selectedLines, activeTab, business);
+    onClose();
+  };
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="relative z-10 bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 border border-slate-100 max-h-[min(90vh,800px)] overflow-y-auto no-scrollbar"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center border-b pb-3 mb-4">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+              <FileText size={18} className="text-blue-500" />
+              Armar Pedido de Reposición ({activeTab === 'filaments' ? 'Filamentos' : 'Insumos'})
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Revisá y modificá la lista de stock de alerta antes de generar el PDF de compra.
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {orderLines.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 space-y-2">
+            <AlertTriangle size={32} className="mx-auto text-amber-500" />
+            <p className="text-xs font-bold text-slate-650">No hay productos en stock bajo</p>
+            <p className="text-[10px] text-slate-400">
+              Todos los ítems de esta categoría se encuentran por encima de su stock mínimo de alerta.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto pr-1">
+              {orderLines.map(item => (
+                <div key={item.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleSelect(item.id)}
+                      className="text-slate-400 hover:text-blue-600 shrink-0"
+                    >
+                      {item.selected ? (
+                        <CheckSquare size={18} className="text-blue-600" />
+                      ) : (
+                        <Square size={18} />
+                      )}
+                    </button>
+                    <div className="truncate">
+                      <p className="font-bold text-slate-800 truncate">{item.name}</p>
+                      <p className="text-[9px] text-slate-400 font-semibold uppercase">
+                        {item.typeDetail} • {item.brandOrCategory}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Pedir:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="input w-16 text-center text-xs py-1"
+                      value={item.quantity}
+                      onChange={e => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                      disabled={!item.selected}
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {item.quantity === 1 ? item.unit : (item.unit + (item.unit === 'bobina' ? 's' : ''))}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-500 uppercase tracking-wider">Total del Pedido:</span>
+              <span className="font-black text-slate-800 text-sm">
+                {activeTab === 'filaments' ? (
+                  `${orderLines.reduce((sum, item) => sum + (item.selected ? item.quantity : 0), 0)} kg`
+                ) : (
+                  `${orderLines.reduce((sum, item) => sum + (item.selected ? item.quantity : 0), 0)} unidades`
+                )}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t pt-4 mt-6">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-semibold transition-colors text-xs"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                onClick={handleGenerate}
+                className="btn-primary text-xs"
+              >
+                Generar PDF de Compra
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+};
+

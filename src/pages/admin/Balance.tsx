@@ -323,7 +323,7 @@ export const Balance: React.FC = () => {
   };
 
   const handleDownloadPDF = () => {
-    generateBalancePDF(balancePacket, getPeriodLabel(), business);
+    generateBalancePDF(balancePacket, getPeriodLabel(), business, activeOrders);
   };
 
   return (

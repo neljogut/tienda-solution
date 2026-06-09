@@ -4,6 +4,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { registerFcmToken, unregisterFcmToken } from '../services/fcmService';
+import { requestNotificationPermission } from '../utils/notificationAlert';
 import type { UserData } from '../types/user';
 
 interface AuthContextType {
@@ -75,6 +76,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (unsubscribeDoc) unsubscribeDoc();
     };
   }, []);
+
+  // Staff: pedir permiso de notificaciones y reintentar FCM al volver a la pestaña
+  useEffect(() => {
+    if (!currentUser || !userData) return;
+    const isStaff = userData.role === 'owner' || userData.role === 'employee';
+    if (!isStaff) return;
+
+    const timer = window.setTimeout(() => {
+      void requestNotificationPermission().then(() => {
+        void registerFcmToken(currentUser.uid, true);
+      });
+    }, 3000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void registerFcmToken(currentUser.uid, true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [currentUser, userData]);
 
   const hasPermission = (permission: keyof NonNullable<UserData['permissions']>) => {
     if (!userData) return false;

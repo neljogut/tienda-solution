@@ -7,6 +7,7 @@ import {
   playNotificationSound,
   showSystemNotification,
   requestNotificationPermission,
+  unlockNotificationAudio,
 } from '../utils/notificationAlert';
 
 export function useNotifications(uid: string | undefined) {
@@ -40,21 +41,20 @@ export function useNotifications(uid: string | undefined) {
         if (initializedRef.current && newUnread.length > 0) {
           const newest = newUnread[0];
           setLatestAlert(newest);
-          window.setTimeout(() => setLatestAlert((cur) => (cur?.id === newest.id ? null : cur)), 8000);
+          window.setTimeout(() => setLatestAlert((cur) => (cur?.id === newest.id ? null : cur)), 12000);
 
+          unlockNotificationAudio();
           void playNotificationSound();
 
-          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
           if ('Notification' in window && Notification.permission === 'granted') {
             for (const notif of newUnread) {
-              if (document.hidden || isMobile) {
-                void showSystemNotification({
-                  title: notif.title,
-                  body: notif.body.split('\n').slice(0, 3).join(' · '),
-                  tag: notif.id,
-                  linkPath: notif.linkPath,
-                });
-              }
+              void showSystemNotification({
+                title: notif.title,
+                body: notif.body.split('\n').slice(0, 3).join(' · '),
+                tag: notif.id,
+                linkPath: notif.linkPath,
+                orderId: notif.orderId || undefined,
+              });
             }
           }
         }

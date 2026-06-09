@@ -3,6 +3,8 @@ const SOUND_URL = `/sounds/notification.wav?v=${import.meta.env.VITE_FIREBASE_PR
 let audioUnlocked = false;
 let sharedAudio: HTMLAudioElement | null = null;
 let audioContext: AudioContext | null = null;
+let cachedSoundBlobUrl: string | null = null;
+let soundPreloadPromise: Promise<string> | null = null;
 
 function getSharedAudio(): HTMLAudioElement {
   if (!sharedAudio) {
@@ -13,14 +15,28 @@ function getSharedAudio(): HTMLAudioElement {
 }
 
 async function loadSoundBlob(): Promise<string> {
-  const response = await fetch(SOUND_URL, { cache: 'no-store' });
-  const blob = await response.blob();
-  return URL.createObjectURL(blob);
+  if (cachedSoundBlobUrl) return cachedSoundBlobUrl;
+  if (!soundPreloadPromise) {
+    soundPreloadPromise = fetch(SOUND_URL, { cache: 'no-store' })
+      .then((response) => response.blob())
+      .then((blob) => {
+        cachedSoundBlobUrl = URL.createObjectURL(blob);
+        return cachedSoundBlobUrl;
+      })
+      .finally(() => {
+        soundPreloadPromise = null;
+      });
+  }
+  return soundPreloadPromise;
 }
 
 /** Desbloquea audio en el primer gesto del usuario (requerido por navegadores y móviles). */
 export function initNotificationAudio(): void {
-  if (typeof window === 'undefined' || audioUnlocked) return;
+  if (typeof window === 'undefined') return;
+
+  void loadSoundBlob().catch(() => {});
+
+  if (audioUnlocked) return;
 
   const unlock = () => {
     if (audioUnlocked) return;
@@ -83,16 +99,16 @@ export function unlockNotificationAudio(): void {
 }
 
 function playWebAudioFallback(): void {
-  if (!audioUnlocked) return;
-
   try {
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx || !audioContext) return;
+    if (!AudioCtx) return;
 
+    if (!audioContext || audioContext.state === 'closed') {
+      audioContext = new AudioCtx();
+    }
     const ctx = audioContext;
-    audioContext = ctx;
     if (ctx.state === 'suspended') {
       void ctx.resume();
     }

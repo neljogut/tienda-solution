@@ -263,6 +263,64 @@ export async function notifyClientOrderChanges(
   ]);
 }
 
+/** Cliente declara pago → notifica owner/empleados (campanita + push vía CF) */
+export async function notifyStaffPaymentDeclared(params: {
+  declarationId: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  method: string;
+  orderId?: string;
+  orderNumber?: number;
+}): Promise<void> {
+  const staffUids = await getStaffRecipientUids();
+  if (staffUids.length === 0) {
+    console.warn('notifyStaffPaymentDeclared: no hay staff para notificar.');
+    return;
+  }
+
+  const methodLabel = params.method === 'transfer' ? 'Transferencia' : params.method;
+  let title = `Pago declarado — ${params.customerName}`;
+  let body = [
+    `${params.customerName} informó un pago de ${formatMoney(params.amount)}.`,
+    `Método: ${methodLabel}`,
+    'Revisá el comprobante en WhatsApp y registrá el pago en Cuentas corrientes.',
+  ].join('\n');
+  let linkPath = '/accounts';
+
+  if (params.orderId) {
+    const orderNum = String(params.orderNumber || 0).padStart(5, '0');
+    title = `Pago declarado — Pedido #${orderNum}`;
+    body = [
+      `${params.customerName} informó transferencia de ${formatMoney(params.amount)}.`,
+      `Pedido #${orderNum}`,
+      'Revisá WhatsApp y registrá el pago.',
+    ].join('\n');
+    linkPath = `/accounts?client=${params.customerId}`;
+  } else if (params.customerId) {
+    linkPath = `/accounts?client=${params.customerId}`;
+  }
+
+  await createNotifications(
+    staffUids.map((uid) => ({
+      recipientUid: uid,
+      type: 'balance_payment' as const,
+      title,
+      body,
+      orderId: params.orderId || '',
+      orderNumber: params.orderNumber || 0,
+      linkPath,
+      metadata: {
+        customerName: params.customerName,
+        customerId: params.customerId,
+        amount: params.amount,
+        method: params.method,
+        declarationId: params.declarationId,
+      },
+    }))
+  );
+}
+
 /** Pago confirmado en cuentas corrientes → notifica al cliente una sola vez */
 export async function notifyClientAccountPayment(params: {
   customerId: string;

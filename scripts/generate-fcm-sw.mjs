@@ -38,7 +38,7 @@ const swContent = `/* Auto-generado por scripts/generate-fcm-sw.mjs — no edita
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'dualgi-3d-cache-v8';
+const CACHE_NAME = 'dualgi-3d-cache-v9';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/pwa-192.png',

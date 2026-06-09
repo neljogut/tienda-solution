@@ -18,6 +18,7 @@ import { finalizeCheckoutWithWhatsApp, finalizeBalancePaymentWithWhatsApp } from
 import {
   declareBalancePayment,
   declareOrderTransferPayment,
+  notifyStaffPaymentDeclarationOnce,
 } from '../../services/paymentDeclarationService';
 import { resolveCustomerId } from '../../services/clientResolver';
 import type { Order } from '../../types/order';
@@ -272,13 +273,22 @@ export const Checkout: React.FC = () => {
 
         if (amount > 0) {
           try {
-            await declareOrderTransferPayment({
+            const declarationId = await declareOrderTransferPayment({
               orderId: createdOrder.id,
               orderNumber: createdOrder.orderNumber,
               customerId: createdOrder.customerId || customerId,
               customerName: createdOrder.customerName || customerName,
               amount,
               createdBy: currentUser.uid,
+            });
+            await notifyStaffPaymentDeclarationOnce({
+              declarationId,
+              customerId: createdOrder.customerId || customerId,
+              customerName: createdOrder.customerName || customerName,
+              amount,
+              method: 'transfer',
+              orderId: createdOrder.id,
+              orderNumber: createdOrder.orderNumber,
             });
           } catch (declareErr) {
             console.error(declareErr);
@@ -309,12 +319,19 @@ export const Checkout: React.FC = () => {
         }
 
         try {
-          await declareBalancePayment({
+          const declarationId = await declareBalancePayment({
             customerId,
             customerName,
             amount,
             method: 'transfer',
             createdBy: currentUser.uid,
+          });
+          await notifyStaffPaymentDeclarationOnce({
+            declarationId,
+            customerId,
+            customerName,
+            amount,
+            method: 'transfer',
           });
         } catch (declareErr) {
           console.error(declareErr);

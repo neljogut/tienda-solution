@@ -42,6 +42,22 @@ export const notifyStaffOnPaymentDeclaration = onDocumentCreated(
     if (!snap) return;
 
     const data = snap.data();
+    if (data.staffNotified === true) {
+      console.log("notifyStaffOnPaymentDeclaration: ya notificado (cliente).");
+      return;
+    }
+
+    const claimed = await db.runTransaction(async (transaction) => {
+      const fresh = await transaction.get(snap.ref);
+      if (!fresh.exists || fresh.data()?.staffNotified === true) return false;
+      transaction.update(snap.ref, {staffNotified: true});
+      return true;
+    });
+    if (!claimed) {
+      console.log("notifyStaffOnPaymentDeclaration: otro proceso ya notificó.");
+      return;
+    }
+
     const staffUids = await getStaffRecipientUids();
     if (staffUids.length === 0) {
       console.log("notifyStaffOnPaymentDeclaration: no hay staff.");

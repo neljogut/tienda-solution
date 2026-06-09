@@ -98,6 +98,9 @@ service cloud.firestore {
         || (isAuth() && resource.data.createdBy == request.auth.uid);
       allow update: if isStaff()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow update: if isAuth()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['staffNotified']);
     }
 
     match /notifications/{notificationId} {

@@ -46,4 +46,5 @@ export interface PaymentDeclaration {
   createdBy: string;
   orderId?: string;
   orderNumber?: number;
+  staffNotified?: boolean;
 }

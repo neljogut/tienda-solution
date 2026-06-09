@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { collection, query, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product } from '../../types/product';
@@ -48,6 +48,8 @@ export const NewOrder: React.FC = () => {
   const [observationsPublic, setObservationsPublic] = useState('');
   const [observationsInternal, setObservationsInternal] = useState('');
   const [loading, setLoading] = useState(false);
+  const [addToast, setAddToast] = useState<string | null>(null);
+  const cartSummaryRef = useRef<HTMLDivElement>(null);
 
   // Settings & Exchange Rate
   const [depositSettings, setDepositSettings] = useState<DepositSettings | null>(null);
@@ -359,24 +361,38 @@ export const NewOrder: React.FC = () => {
     }
   }, [selectedClientId, products, pricing3dSettings]);
 
+  const showAddToast = useCallback((message: string) => {
+    setAddToast(message);
+    window.setTimeout(() => setAddToast(null), 2200);
+  }, []);
+
+  const scrollToCartSummary = useCallback(() => {
+    cartSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   // Add item to cart
   const addToCart = (product: Product) => {
+    if (product.stock <= 0) {
+      showAddToast(`Sin stock: ${product.name}`);
+      return;
+    }
+
     const existing = cartItems.find(item => item.productId === product.id);
     const currentQty = existing ? existing.quantity : 0;
-    
+
     if (currentQty >= product.stock) {
-      alert(`No se puede agregar más. Stock disponible: ${product.stock}`);
+      showAddToast(`Stock máximo: ${product.stock}`);
       return;
     }
 
     setCartItems(prev => {
       const isExisting = prev.find(item => item.productId === product.id);
       let updatedList;
-      
+
       if (isExisting) {
-        updatedList = prev.map(item => 
-          item.productId === product.id 
-            ? { ...item, quantity: item.quantity + 1 } 
+        updatedList = prev.map(item =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
@@ -396,6 +412,13 @@ export const NewOrder: React.FC = () => {
       }
       return recalculateCart(updatedList, activeClient);
     });
+
+    const newQty = currentQty + 1;
+    showAddToast(`${product.name} · cant. ${newQty}`);
+
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      window.setTimeout(() => scrollToCartSummary(), 120);
+    }
   };
 
   // Update item quantity
@@ -672,10 +695,10 @@ export const NewOrder: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${cartItems.length > 0 ? 'pb-24 lg:pb-0' : ''}`}>
         {/* Left Side: Product catalog lookup */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="card p-5 flex flex-col h-[72vh]">
+          <div className="card p-5 flex flex-col h-[min(55vh,520px)] lg:h-[72vh]">
             <h3 className="font-bold text-slate-800 text-base mb-3 flex items-center gap-2">
               <ShoppingCart size={18} className="text-blue-500" />
             </h3>
@@ -809,13 +832,13 @@ export const NewOrder: React.FC = () => {
                 const cartQty = cartItems.find(item => item.productId === p.id)?.quantity || 0;
 
                 return (
-                  <div key={p.id} className={`flex items-center justify-between p-3 border rounded-xl hover:border-blue-300 hover:bg-slate-50/40 transition-colors ${isOutOfStock ? 'opacity-65' : ''}`}>
-                    <div className="flex items-center gap-3">
+                  <div key={p.id} className={`flex items-center gap-2 p-3 border rounded-xl hover:border-blue-300 hover:bg-slate-50/40 transition-colors ${isOutOfStock ? 'opacity-65' : ''}`}>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex-shrink-0">
                         {p.mainImage && <img src={p.mainImage} className="w-full h-full object-cover" alt={p.name}/>}
                       </div>
-                      <div>
-                        <p className="font-semibold text-slate-800 text-sm leading-snug">{p.name}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-800 text-sm leading-snug truncate">{p.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs font-semibold text-slate-600">${basePrice.toLocaleString('es-AR')}</span>
                           {wholesalePrice < basePrice && (
@@ -830,12 +853,18 @@ export const NewOrder: React.FC = () => {
                       </div>
                     </div>
                     
-                    <button 
-                      onClick={() => addToCart(p)} 
-                      disabled={isOutOfStock || cartQty >= p.stock}
-                      className="btn-icon text-blue-600 hover:bg-blue-50 rounded-xl"
+                    <button
+                      type="button"
+                      onClick={() => addToCart(p)}
+                      className="relative flex-shrink-0 min-w-11 min-h-11 flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 rounded-xl border border-blue-100 touch-manipulation"
+                      aria-label={`Agregar ${p.name}`}
                     >
-                      <Plus size={18} />
+                      <Plus size={20} />
+                      {cartQty > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                          {cartQty}
+                        </span>
+                      )}
                     </button>
                   </div>
                 );
@@ -845,8 +874,8 @@ export const NewOrder: React.FC = () => {
         </div>
 
         {/* Right Side: Order configuration and items list */}
-        <div className="lg:col-span-5 flex flex-col space-y-4">
-          <div className="card p-5 flex flex-col h-[72vh] justify-between">
+        <div ref={cartSummaryRef} className="lg:col-span-5 flex flex-col space-y-4 scroll-mt-20">
+          <div className="card p-5 flex flex-col min-h-[min(60vh,560px)] lg:h-[72vh] justify-between">
             <div className="space-y-4 flex flex-col overflow-y-auto no-scrollbar flex-1 pb-4">
               <h3 className="font-bold text-slate-800 text-base border-b pb-2 flex items-center justify-between">
                 <span>Resumen del Pedido</span>
@@ -1059,6 +1088,27 @@ export const NewOrder: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Toast al agregar producto */}
+      {addToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-2xl animate-fadeIn max-w-[90vw] text-center">
+          {addToast}
+        </div>
+      )}
+
+      {/* Barra móvil: acceso rápido al resumen del pedido */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden">
+          <button
+            type="button"
+            onClick={scrollToCartSummary}
+            className="w-full btn-primary py-3 text-sm flex items-center justify-center gap-2 shadow-xl"
+          >
+            <ShoppingCart size={18} />
+            Ver pedido ({cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'})
+          </button>
+        </div>
+      )}
     </div>
   );
 };

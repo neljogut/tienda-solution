@@ -6,7 +6,7 @@ import type { Order, OrderStatus, PaymentStatus } from '../../types/order';
 import type { BusinessSettings } from '../../types/settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle2, Clock, Truck, XCircle, Plus, FileDown, FileText, Loader2, Edit2, X, Trash2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Truck, XCircle, Plus, FileDown, FileText, Loader2, Edit2, X, Trash2, AlertCircle, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { generateClientPDF, generateInternalPDF } from '../../services/pdfService';
 import { NumericInput } from '../../components/NumericInput';
 
@@ -76,6 +76,20 @@ export const Orders: React.FC = () => {
     paymentStatus: PaymentStatus;
     paidAmount: number;
   } | null>(null);
+
+  const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (orderId: string, e: React.MouseEvent) => {
+    // Prevent toggle when clicking actions or buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a') || target.closest('select')) {
+      return;
+    }
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
 
   // Deletion modal state
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
@@ -503,6 +517,7 @@ export const Orders: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                   <tr>
+                    <th className="p-4 w-10"></th>
                     <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderNumber')}>
                       Nº Pedido {renderSortIndicator('orderNumber')}
                     </th>
@@ -527,102 +542,169 @@ export const Orders: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {sortedOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-12 text-center text-slate-400">
+                      <td colSpan={8} className="p-12 text-center text-slate-400">
                         No se encontraron pedidos registrados.
                       </td>
                     </tr>
                   ) : (
-                    sortedOrders.map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50/40 transition-colors">
-                        {/* Order Number */}
-                        <td className="p-4 font-bold text-slate-800">
-                          #{String(order.orderNumber).padStart(5, '0')}
-                        </td>
-                        
-                        {/* Customer */}
-                        <td className="p-4 font-semibold text-slate-700">
-                          {order.customerName}
-                        </td>
-                        
-                        {/* Date */}
-                        <td className="p-4 text-slate-500">
-                          {new Date(order.date).toLocaleDateString('es-AR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
-                        </td>
-                        
-                        {/* Status */}
-                        <td className="p-4">{getStatusBadge(order.orderStatus)}</td>
+                    sortedOrders.map(order => {
+                      const isExpanded = !!expandedOrders[order.id];
+                      return (
+                        <React.Fragment key={order.id}>
+                          <tr 
+                            className="hover:bg-slate-50/40 transition-colors cursor-pointer"
+                            onClick={(e) => toggleExpand(order.id, e)}
+                          >
+                            <td className="p-4 text-center">
+                              {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                            </td>
+                            {/* Order Number */}
+                            <td className="p-4 font-bold text-slate-800">
+                              #{String(order.orderNumber).padStart(5, '0')}
+                            </td>
+                            
+                            {/* Customer */}
+                            <td className="p-4 font-semibold text-slate-700">
+                              {order.customerName}
+                            </td>
+                            
+                            {/* Date */}
+                            <td className="p-4 text-slate-500">
+                              {new Date(order.date).toLocaleDateString('es-AR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </td>
+                            
+                            {/* Status */}
+                            <td className="p-4">{getStatusBadge(order.orderStatus)}</td>
 
-                        {/* Payment Status */}
-                        <td className="p-4">
-                          <div>
-                            {getPaymentBadge(order.paymentStatus)}
-                            {order.paymentStatus === 'partial' && (
-                              <div className="text-[10px] text-slate-400 mt-0.5">
-                                <p>${order.paidAmount.toLocaleString('es-AR')} abonado</p>
-                                <p className="font-semibold text-amber-700">Resta: ${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</p>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        
-                        {/* Total Amount */}
-                        <td className="p-4 font-black text-slate-800 text-right">
-                          ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
-                        </td>
-                        
-                        {/* Actions */}
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end items-center gap-1">
-                            {canEditOrder && (
-                              <button
-                                onClick={() => openEditModal(order)}
-                                disabled={savingId === order.id}
-                                className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
-                                title="Editar estado y pago"
-                              >
-                                {savingId === order.id ? (
-                                  <Loader2 size={16} className="animate-spin" />
-                                ) : (
-                                  <Edit2 size={16} />
+                            {/* Payment Status */}
+                            <td className="p-4">
+                              <div>
+                                {getPaymentBadge(order.paymentStatus)}
+                                {order.paymentStatus === 'partial' && (
+                                  <div className="text-[10px] text-slate-400 mt-0.5">
+                                    <p>${order.paidAmount.toLocaleString('es-AR')} abonado</p>
+                                    <p className="font-semibold text-amber-700">Resta: ${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</p>
+                                  </div>
                                 )}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => generateClientPDF(order, business)}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
-                              title="Comprobante Cliente"
-                            >
-                              <FileDown size={16} />
-                            </button>
-                            <button
-                              onClick={() => generateInternalPDF(order, business)}
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
-                              title="Balance Interno"
-                            >
-                              <FileText size={16} />
-                            </button>
-                            {canEditOrder && (
-                              <button
-                                onClick={() => {
-                                  setDeletingOrder(order);
-                                  setRestoreStock(true);
-                                  setRestoreFilament(true);
-                                  setRestoreSupplies(true);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                                title="Eliminar Pedido"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              </div>
+                            </td>
+                            
+                            {/* Total Amount */}
+                            <td className="p-4 font-black text-slate-800 text-right">
+                              ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                            </td>
+                            
+                            {/* Actions */}
+                            <td className="p-4 text-right">
+                              <div className="flex justify-end items-center gap-1">
+                                {canEditOrder && (
+                                  <button
+                                    onClick={() => openEditModal(order)}
+                                    disabled={savingId === order.id}
+                                    className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
+                                    title="Editar estado y pago"
+                                  >
+                                    {savingId === order.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                      <Edit2 size={16} />
+                                    )}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => generateClientPDF(order, business)}
+                                  className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                  title="Comprobante Cliente"
+                                >
+                                  <FileDown size={16} />
+                                </button>
+                                <button
+                                  onClick={() => generateInternalPDF(order, business)}
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                  title="Balance Interno"
+                                >
+                                  <FileText size={16} />
+                                </button>
+                                {canEditOrder && (
+                                  <button
+                                    onClick={() => {
+                                      setDeletingOrder(order);
+                                      setRestoreStock(true);
+                                      setRestoreFilament(true);
+                                      setRestoreSupplies(true);
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                    title="Eliminar Pedido"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Desktop Collapsible row */}
+                          {isExpanded && (
+                            <tr className="bg-slate-50/50">
+                              <td colSpan={8} className="p-6 border-t border-b border-slate-100">
+                                <div className="space-y-4 max-w-4xl">
+                                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Package size={14} className="text-slate-400" />
+                                    Detalle de Productos
+                                  </h4>
+                                  <div className="divide-y divide-slate-100 bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
+                                    {order.items.map((item, idx) => (
+                                      <div key={idx} className="p-4 flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden border border-slate-100 flex-shrink-0 flex">
+                                            {item.imageUrl ? (
+                                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover m-auto" />
+                                            ) : (
+                                              <Package size={22} className="text-slate-400 m-auto" />
+                                            )}
+                                          </div>
+                                          <div>
+                                            <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">Precio Unitario: ${item.unitPrice.toLocaleString('es-AR')}</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-semibold text-slate-600">Cant: {item.quantity}</p>
+                                          <p className="font-bold text-slate-800 text-sm mt-0.5">${(item.unitPrice * item.quantity).toLocaleString('es-AR')}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  {order.observationsPublic && (
+                                    <div className="bg-blue-50/50 border border-blue-100/50 rounded-xl p-3 flex gap-2 text-slate-600 text-xs">
+                                      <AlertCircle size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                                      <div>
+                                        <p className="font-bold text-slate-700 mb-0.5">Nota del Cliente:</p>
+                                        <p className="italic">{order.observationsPublic}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {order.observationsInternal && (
+                                    <div className="bg-slate-100/80 border border-slate-200/80 rounded-xl p-3 flex gap-2 text-slate-600 text-xs">
+                                      <AlertCircle size={16} className="text-slate-500 flex-shrink-0 mt-0.5" />
+                                      <div>
+                                        <p className="font-bold text-slate-700 mb-0.5">Nota Interna (Admin):</p>
+                                        <p className="italic">{order.observationsInternal}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -635,102 +717,143 @@ export const Orders: React.FC = () => {
                   No se encontraron pedidos registrados.
                 </div>
               ) : (
-                sortedOrders.map(order => (
-                  <div key={order.id} className="p-4 space-y-3">
-                    {/* Row 1: Order Number & Date */}
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-800 text-sm">
-                        #{String(order.orderNumber).padStart(5, '0')}
-                      </span>
-                      <span className="text-slate-500">
-                        {new Date(order.date).toLocaleDateString('es-AR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-
-                    {/* Row 2: Customer Name */}
-                    <div>
-                      <h3 className="font-semibold text-slate-700 text-sm">{order.customerName}</h3>
-                    </div>
-
-                    {/* Row 3: Badges */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {getStatusBadge(order.orderStatus)}
-                      {getPaymentBadge(order.paymentStatus)}
-                    </div>
-
-                    {/* Row 4: Partial Payment Info */}
-                    {order.paymentStatus === 'partial' && (
-                      <div className="bg-amber-50/50 border border-amber-100/50 rounded-lg p-2 text-slate-600 space-y-0.5">
-                        <div className="flex justify-between">
-                          <span>Abonado:</span>
-                          <span className="font-medium">${order.paidAmount.toLocaleString('es-AR')}</span>
-                        </div>
-                        <div className="flex justify-between text-amber-700 font-bold">
-                          <span>Resta:</span>
-                          <span>${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Row 5: Total & Actions */}
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-50">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total</span>
-                        <span className="font-black text-slate-800 text-sm">
-                          ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                sortedOrders.map(order => {
+                  const isExpanded = !!expandedOrders[order.id];
+                  return (
+                    <div key={order.id} className="p-4 space-y-3">
+                      {/* Row 1: Order Number & Date */}
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-800 text-sm">
+                          #{String(order.orderNumber).padStart(5, '0')}
+                        </span>
+                        <span className="text-slate-500">
+                          {new Date(order.date).toLocaleDateString('es-AR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {canEditOrder && (
-                          <button
-                            onClick={() => openEditModal(order)}
-                            disabled={savingId === order.id}
-                            className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 border border-slate-100 transition-colors disabled:opacity-50 animate-fadeIn"
-                            title="Editar estado y pago"
-                          >
-                            {savingId === order.id ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <Edit2 size={14} />
-                            )}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => generateClientPDF(order, business)}
-                          className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
-                          title="Comprobante Cliente"
-                        >
-                          <FileDown size={14} />
-                        </button>
-                        <button
-                          onClick={() => generateInternalPDF(order, business)}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
-                          title="Balance Interno"
-                        >
-                          <FileText size={14} />
-                        </button>
-                        {canEditOrder && (
-                          <button
-                            onClick={() => {
-                              setDeletingOrder(order);
-                              setRestoreStock(true);
-                              setRestoreFilament(true);
-                              setRestoreSupplies(true);
-                            }}
-                            className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
-                            title="Eliminar Pedido"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+
+                      {/* Row 2: Customer Name */}
+                      <div>
+                        <h3 className="font-semibold text-slate-700 text-sm">{order.customerName}</h3>
                       </div>
+
+                      {/* Row 3: Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {getStatusBadge(order.orderStatus)}
+                        {getPaymentBadge(order.paymentStatus)}
+                      </div>
+
+                      {/* Row 4: Partial Payment Info */}
+                      {order.paymentStatus === 'partial' && (
+                        <div className="bg-amber-50/50 border border-amber-100/50 rounded-lg p-2 text-slate-600 space-y-0.5">
+                          <div className="flex justify-between">
+                            <span>Abonado:</span>
+                            <span className="font-medium">${order.paidAmount.toLocaleString('es-AR')}</span>
+                          </div>
+                          <div className="flex justify-between text-amber-700 font-bold">
+                            <span>Resta:</span>
+                            <span>${(order.pendingAmount ?? (order.totalAmount - order.paidAmount)).toLocaleString('es-AR')}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Row 5: Total & Actions */}
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total</span>
+                          <span className="font-black text-slate-800 text-sm">
+                            ${order.totalAmount.toLocaleString('es-AR', {minimumFractionDigits: 1})}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => toggleExpand(order.id, e)}
+                            className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 border border-slate-100 transition-colors mr-1 font-semibold flex items-center gap-1"
+                          >
+                            Detalle {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </button>
+                          {canEditOrder && (
+                            <button
+                              onClick={() => openEditModal(order)}
+                              disabled={savingId === order.id}
+                              className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 border border-slate-100 transition-colors disabled:opacity-50 animate-fadeIn"
+                              title="Editar estado y pago"
+                            >
+                              {savingId === order.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Edit2 size={14} />
+                              )}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => generateClientPDF(order, business)}
+                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                            title="Comprobante Cliente"
+                          >
+                            <FileDown size={14} />
+                          </button>
+                          <button
+                            onClick={() => generateInternalPDF(order, business)}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                            title="Balance Interno"
+                          >
+                            <FileText size={14} />
+                          </button>
+                          {canEditOrder && (
+                            <button
+                              onClick={() => {
+                                setDeletingOrder(order);
+                                setRestoreStock(true);
+                                setRestoreFilament(true);
+                                setRestoreSupplies(true);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
+                              title="Eliminar Pedido"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Mobile Collapsed Items */}
+                      {isExpanded && (
+                        <div className="space-y-3 mt-3 pt-3 border-t border-slate-100 bg-slate-50/50 p-3 rounded-xl">
+                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Productos:</h4>
+                          <div className="space-y-2">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between items-center gap-2 bg-white p-2 rounded-lg border border-slate-200/60">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-8 h-8 bg-slate-100 rounded overflow-hidden flex-shrink-0 flex">
+                                    {item.imageUrl ? (
+                                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover m-auto" />
+                                    ) : (
+                                      <Package size={16} className="text-slate-400 m-auto" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-slate-800 text-xs truncate">{item.name}</p>
+                                    <p className="text-[10px] text-slate-400">{item.quantity} x ${item.unitPrice.toLocaleString('es-AR')}</p>
+                                  </div>
+                                </div>
+                                <span className="font-bold text-slate-800 whitespace-nowrap">${(item.unitPrice * item.quantity).toLocaleString('es-AR')}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {order.observationsPublic && (
+                            <div className="text-[11px] text-slate-500 italic border-l-2 border-blue-400 pl-2 mt-2">
+                              {order.observationsPublic}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </>

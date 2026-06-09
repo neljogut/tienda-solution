@@ -86,7 +86,6 @@ export const MyAccountBalance: React.FC = () => {
         snap.forEach(d => {
           list.push({ id: d.id, ...d.data() });
         });
-        list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setPayments(list);
       });
     };
@@ -99,6 +98,25 @@ export const MyAccountBalance: React.FC = () => {
       if (unsubPayments) unsubPayments();
     };
   }, [currentUser, userData]);
+
+  const mergedPayments = React.useMemo(() => {
+    const list = [...payments];
+    orders.forEach(o => {
+      if (o.paidAmount && o.paidAmount > 0) {
+        const hasDirectMovement = list.some(m => m.orderId === o.id);
+        if (!hasDirectMovement) {
+          list.push({
+            id: `virtual_${o.id}`,
+            date: o.date,
+            amount: o.paidAmount,
+            paymentMethod: o.paymentMethod || 'transfer',
+            observation: `Seña / Pago de Pedido #${String(o.orderNumber).padStart(5, '0')}`
+          });
+        }
+      }
+    });
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [payments, orders]);
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
@@ -194,14 +212,24 @@ export const MyAccountBalance: React.FC = () => {
         {/* Total Purchased Card */}
         <div className="card p-5 border border-slate-200/80 shadow-sm flex flex-col justify-center">
           <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Total comprado</p>
-          <p className="text-3xl font-extrabold text-emerald-600 mt-1">${(client?.totalPurchased ?? 0).toLocaleString('es-AR')}</p>
+          <p className="text-3xl font-extrabold text-emerald-600 mt-1">
+            ${orders
+              .filter(o => o.orderStatus !== 'cancelled')
+              .reduce((sum, o) => sum + (o.totalAmount || 0), 0)
+              .toLocaleString('es-AR')}
+          </p>
           <p className="text-[10px] text-slate-400 mt-2 font-medium">Suma de todos tus pedidos no cancelados.</p>
         </div>
 
         {/* Total Owed Card */}
         <div className="card p-5 border-t-4 border-t-amber-500 border border-slate-200/80 shadow-sm flex flex-col justify-center">
           <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Saldo Adeudado</p>
-          <p className="text-3xl font-extrabold text-amber-600 mt-1">${(client?.totalOwed ?? 0).toLocaleString('es-AR')}</p>
+          <p className="text-3xl font-extrabold text-amber-600 mt-1">
+            ${orders
+              .filter(o => o.orderStatus !== 'cancelled')
+              .reduce((sum, o) => sum + (o.pendingAmount || 0), 0)
+              .toLocaleString('es-AR')}
+          </p>
           <p className="text-[10px] text-slate-400 mt-2 font-medium">Suma de saldos pendientes de tus pedidos.</p>
         </div>
       </div>
@@ -273,16 +301,16 @@ export const MyAccountBalance: React.FC = () => {
         <div className="lg:col-span-5 space-y-4">
           <h2 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
             <ArrowDownLeft size={18} className="text-slate-500" />
-            Historial de Pagos ({payments.length})
+            Historial de Pagos ({mergedPayments.length})
           </h2>
 
           <div className="space-y-3">
-            {payments.length === 0 ? (
+            {mergedPayments.length === 0 ? (
               <div className="card p-6 text-center text-slate-400 text-xs">
                 No hay pagos registrados a tu cuenta corriente aún.
               </div>
             ) : (
-              payments.map(pay => (
+              mergedPayments.map(pay => (
                 <div key={pay.id} className="card p-4 border border-slate-200/80 shadow-sm flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
                     <ArrowDownLeft size={16} />

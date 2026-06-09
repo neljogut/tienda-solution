@@ -180,8 +180,23 @@ export const CartDrawer: React.FC = () => {
       const orderRef = await addDoc(collection(db, 'orders'), newOrder);
       const orderId = orderRef.id;
       
-      // Update stocks and materials
+      // Update stocks, materials, and client totals
       const batch = writeBatch(db);
+
+      if (resolvedCustomerId) {
+        const clientRef = doc(db, 'clients', resolvedCustomerId);
+        const clientSnap = await getDoc(clientRef);
+        if (clientSnap.exists()) {
+          const clientData = clientSnap.data();
+          const currentPurchased = clientData.totalPurchased || 0;
+          const currentOwed = clientData.totalOwed || 0;
+          batch.update(clientRef, {
+            totalPurchased: currentPurchased + totalAmount,
+            totalOwed: currentOwed + totalAmount
+          });
+        }
+      }
+
       const saleLines: any[] = [];
 
       for (const item of orderItems) {

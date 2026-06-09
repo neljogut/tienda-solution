@@ -165,20 +165,31 @@ export interface SystemNotificationPayload {
   body: string;
   tag: string;
   linkPath?: string;
+  orderId?: string;
+}
+
+function actionTitleFor(linkPath: string, orderId?: string): string {
+  if (orderId) return 'Ver pedido';
+  if (linkPath.includes('accounts')) return 'Ver cuentas';
+  if (linkPath.includes('my-account')) return 'Ver mi cuenta';
+  if (linkPath.includes('my-orders')) return 'Ver pedidos';
+  return 'Abrir';
 }
 
 /** Notificación del sistema con sonido (funciona en móvil con permiso concedido). */
 export async function showSystemNotification(payload: SystemNotificationPayload): Promise<void> {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  const options: NotificationOptions & { vibrate?: number[] } = {
+  const linkPath = payload.linkPath || '/';
+  const options: NotificationOptions & { vibrate?: number[]; actions?: Array<{ action: string; title: string }> } = {
     body: payload.body,
     tag: payload.tag,
     icon: '/pwa-192.png',
     badge: '/pwa-192.png',
     silent: false,
     vibrate: [200, 100, 200, 100, 200],
-    data: { linkPath: payload.linkPath || '/' },
+    data: { linkPath, orderId: payload.orderId || '' },
+    actions: [{ action: 'open', title: actionTitleFor(linkPath, payload.orderId) }],
   };
 
   try {

@@ -88,6 +88,18 @@ service cloud.firestore {
       return isAuth() && authUserRole() in ['owner', 'employee'];
     }
 
+    match /payment_declarations/{declarationId} {
+      allow create: if isAuth()
+        && authUserRole() == 'client'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0;
+      allow read: if isStaff()
+        || (isAuth() && resource.data.createdBy == request.auth.uid);
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+    }
+
     match /notifications/{notificationId} {
       allow read: if isAuth() && resource.data.recipientUid == request.auth.uid;
       allow create: if isAuth() && (

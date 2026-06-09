@@ -54,7 +54,7 @@ function deployTo(targetName, config) {
 
   console.log(`Deploying Firestore rules, Cloud Functions and Hosting...`);
   execSync(
-    `npx firebase deploy --only firestore,functions:sendNotificationPush,functions:notifyStaffOnNewOrder,hosting --force`,
+    `npx firebase deploy --only firestore,functions:sendNotificationPush,functions:notifyStaffOnNewOrder,functions:notifyStaffOnPaymentDeclaration,hosting --force`,
     {
       stdio: 'inherit',
       env: {

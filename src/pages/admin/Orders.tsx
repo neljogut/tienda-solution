@@ -80,11 +80,13 @@ export const Orders: React.FC = () => {
 
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
 
-  const toggleExpand = (orderId: string, e: React.MouseEvent) => {
-    // Prevent toggle when clicking actions or buttons
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('a') || target.closest('select')) {
-      return;
+  const toggleExpand = (orderId: string, e?: React.MouseEvent) => {
+    // En fila de escritorio: no expandir si el clic fue en acciones (editar, PDF, etc.)
+    if (e) {
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('a') || target.closest('select')) {
+        return;
+      }
     }
     setExpandedOrders(prev => ({
       ...prev,
@@ -808,7 +810,7 @@ export const Orders: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={(e) => toggleExpand(order.id, e)}
+                            onClick={() => toggleExpand(order.id)}
                             className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 border border-slate-100 transition-colors mr-1 font-semibold flex items-center gap-1"
                           >
                             Detalle {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}

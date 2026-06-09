@@ -5,6 +5,7 @@ import {db} from "./admin.js";
 
 export {sendNotificationPush} from "./pushNotifications.js";
 export {notifyStaffOnNewOrder} from "./orderNotifications.js";
+export {notifyStaffOnPaymentDeclaration} from "./paymentNotifications.js";
 
 const HOSTING_URL = process.env.HOSTING_URL || "https://dualgi3de.web.app";
 

@@ -5,18 +5,22 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   CreditCard, Receipt, CheckCircle,
-  ArrowDownLeft, AlertCircle, Calendar, MessageSquare, Wallet
+  ArrowDownLeft, AlertCircle, Calendar, MessageSquare, Wallet, Clock
 } from 'lucide-react';
 import { NumericInput } from '../../components/NumericInput';
+import { resolveCustomerId } from '../../services/clientResolver';
 import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
+import type { PaymentDeclaration } from '../../types/payment';
 
 export const MyAccountBalance: React.FC = () => {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
+  const [customerId, setCustomerId] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [pendingDeclarations, setPendingDeclarations] = useState<PaymentDeclaration[]>([]);
   const [loading, setLoading] = useState(true);
   const [customPayAmount, setCustomPayAmount] = useState<number | ''>('');
 
@@ -26,29 +30,11 @@ export const MyAccountBalance: React.FC = () => {
     let unsubClient: (() => void) | null = null;
     let unsubOrders: (() => void) | null = null;
     let unsubPayments: (() => void) | null = null;
+    let unsubDeclarations: (() => void) | null = null;
 
     const setupListeners = async () => {
-      let resolvedCustomerId = userData?.customerId || '';
-
-      // 1. Resolve client.id if not present in userData
-      if (!resolvedCustomerId) {
-        try {
-          const { query, where, getDocs, collection } = await import('firebase/firestore');
-          const clientQuery = query(collection(db, 'clients'), where('userId', '==', currentUser.uid));
-          const clientSnap = await getDocs(clientQuery);
-          if (!clientSnap.empty) {
-            resolvedCustomerId = clientSnap.docs[0].id;
-          } else {
-            const emailQuery = query(collection(db, 'clients'), where('email', '==', currentUser.email));
-            const emailSnap = await getDocs(emailQuery);
-            if (!emailSnap.empty) {
-              resolvedCustomerId = emailSnap.docs[0].id;
-            }
-          }
-        } catch (e) {
-          console.error("Error resolving customerId:", e);
-        }
-      }
+      const resolvedCustomerId = await resolveCustomerId(currentUser, userData);
+      setCustomerId(resolvedCustomerId);
 
       if (!resolvedCustomerId) {
         setLoading(false);
@@ -92,6 +78,19 @@ export const MyAccountBalance: React.FC = () => {
         });
         setPayments(list);
       });
+
+      // 5. Pagos declarados pendientes de confirmación
+      const qDeclarations = query(
+        collection(db, 'payment_declarations'),
+        where('createdBy', '==', currentUser.uid)
+      );
+      unsubDeclarations = onSnapshot(qDeclarations, (snap) => {
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as PaymentDeclaration))
+          .filter((d) => d.status === 'declared');
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setPendingDeclarations(list);
+      });
     };
 
     setupListeners();
@@ -100,6 +99,7 @@ export const MyAccountBalance: React.FC = () => {
       if (unsubClient) unsubClient();
       if (unsubOrders) unsubOrders();
       if (unsubPayments) unsubPayments();
+      if (unsubDeclarations) unsubDeclarations();
     };
   }, [currentUser, userData]);
 
@@ -157,9 +157,11 @@ export const MyAccountBalance: React.FC = () => {
     .reduce((sum, o) => sum + (o.pendingAmount || 0), 0);
 
   const goToPay = (amount: number) => {
-    if (amount <= 0) return;
-    navigate(`/checkout?mode=balance&amount=${amount}`);
+    if (amount <= 0 || !customerId) return;
+    navigate(`/checkout?mode=balance&amount=${amount}&customerId=${customerId}`);
   };
+
+  const pendingDeclaredTotal = pendingDeclarations.reduce((sum, d) => sum + d.amount, 0);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-fadeIn">
@@ -175,6 +177,34 @@ export const MyAccountBalance: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {pendingDeclarations.length > 0 && (
+        <div className="card border border-blue-200/80 bg-blue-50/50 p-4 sm:p-5 space-y-2">
+          <div className="flex items-center gap-2 text-blue-800">
+            <Clock size={18} />
+            <h2 className="font-bold text-sm sm:text-base">Pagos informados — pendientes de confirmación</h2>
+          </div>
+          {pendingDeclarations.map((decl) => (
+            <p key={decl.id} className="text-sm text-slate-700">
+              Informaste un pago de <strong>${decl.amount.toLocaleString('es-AR')}</strong>
+              {decl.type === 'order_transfer' && decl.orderNumber
+                ? ` (Pedido #${String(decl.orderNumber).padStart(5, '0')})`
+                : ' en tu cuenta corriente'}
+              {' '}el {new Date(decl.createdAt).toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}. El negocio lo confirmará cuando revise tu comprobante en WhatsApp.
+            </p>
+          ))}
+          {pendingDeclarations.length > 1 && (
+            <p className="text-xs text-slate-500 pt-1">
+              Total informado pendiente: ${pendingDeclaredTotal.toLocaleString('es-AR')} (aún no aplicado a tu saldo).
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Profile & Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

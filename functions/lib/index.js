@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testMercadoPagoConnection = exports.saveMercadoPagoCredentials = exports.mercadoPagoWebhook = exports.createMercadoPagoPreference = exports.createPaymentIntent = exports.createCatalogOrder = exports.notifyStaffOnNewOrder = exports.sendNotificationPush = void 0;
+exports.testMercadoPagoConnection = exports.saveMercadoPagoCredentials = exports.mercadoPagoWebhook = exports.createMercadoPagoPreference = exports.createPaymentIntent = exports.createCatalogOrder = exports.notifyStaffOnPaymentDeclaration = exports.notifyStaffOnNewOrder = exports.sendNotificationPush = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const mercadopago_1 = require("mercadopago");
 const paymentAllocation_js_1 = require("./paymentAllocation.js");
@@ -9,6 +9,8 @@ var pushNotifications_js_1 = require("./pushNotifications.js");
 Object.defineProperty(exports, "sendNotificationPush", { enumerable: true, get: function () { return pushNotifications_js_1.sendNotificationPush; } });
 var orderNotifications_js_1 = require("./orderNotifications.js");
 Object.defineProperty(exports, "notifyStaffOnNewOrder", { enumerable: true, get: function () { return orderNotifications_js_1.notifyStaffOnNewOrder; } });
+var paymentNotifications_js_1 = require("./paymentNotifications.js");
+Object.defineProperty(exports, "notifyStaffOnPaymentDeclaration", { enumerable: true, get: function () { return paymentNotifications_js_1.notifyStaffOnPaymentDeclaration; } });
 const HOSTING_URL = process.env.HOSTING_URL || "https://dualgi3de.web.app";
 async function requireRole(uid, allowed) {
     if (!uid) {

@@ -5,69 +5,16 @@ import {
   writeBatch,
   getDoc,
   getCountFromServer,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  setDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { CartItem } from '../store/cartStore';
 import type { User } from 'firebase/auth';
-import { syncClientUserLink } from './notificationService';
+import { resolveCustomerId } from './clientResolver';
 
 export interface CreateCatalogOrderResult {
   orderId: string;
   orderNumber: number;
   totalAmount: number;
-}
-
-async function resolveCustomerId(
-  currentUser: User,
-  userData: { customerId?: string; displayName?: string; email?: string } | null
-): Promise<string> {
-  let resolvedCustomerId = userData?.customerId || '';
-
-  if (resolvedCustomerId) {
-    await syncClientUserLink(resolvedCustomerId, currentUser.uid);
-    return resolvedCustomerId;
-  }
-
-  const clientQuery = query(collection(db, 'clients'), where('userId', '==', currentUser.uid));
-  const clientSnap = await getDocs(clientQuery);
-  if (!clientSnap.empty) {
-    resolvedCustomerId = clientSnap.docs[0].id;
-  } else if (currentUser.email) {
-    const emailQuery = query(collection(db, 'clients'), where('email', '==', currentUser.email));
-    const emailSnap = await getDocs(emailQuery);
-    if (!emailSnap.empty) {
-      resolvedCustomerId = emailSnap.docs[0].id;
-      await updateDoc(doc(db, 'clients', resolvedCustomerId), { userId: currentUser.uid });
-    } else {
-      const names = (userData?.displayName || 'Cliente').trim().split(/\s+/);
-      const firstName = names[0] || 'Cliente';
-      const lastName = names.slice(1).join(' ') || 'Registrado';
-      const newClientRef = doc(collection(db, 'clients'));
-      resolvedCustomerId = newClientRef.id;
-      await setDoc(newClientRef, {
-        firstName,
-        lastName,
-        email: currentUser.email || '',
-        userId: currentUser.uid,
-        createdAt: new Date().toISOString(),
-        totalPurchased: 0,
-        totalOwed: 0,
-        isWholesale: false,
-        isTrusted: false,
-      });
-    }
-  }
-
-  if (resolvedCustomerId) {
-    await updateDoc(doc(db, 'users', currentUser.uid), { customerId: resolvedCustomerId });
-  }
-
-  return resolvedCustomerId;
 }
 
 export async function createCatalogOrderClient(

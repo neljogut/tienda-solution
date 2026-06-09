@@ -46,6 +46,15 @@ export const sendNotificationPush = onDocumentCreated(
     const body = fullBody.split("\n").slice(0, 3).join(" · ");
     const linkPath = (data.linkPath as string) || "/";
     const orderId = (data.orderId as string) || "";
+    const actionTitle = orderId
+      ? "Ver pedido"
+      : linkPath.includes("accounts")
+        ? "Ver cuentas"
+        : linkPath.includes("my-account")
+          ? "Ver mi cuenta"
+          : linkPath.includes("my-orders")
+            ? "Ver pedidos"
+            : "Abrir";
 
     const response = await getMessaging().sendEachForMulticast({
       tokens,
@@ -66,6 +75,7 @@ export const sendNotificationPush = onDocumentCreated(
           badge: "/pwa-192.png",
           silent: false,
           vibrate: [200, 100, 200, 100, 200],
+          actions: [{action: "open", title: actionTitle}],
         },
       },
       android: {

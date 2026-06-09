@@ -15,6 +15,11 @@ import { NumericInput } from '../../components/NumericInput';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import { createCatalogOrderClient } from '../../services/catalogOrderService';
 import { finalizeCheckoutWithWhatsApp, finalizeBalancePaymentWithWhatsApp } from '../../services/checkoutFinalize';
+import {
+  declareBalancePayment,
+  declareOrderTransferPayment,
+} from '../../services/paymentDeclarationService';
+import { resolveCustomerId } from '../../services/clientResolver';
 import type { Order } from '../../types/order';
 
 type PayMode = 'catalog' | 'balance';
@@ -25,6 +30,7 @@ export const Checkout: React.FC = () => {
   const [searchParams] = useSearchParams();
   const mode = (searchParams.get('mode') as PayMode) || 'catalog';
   const presetAmount = searchParams.get('amount');
+  const presetCustomerId = searchParams.get('customerId') || '';
 
   const { currentUser, userData } = useAuth();
   const { items, getTotalPrice, clearCart } = useCartStore();
@@ -87,13 +93,7 @@ export const Checkout: React.FC = () => {
 
     const load = async () => {
       try {
-        let customerId = userData?.customerId || '';
-        if (!customerId) {
-          const { query, where, getDocs, collection } = await import('firebase/firestore');
-          const q = query(collection(db, 'clients'), where('userId', '==', currentUser.uid));
-          const snap = await getDocs(q);
-          if (!snap.empty) customerId = snap.docs[0].id;
-        }
+        const customerId = await resolveCustomerId(currentUser, userData, presetCustomerId);
         if (customerId) {
           const clientSnap = await getDoc(doc(db, 'clients', customerId));
           if (clientSnap.exists()) {
@@ -114,7 +114,7 @@ export const Checkout: React.FC = () => {
       }
     };
     load();
-  }, [currentUser, userData, mode, items.length, navigate, transferStep]);
+  }, [currentUser, userData, mode, items.length, navigate, transferStep, presetCustomerId]);
 
   useEffect(() => {
     if (mode === 'balance' || transferStep || checkoutInProgressRef.current) return;
@@ -239,13 +239,25 @@ export const Checkout: React.FC = () => {
   };
 
   const handleTransferDone = async () => {
-    if (whatsappLoading) return;
+    if (whatsappLoading || !currentUser) return;
     setWhatsappLoading(true);
 
     const amount = confirmedPayAmount;
     const whatsappWin = window.open('about:blank', '_blank');
 
     try {
+      const customerId = await resolveCustomerId(currentUser, userData, presetCustomerId || client?.id);
+      if (!customerId) {
+        whatsappWin?.close();
+        alert('No se pudo vincular tu cuenta de cliente. Contactá al administrador.');
+        return;
+      }
+
+      const customerName =
+        userData?.displayName ||
+        (client ? `${client.firstName} ${client.lastName}`.trim() : '') ||
+        'Cliente';
+
       if (mode === 'catalog' && createdOrder) {
         const opened = await finalizeCheckoutWithWhatsApp({
           order: createdOrder,
@@ -258,18 +270,55 @@ export const Checkout: React.FC = () => {
           return;
         }
 
+        if (amount > 0) {
+          try {
+            await declareOrderTransferPayment({
+              orderId: createdOrder.id,
+              orderNumber: createdOrder.orderNumber,
+              customerId: createdOrder.customerId || customerId,
+              customerName: createdOrder.customerName || customerName,
+              amount,
+              createdBy: currentUser.uid,
+            });
+          } catch (declareErr) {
+            console.error(declareErr);
+            alert('Se abrió WhatsApp pero no se pudo registrar el aviso de pago. Contactá al negocio para confirmar tu transferencia.');
+            return;
+          }
+        }
+
         setTimeout(() => {
           navigate(`/payment/result?status=transfer&orderId=${createdOrder.id}&amount=${amount}`);
         }, 400);
       } else if (mode === 'balance') {
+        if (amount <= 0) {
+          whatsappWin?.close();
+          alert('El monto a pagar debe ser mayor a cero.');
+          return;
+        }
+
         const opened = await finalizeBalancePaymentWithWhatsApp({
-          customerName: userData?.displayName || 'Cliente',
+          customerName,
           amount,
           method: 'transfer',
         }, { preOpenedWindow: whatsappWin });
 
         if (!opened) {
           alert('No se pudo abrir WhatsApp. Verificá que el negocio tenga el número configurado en Datos del negocio.');
+          return;
+        }
+
+        try {
+          await declareBalancePayment({
+            customerId,
+            customerName,
+            amount,
+            method: 'transfer',
+            createdBy: currentUser.uid,
+          });
+        } catch (declareErr) {
+          console.error(declareErr);
+          alert('Se abrió WhatsApp pero no se pudo registrar el aviso de pago. Contactá al negocio para confirmar tu transferencia.');
           return;
         }
 
@@ -280,7 +329,7 @@ export const Checkout: React.FC = () => {
     } catch (err) {
       console.error(err);
       whatsappWin?.close();
-      alert('No se pudo preparar el mensaje de WhatsApp. Intentá de nuevo.');
+      alert('No se pudo completar el proceso. Intentá de nuevo.');
     } finally {
       setWhatsappLoading(false);
     }

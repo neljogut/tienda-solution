@@ -30,3 +30,20 @@ export interface OnlinePayment {
   createdAt: string;
   note?: string;
 }
+
+export type PaymentDeclarationType = 'balance' | 'order_transfer';
+export type PaymentDeclarationStatus = 'declared' | 'confirmed' | 'rejected';
+
+export interface PaymentDeclaration {
+  id: string;
+  type: PaymentDeclarationType;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  method: 'transfer' | 'mercadopago';
+  status: PaymentDeclarationStatus;
+  createdAt: string;
+  createdBy: string;
+  orderId?: string;
+  orderNumber?: number;
+}

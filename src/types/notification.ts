@@ -4,7 +4,8 @@ export type NotificationType =
   | 'new_order'
   | 'order_status'
   | 'order_payment'
-  | 'order_updated';
+  | 'order_updated'
+  | 'balance_payment';
 
 export interface AppNotification {
   id: string;

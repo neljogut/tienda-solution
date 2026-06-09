@@ -30,6 +30,15 @@ function formatMoney(amount: number): string {
   return `$${amount.toLocaleString('es-AR')}`;
 }
 
+function sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, unknown> {
+  if (!metadata) return {};
+  const clean: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (value !== undefined) clean[key] = value;
+  }
+  return clean;
+}
+
 export function formatOrderItemsSummary(items: OrderItem[], maxItems = 4): string {
   const lines = items.slice(0, maxItems).map((i) => `${i.name} × ${i.quantity}`);
   if (items.length > maxItems) {
@@ -125,7 +134,7 @@ async function createNotifications(
       read: false,
       createdAt: now,
       linkPath: entry.linkPath,
-      metadata: entry.metadata || {},
+      metadata: sanitizeMetadata(entry.metadata),
     });
   }
 
@@ -249,6 +258,57 @@ export async function notifyClientOrderChanges(
         pendingAmount: changes.pendingAmount ?? order.pendingAmount,
         previousOrderStatus: changes.previousOrderStatus,
         previousPaymentStatus: changes.previousPaymentStatus,
+      },
+    },
+  ]);
+}
+
+/** Pago confirmado en cuentas corrientes → notifica al cliente una sola vez */
+export async function notifyClientAccountPayment(params: {
+  customerId: string;
+  customerName: string;
+  amount: number;
+  paymentMethod: string;
+  remainingOwed: number;
+}): Promise<void> {
+  const clientUid = await getClientUserId(params.customerId);
+  if (!clientUid) {
+    console.warn('notifyClientAccountPayment: cliente sin cuenta vinculada.', params.customerId);
+    return;
+  }
+
+  const methodLabels: Record<string, string> = {
+    cash: 'Efectivo',
+    transfer: 'Transferencia',
+    mercadopago: 'MercadoPago',
+    card: 'Tarjeta',
+    other: 'Otro',
+  };
+  const methodLabel = methodLabels[params.paymentMethod] || params.paymentMethod;
+
+  const title = `Pago confirmado — ${formatMoney(params.amount)}`;
+  const body = [
+    `Hola ${params.customerName},`,
+    `Confirmamos tu pago de ${formatMoney(params.amount)} (${methodLabel}).`,
+    params.remainingOwed > 0
+      ? `Saldo pendiente en tu cuenta: ${formatMoney(params.remainingOwed)}.`
+      : 'Tu cuenta corriente quedó al día.',
+  ].join('\n');
+
+  await createNotifications([
+    {
+      recipientUid: clientUid,
+      type: 'order_payment',
+      title,
+      body,
+      orderId: '',
+      orderNumber: 0,
+      linkPath: '/my-account-balance',
+      metadata: {
+        customerName: params.customerName,
+        paidAmount: params.amount,
+        pendingAmount: params.remainingOwed,
+        paymentStatus: params.remainingOwed <= 0 ? 'paid' : 'partial',
       },
     },
   ]);

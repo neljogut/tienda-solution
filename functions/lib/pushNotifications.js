@@ -42,6 +42,15 @@ exports.sendNotificationPush = (0, firestore_1.onDocumentCreated)({
     const body = fullBody.split("\n").slice(0, 3).join(" · ");
     const linkPath = data.linkPath || "/";
     const orderId = data.orderId || "";
+    const actionTitle = orderId
+        ? "Ver pedido"
+        : linkPath.includes("accounts")
+            ? "Ver cuentas"
+            : linkPath.includes("my-account")
+                ? "Ver mi cuenta"
+                : linkPath.includes("my-orders")
+                    ? "Ver pedidos"
+                    : "Abrir";
     const response = await (0, messaging_1.getMessaging)().sendEachForMulticast({
         tokens,
         notification: { title, body },
@@ -61,6 +70,7 @@ exports.sendNotificationPush = (0, firestore_1.onDocumentCreated)({
                 badge: "/pwa-192.png",
                 silent: false,
                 vibrate: [200, 100, 200, 100, 200],
+                actions: [{ action: "open", title: actionTitle }],
             },
         },
         android: {

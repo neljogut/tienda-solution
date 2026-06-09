@@ -172,6 +172,7 @@ export async function setupFcmForegroundListener(): Promise<void> {
       body,
       tag: payload.data?.notificationId || `fcm-${Date.now()}`,
       linkPath,
+      orderId: payload.data?.orderId,
     });
   });
 }

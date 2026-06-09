@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, query, where, onSnapshot, getDocs, updateDoc, doc, addDoc, writeBatch, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Client } from '../../types/client';
 import { migrateClient } from '../../types/client';
 import type { Order } from '../../types/order';
+import type { PaymentDeclaration } from '../../types/payment';
 import { allocatePaymentFifo } from '../../services/paymentAllocation';
-import { notifyClientOrderChanges } from '../../services/notificationService';
+import { notifyClientAccountPayment } from '../../services/notificationService';
+import { updatePaymentDeclarationStatus } from '../../services/paymentDeclarationService';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useAuth } from '../../context/AuthContext';
-import { CreditCard, Search, DollarSign, Receipt, ChevronDown, ChevronUp, X, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { CreditCard, Search, DollarSign, Receipt, ChevronDown, ChevronUp, X, CheckCircle, Loader2, AlertCircle, Clock, XCircle } from 'lucide-react';
 import { NumericInput } from '../../components/NumericInput';
 
 export const CurrentAccounts: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pendingDeclarations, setPendingDeclarations] = useState<PaymentDeclaration[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
@@ -23,6 +29,8 @@ export const CurrentAccounts: React.FC = () => {
   const [paymentAmount, setPaymentAmount] = useState<number | ''>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [observations, setObservations] = useState('');
+  const [linkedDeclarationId, setLinkedDeclarationId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -56,12 +64,40 @@ export const CurrentAccounts: React.FC = () => {
       }
     });
 
+    // 4. Pagos declarados por clientes, pendientes de confirmación
+    const qDeclarations = query(
+      collection(db, 'payment_declarations'),
+      where('status', '==', 'declared')
+    );
+    const unsubDeclarations = onSnapshot(qDeclarations, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as PaymentDeclaration));
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPendingDeclarations(list);
+    });
+
     return () => {
       unsubClients();
       unsubOrders();
       unsubSession();
+      unsubDeclarations();
     };
   }, []);
+
+  useEffect(() => {
+    const clientId = searchParams.get('client');
+    if (!clientId || clients.length === 0) return;
+
+    setExpandedClientId(clientId);
+    const timer = setTimeout(() => {
+      document.getElementById(`account-client-${clientId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('client');
+    setSearchParams(next, { replace: true });
+
+    return () => clearTimeout(timer);
+  }, [searchParams, clients, setSearchParams]);
 
   // Filter clients with active debt (>0 totalOwed) matching search term
   const filteredClients = useMemo(() => {
@@ -79,12 +115,50 @@ export const CurrentAccounts: React.FC = () => {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
+  const findClientById = (clientId: string): Client | undefined => {
+    return clients.find((c) => c.id === clientId);
+  };
+
   // Open modal
-  const openPaymentModal = (client: Client) => {
+  const openPaymentModal = (client: Client, declarationId?: string) => {
     setSelectedClient(client);
     setPaymentAmount(client.totalOwed || 0);
     setPaymentMethod('cash');
     setObservations('');
+    setLinkedDeclarationId(declarationId || null);
+  };
+
+  const openPaymentModalFromDeclaration = (declaration: PaymentDeclaration) => {
+    const client = findClientById(declaration.customerId);
+    if (!client) {
+      alert(`No se encontró el cliente "${declaration.customerName}". Verificá que siga activo en el sistema.`);
+      return;
+    }
+    setSelectedClient(client);
+    setPaymentAmount(Math.min(declaration.amount, client.totalOwed || declaration.amount));
+    setPaymentMethod(declaration.method === 'transfer' ? 'transfer' : 'mercadopago');
+    setObservations(
+      declaration.type === 'order_transfer' && declaration.orderNumber
+        ? `Pago declarado por cliente — Pedido #${String(declaration.orderNumber).padStart(5, '0')}. Revisar comprobante en WhatsApp.`
+        : 'Pago declarado por cliente desde Mi cuenta. Revisar comprobante en WhatsApp.'
+    );
+    setLinkedDeclarationId(declaration.id);
+  };
+
+  const handleRejectDeclaration = async (declaration: PaymentDeclaration) => {
+    if (!window.confirm(`¿Descartar el pago declarado de ${declaration.customerName} por $${declaration.amount.toLocaleString('es-AR')}?`)) {
+      return;
+    }
+    setRejectingId(declaration.id);
+    try {
+      await updatePaymentDeclarationStatus(declaration.id, 'rejected');
+      showToast('Pago declarado descartado');
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo descartar el pago declarado.');
+    } finally {
+      setRejectingId(null);
+    }
   };
 
   // Close modal
@@ -92,6 +166,7 @@ export const CurrentAccounts: React.FC = () => {
     setSelectedClient(null);
     setPaymentAmount(0);
     setObservations('');
+    setLinkedDeclarationId(null);
   };
 
   // Toast helper
@@ -107,9 +182,6 @@ export const CurrentAccounts: React.FC = () => {
     if (!selectedClient || amt <= 0) return;
     if (amt > (selectedClient.totalOwed || 0)) {
       return alert("El monto ingresado supera el saldo adeudado del cliente.");
-    }
-    if (!activeSession) {
-      return alert("La caja diaria está cerrada. Abre la caja en la sección de Caja para poder registrar pagos.");
     }
 
     setSaving(true);
@@ -145,49 +217,54 @@ export const CurrentAccounts: React.FC = () => {
       // Commit DB changes
       await batch.commit();
 
-      for (const upd of orderUpdates) {
-        const original = clientOrders.find((o) => o.id === upd.orderId);
-        if (!original) continue;
-        const updatedOrder = { ...original, ...upd } as Order;
-        void notifyClientOrderChanges(updatedOrder, {
-          paymentStatus: upd.paymentStatus,
-          paidAmount: upd.paidAmount,
-          pendingAmount: upd.pendingAmount,
-          previousPaymentStatus: original.paymentStatus,
-          paymentNote: `Se registró un pago de $${upd.appliedAmount.toLocaleString('es-AR')} en tu cuenta.`,
-        }).catch((err) => console.error('Error notificando pago al cliente:', err));
-      }
-
-      // 3. Register Cash Session Transaction
-      const movementData: Omit<any, 'id'> = {
-        sessionId: activeSession.id,
-        date: new Date().toISOString(),
-        type: 'account_payment',
+      const customerName = `${selectedClient.firstName} ${selectedClient.lastName}`.trim();
+      void notifyClientAccountPayment({
+        customerId: selectedClient.id,
+        customerName,
         amount: amt,
         paymentMethod,
-        customerId: selectedClient.id,
-        userId: userData?.uid || '',
-        userName: userData?.displayName || 'Admin',
-        observation: `Pago a Cuenta Corriente de ${selectedClient.firstName} ${selectedClient.lastName}. ${observations}`
-      };
-      
-      await addDoc(collection(db, 'cash_movements'), movementData);
+        remainingOwed: newOwed,
+      }).catch((err) => console.error('Error notificando pago al cliente:', err));
 
-      // 4. Update Cash Session totals
-      const sessionRef = doc(db, 'cash_sessions', activeSession.id);
-      const currentIncome = activeSession.totalIncome || 0;
-      const currentExpected = activeSession.expectedAmount || 0;
-      const breakdown = { ...(activeSession.breakdown || { cash: 0, transfer: 0, mercadopago: 0, card: 0, other: 0 }) };
-      
-      breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + amt;
+      // 3. Register Cash Session Transaction (solo si hay caja abierta)
+      if (activeSession) {
+        const movementData: Omit<any, 'id'> = {
+          sessionId: activeSession.id,
+          date: new Date().toISOString(),
+          type: 'account_payment',
+          amount: amt,
+          paymentMethod,
+          customerId: selectedClient.id,
+          userId: userData?.uid || '',
+          userName: userData?.displayName || 'Admin',
+          observation: `Pago a Cuenta Corriente de ${customerName}. ${observations}`
+        };
 
-      await updateDoc(sessionRef, {
-        totalIncome: currentIncome + amt,
-        expectedAmount: currentExpected + amt,
-        breakdown
-      });
+        await addDoc(collection(db, 'cash_movements'), movementData);
 
-      showToast("Pago registrado exitosamente");
+        const sessionRef = doc(db, 'cash_sessions', activeSession.id);
+        const currentIncome = activeSession.totalIncome || 0;
+        const currentExpected = activeSession.expectedAmount || 0;
+        const breakdown = { ...(activeSession.breakdown || { cash: 0, transfer: 0, mercadopago: 0, card: 0, other: 0 }) };
+
+        breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + amt;
+
+        await updateDoc(sessionRef, {
+          totalIncome: currentIncome + amt,
+          expectedAmount: currentExpected + amt,
+          breakdown
+        });
+      }
+
+      if (linkedDeclarationId) {
+        await updatePaymentDeclarationStatus(linkedDeclarationId, 'confirmed');
+      }
+
+      showToast(
+        activeSession
+          ? 'Pago registrado exitosamente'
+          : 'Pago aplicado al saldo (sin movimiento de caja — caja cerrada)'
+      );
       closePaymentModal();
     } catch (error) {
       console.error(error);
@@ -222,6 +299,70 @@ export const CurrentAccounts: React.FC = () => {
         </div>
       </div>
 
+      {/* Pagos declarados pendientes */}
+      {pendingDeclarations.length > 0 && (
+        <div className="card border border-amber-200/80 bg-amber-50/40 p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-amber-600" />
+            <h2 className="font-bold text-slate-800 text-sm sm:text-base">
+              Pagos declarados — pendientes de confirmación ({pendingDeclarations.length})
+            </h2>
+          </div>
+          <p className="text-xs text-slate-500">
+            El cliente informó una transferencia desde Mi cuenta o checkout. Revisá WhatsApp y registrá el pago cuando confirmes el comprobante.
+          </p>
+          <div className="space-y-2">
+            {pendingDeclarations.map((decl) => (
+              <div
+                key={decl.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-amber-100 rounded-xl p-3 sm:p-4"
+              >
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-800 text-sm">{decl.customerName}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {decl.type === 'order_transfer' && decl.orderNumber
+                      ? `Pedido #${String(decl.orderNumber).padStart(5, '0')} · `
+                      : 'Cuenta corriente · '}
+                    {decl.method === 'transfer' ? 'Transferencia' : decl.method} ·{' '}
+                    {new Date(decl.createdAt).toLocaleString('es-AR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                  <p className="text-lg font-extrabold text-amber-700 mt-1">
+                    ${decl.amount.toLocaleString('es-AR')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => openPaymentModalFromDeclaration(decl)}
+                    className="btn-primary text-xs sm:text-sm py-2 px-3 flex items-center gap-1.5"
+                  >
+                    <DollarSign size={14} />
+                    Registrar pago
+                  </button>
+                  <button
+                    onClick={() => handleRejectDeclaration(decl)}
+                    disabled={rejectingId === decl.id}
+                    className="btn-secondary text-xs sm:text-sm py-2 px-3 flex items-center gap-1.5 text-red-600 border-red-100 hover:bg-red-50"
+                  >
+                    {rejectingId === decl.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <XCircle size={14} />
+                    )}
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Debt list grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {loading ? (
@@ -243,7 +384,7 @@ export const CurrentAccounts: React.FC = () => {
             const pendingOrders = getClientPendingOrders(client.id);
 
             return (
-              <div key={client.id} className="card p-4 sm:p-5 border-t-4 border-amber-500 flex flex-col justify-between shadow-sm">
+              <div id={`account-client-${client.id}`} key={client.id} className="card p-4 sm:p-5 border-t-4 border-amber-500 flex flex-col justify-between shadow-sm">
                 <div>
                   <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
                     <div>
@@ -381,11 +522,26 @@ export const CurrentAccounts: React.FC = () => {
                 />
               </div>
 
-              {/* Cash closed warning */}
+              {/* Cash closed warning — opcional */}
               {!activeSession && (
-                <div className="bg-red-50 border border-red-100 text-red-700 text-xs p-3 rounded-xl flex items-start gap-2 font-medium">
-                  <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-                  <span>La caja diaria está cerrada. Debes abrir la caja antes de registrar cobros en cuentas corrientes.</span>
+                <div className="bg-amber-50 border border-amber-100 text-amber-800 text-xs p-3 rounded-xl space-y-2">
+                  <div className="flex items-start gap-2 font-medium">
+                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                    <span>
+                      La caja diaria está cerrada. Podés confirmar el pago igual: se aplicará al saldo del cliente,
+                      pero no quedará registrado en movimientos de caja.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closePaymentModal();
+                      navigate('/cash');
+                    }}
+                    className="btn-secondary text-xs py-1.5 px-3 w-full sm:w-auto"
+                  >
+                    Ir a abrir caja
+                  </button>
                 </div>
               )}
             </div>
@@ -397,7 +553,7 @@ export const CurrentAccounts: React.FC = () => {
               </button>
               <button 
                 type="submit" 
-                disabled={saving || !activeSession || paymentAmount === '' || Number(paymentAmount) <= 0 || Number(paymentAmount) > (selectedClient.totalOwed || 0)}
+                disabled={saving || paymentAmount === '' || Number(paymentAmount) <= 0 || Number(paymentAmount) > (selectedClient.totalOwed || 0)}
                 className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving && <Loader2 className="animate-spin" size={16} />}

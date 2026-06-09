@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { Menu, ShoppingCart, Bell } from 'lucide-react';
+import { Menu, ShoppingCart } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 import { useCartStore } from '../store/cartStore';
 import type { BusinessSettings } from '../types/settings';
 
@@ -93,12 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, businessSettings 
           )}
         </button>
 
-        {/* Notifications placeholder */}
-        {userData && (
-          <button className="relative p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-            <Bell size={20} />
-          </button>
-        )}
+        {userData && <NotificationBell />}
         
         {/* Auth buttons for guests */}
         {!userData && (

@@ -5,6 +5,7 @@ import type { Client } from '../../types/client';
 import { migrateClient } from '../../types/client';
 import type { Order } from '../../types/order';
 import { allocatePaymentFifo } from '../../services/paymentAllocation';
+import { notifyClientOrderChanges } from '../../services/notificationService';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useAuth } from '../../context/AuthContext';
 import { CreditCard, Search, DollarSign, Receipt, ChevronDown, ChevronUp, X, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
@@ -143,6 +144,19 @@ export const CurrentAccounts: React.FC = () => {
 
       // Commit DB changes
       await batch.commit();
+
+      for (const upd of orderUpdates) {
+        const original = clientOrders.find((o) => o.id === upd.orderId);
+        if (!original) continue;
+        const updatedOrder = { ...original, ...upd } as Order;
+        void notifyClientOrderChanges(updatedOrder, {
+          paymentStatus: upd.paymentStatus,
+          paidAmount: upd.paidAmount,
+          pendingAmount: upd.pendingAmount,
+          previousPaymentStatus: original.paymentStatus,
+          paymentNote: `Se registró un pago de $${upd.appliedAmount.toLocaleString('es-AR')} en tu cuenta.`,
+        }).catch((err) => console.error('Error notificando pago al cliente:', err));
+      }
 
       // 3. Register Cash Session Transaction
       const movementData: Omit<any, 'id'> = {

@@ -1,62 +1,51 @@
-const CACHE_NAME = 'dualgi-3d-cache-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/pwa-192.png',
-  '/pwa-512.png',
-  '/favicon.svg'
-];
+const CACHE_NAME = 'dualgi-3d-cache-v2';
+const STATIC_ASSETS = ['/manifest.json', '/pwa-192.png', '/pwa-512.png', '/favicon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+    )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
-  // Solo interceptar peticiones del mismo origen de tipo GET
-  if (e.request.method === 'GET' && e.request.url.startsWith(self.location.origin)) {
+  if (e.request.method !== 'GET') return;
+
+  const url = new URL(e.request.url);
+
+  // No interceptar Firebase, Google ni bundles de la app (siempre red)
+  if (
+    url.pathname.startsWith('/assets/') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('gstatic.com')
+  ) {
+    return;
+  }
+
+  if (url.origin !== self.location.origin) return;
+
+  // HTML: siempre intentar red primero para no quedar con build viejo
+  if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
-      fetch(e.request)
-        .then((response) => {
-          // Guardar una copia en caché si la respuesta es válida
-          if (response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, copy);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // Si no hay red, servir desde el caché
-          return caches.match(e.request).then((cachedResponse) => {
-            if (cachedResponse) return cachedResponse;
-            // Si la ruta es una página, servir el index.html
-            if (e.request.mode === 'navigate') {
-              return caches.match('/index.html');
-            }
-          });
-        })
+      fetch(e.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Íconos/manifest: cache con fallback a red
+  if (STATIC_ASSETS.includes(url.pathname)) {
+    e.respondWith(
+      caches.match(e.request).then((cached) => cached || fetch(e.request))
     );
   }
 });

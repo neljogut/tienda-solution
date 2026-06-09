@@ -14,6 +14,8 @@ import {
 import { db } from '../firebase';
 import type { CartItem } from '../store/cartStore';
 import type { User } from 'firebase/auth';
+import type { Order } from '../types/order';
+import { notifyStaffNewOrder } from './notificationService';
 
 export interface CreateCatalogOrderResult {
   orderId: string;
@@ -235,6 +237,11 @@ export async function createCatalogOrderClient(
       lines: saleLines,
     });
   }
+
+  const createdOrder = { id: orderId, ...newOrder } as Order;
+  void notifyStaffNewOrder(createdOrder).catch((err) =>
+    console.error('Error enviando notificaciones de nuevo pedido:', err)
+  );
 
   return { orderId, orderNumber, totalAmount };
 }

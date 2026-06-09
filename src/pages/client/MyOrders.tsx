@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +11,7 @@ import type { Order } from '../../types/order';
 
 export const MyOrders: React.FC = () => {
   const { currentUser, userData } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
@@ -63,6 +65,22 @@ export const MyOrders: React.FC = () => {
       if (unsubscribe) unsubscribe();
     };
   }, [currentUser, userData]);
+
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (!openId || orders.length === 0) return;
+
+    setExpandedOrders((prev) => ({ ...prev, [openId]: true }));
+    const timer = setTimeout(() => {
+      document.getElementById(`my-order-row-${openId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('open');
+    setSearchParams(next, { replace: true });
+
+    return () => clearTimeout(timer);
+  }, [searchParams, orders, setSearchParams]);
 
   const toggleExpand = (orderId: string) => {
     setExpandedOrders(prev => ({
@@ -184,7 +202,8 @@ export const MyOrders: React.FC = () => {
                     const isExpanded = !!expandedOrders[order.id];
                     return (
                       <React.Fragment key={order.id}>
-                        <tr 
+                        <tr
+                          id={`my-order-row-${order.id}`}
                           className="hover:bg-slate-50/40 transition-colors cursor-pointer"
                           onClick={() => toggleExpand(order.id)}
                         >
@@ -278,7 +297,7 @@ export const MyOrders: React.FC = () => {
               {orders.map(order => {
                 const isExpanded = !!expandedOrders[order.id];
                 return (
-                  <div key={order.id} className="p-4 space-y-3">
+                  <div key={order.id} id={`my-order-row-${order.id}`} className="p-4 space-y-3">
                     {/* Row 1: Header */}
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-slate-800 text-sm">

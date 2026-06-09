@@ -4,10 +4,11 @@ import { collection, onSnapshot, query, orderBy, doc, getDoc, writeBatch, addDoc
 import { db } from '../../firebase';
 import type { Order, OrderStatus, PaymentStatus } from '../../types/order';
 import type { BusinessSettings } from '../../types/settings';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { CheckCircle2, Clock, Truck, XCircle, Plus, FileDown, FileText, Loader2, Edit2, X, Trash2, AlertCircle, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { generateClientPDF, generateInternalPDF } from '../../services/pdfService';
+import { notifyClientOrderChanges } from '../../services/notificationService';
 import { NumericInput } from '../../components/NumericInput';
 
 const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
@@ -98,6 +99,7 @@ export const Orders: React.FC = () => {
   const [restoreSupplies, setRestoreSupplies] = useState(true);
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = useAuth();
 
   // Sorting state
@@ -181,6 +183,22 @@ export const Orders: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const openId = searchParams.get('open');
+    if (!openId || orders.length === 0) return;
+
+    setExpandedOrders((prev) => ({ ...prev, [openId]: true }));
+    const timer = setTimeout(() => {
+      document.getElementById(`order-row-${openId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('open');
+    setSearchParams(next, { replace: true });
+
+    return () => clearTimeout(timer);
+  }, [searchParams, orders, setSearchParams]);
+
+  useEffect(() => {
     if (!editingOrder) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeEditModal();
@@ -219,6 +237,25 @@ export const Orders: React.FC = () => {
       }
 
       await batch.commit();
+
+      const updatedOrder = { ...order, ...patch } as Order;
+      const statusChanged = patch.orderStatus !== undefined && patch.orderStatus !== order.orderStatus;
+      const paymentChanged =
+        patch.paymentStatus !== undefined &&
+        (patch.paymentStatus !== order.paymentStatus ||
+          patch.paidAmount !== order.paidAmount ||
+          patch.pendingAmount !== order.pendingAmount);
+
+      if (statusChanged || paymentChanged) {
+        void notifyClientOrderChanges(updatedOrder, {
+          orderStatus: patch.orderStatus,
+          paymentStatus: patch.paymentStatus,
+          paidAmount: patch.paidAmount,
+          pendingAmount: patch.pendingAmount,
+          previousOrderStatus: order.orderStatus,
+          previousPaymentStatus: order.paymentStatus,
+        }).catch((err) => console.error('Error notificando al cliente:', err));
+      }
     } catch (err) {
       console.error('Error updating order:', err);
       alert('No se pudo actualizar el pedido.');
@@ -551,7 +588,8 @@ export const Orders: React.FC = () => {
                       const isExpanded = !!expandedOrders[order.id];
                       return (
                         <React.Fragment key={order.id}>
-                          <tr 
+                          <tr
+                            id={`order-row-${order.id}`}
                             className="hover:bg-slate-50/40 transition-colors cursor-pointer"
                             onClick={(e) => toggleExpand(order.id, e)}
                           >
@@ -720,7 +758,7 @@ export const Orders: React.FC = () => {
                 sortedOrders.map(order => {
                   const isExpanded = !!expandedOrders[order.id];
                   return (
-                    <div key={order.id} className="p-4 space-y-3">
+                    <div key={order.id} id={`order-row-${order.id}`} className="p-4 space-y-3">
                       {/* Row 1: Order Number & Date */}
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-slate-800 text-sm">

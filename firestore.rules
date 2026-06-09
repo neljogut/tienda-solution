@@ -70,6 +70,27 @@ service cloud.firestore {
     match /cash_movements/{movementId} {
       allow read, write: if isAuth();
     }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return isAuth() && userDoc().role in ['owner', 'employee'];
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuth() && resource.data.recipientUid == request.auth.uid;
+      allow create: if isAuth() && (
+        request.resource.data.recipientUid == request.auth.uid
+        || isStaff()
+        || userDoc().role == 'client'
+      );
+      allow update: if isAuth()
+        && resource.data.recipientUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuth() && resource.data.recipientUid == request.auth.uid;
+    }
     
     // Cualquier otra colección, por defecto bloqueada a no logueados, abierta a logueados
     match /{document=**} {

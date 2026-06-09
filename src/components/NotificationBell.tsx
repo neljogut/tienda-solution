@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck, Loader2, Package } from 'lucide-react';
+import { Bell, CheckCheck, Loader2, Package, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { registerFcmToken } from '../services/fcmService';
+import { unlockNotificationAudio } from '../utils/notificationAlert';
 import type { AppNotification } from '../types/notification';
 
 function timeAgo(iso: string): string {
@@ -26,16 +28,13 @@ export const NotificationBell: React.FC = () => {
     notifications,
     unreadCount,
     loading,
+    latestAlert,
+    dismissAlert,
     markRead,
     markAllRead,
     requestBrowserPermission,
   } = useNotifications(currentUser?.uid);
 
-  useEffect(() => {
-    if (currentUser) {
-      void requestBrowserPermission();
-    }
-  }, [currentUser, requestBrowserPermission]);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -57,9 +56,38 @@ export const NotificationBell: React.FC = () => {
 
   return (
     <div className="relative" ref={panelRef}>
+      {latestAlert && (
+        <div className="fixed top-20 right-4 z-[60] max-w-sm w-[min(92vw,20rem)] bg-white border border-blue-200 shadow-2xl rounded-xl p-4 animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-blue-100 text-blue-600 shrink-0">
+              <Bell size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-900">{latestAlert.title}</p>
+              <p className="text-xs text-slate-500 mt-1 line-clamp-3 whitespace-pre-line">{latestAlert.body}</p>
+              <button
+                type="button"
+                onClick={() => void handleSelect(latestAlert)}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 mt-2"
+              >
+                Ver detalle
+              </button>
+            </div>
+            <button type="button" onClick={dismissAlert} className="text-slate-400 hover:text-slate-600">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          unlockNotificationAudio();
+          void requestBrowserPermission();
+          if (currentUser) void registerFcmToken(currentUser.uid, true);
+          setOpen((v) => !v);
+        }}
         className="relative p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
         title="Notificaciones"
       >

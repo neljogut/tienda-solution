@@ -14,7 +14,6 @@ import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertC
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice, recalculateAllProductsInFirestore } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
-import { notifyStaffNewOrder } from '../../services/notificationService';
 
 export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -648,11 +647,6 @@ export const NewOrder: React.FC = () => {
           breakdown
         });
       }
-
-      const createdOrder = { id: orderId, ...orderData } as Order;
-      void notifyStaffNewOrder(createdOrder).catch((err) =>
-        console.error('Error enviando notificaciones de nuevo pedido:', err)
-      );
 
       navigate('/orders');
     } catch (error) {

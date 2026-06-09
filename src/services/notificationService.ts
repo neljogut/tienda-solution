@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -38,28 +39,61 @@ export function formatOrderItemsSummary(items: OrderItem[], maxItems = 4): strin
 }
 
 async function getStaffRecipientUids(): Promise<string[]> {
-  const snap = await getDocs(
-    query(collection(db, 'users'), where('role', 'in', ['owner', 'employee']))
-  );
-  const uids: string[] = [];
-  snap.forEach((userDoc) => {
-    const data = userDoc.data();
-    if (data.role === 'owner') {
-      uids.push(userDoc.id);
-      return;
-    }
-    if (data.role === 'employee' && data.permissions?.viewOrders !== false) {
-      uids.push(userDoc.id);
-    }
-  });
-  return uids;
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    const uids: string[] = [];
+    snap.forEach((userDoc) => {
+      const data = userDoc.data();
+      if (data.role === 'owner') {
+        uids.push(userDoc.id);
+        return;
+      }
+      if (data.role === 'employee' && data.permissions?.viewOrders !== false) {
+        uids.push(userDoc.id);
+      }
+    });
+    return uids;
+  } catch (err) {
+    console.error('No se pudo obtener usuarios staff para notificaciones:', err);
+    return [];
+  }
 }
 
 async function getClientUserId(customerId: string): Promise<string | null> {
   if (!customerId) return null;
-  const snap = await getDoc(doc(db, 'clients', customerId));
-  if (!snap.exists()) return null;
-  return (snap.data().userId as string) || null;
+
+  const clientSnap = await getDoc(doc(db, 'clients', customerId));
+  if (clientSnap.exists()) {
+    const linkedUid = clientSnap.data().userId as string | undefined;
+    if (linkedUid) return linkedUid;
+  }
+
+  // Fallback: vínculo solo en users.customerId (clientes creados desde admin)
+  const userSnap = await getDocs(
+    query(collection(db, 'users'), where('customerId', '==', customerId))
+  );
+  if (!userSnap.empty) {
+    const uid = userSnap.docs[0].id;
+    if (clientSnap.exists() && !clientSnap.data().userId) {
+      try {
+        await updateDoc(doc(db, 'clients', customerId), { userId: uid });
+      } catch {
+        // no bloquear notificación si falla el sync
+      }
+    }
+    return uid;
+  }
+
+  return null;
+}
+
+/** Asegura userId en clients cuando el usuario ya tiene customerId */
+export async function syncClientUserLink(customerId: string, userUid: string): Promise<void> {
+  if (!customerId || !userUid) return;
+  const clientSnap = await getDoc(doc(db, 'clients', customerId));
+  if (clientSnap.exists() && !clientSnap.data().userId) {
+    await updateDoc(doc(db, 'clients', customerId), { userId: userUid });
+  }
 }
 
 async function createNotifications(
@@ -95,13 +129,21 @@ async function createNotifications(
     });
   }
 
-  await batch.commit();
+  try {
+    await batch.commit();
+  } catch (err) {
+    console.error('Error creando notificaciones en Firestore:', err, entries);
+    throw err;
+  }
 }
 
 /** Nuevo pedido → owner y empleados con permiso de ver pedidos */
 export async function notifyStaffNewOrder(order: Order): Promise<void> {
   const staffUids = await getStaffRecipientUids();
-  if (staffUids.length === 0) return;
+  if (staffUids.length === 0) {
+    console.warn('notifyStaffNewOrder: no hay owner/empleados para notificar.');
+    return;
+  }
 
   const orderNum = String(order.orderNumber).padStart(5, '0');
   const itemsSummary = formatOrderItemsSummary(order.items);
@@ -150,7 +192,10 @@ export async function notifyClientOrderChanges(
   }
 ): Promise<void> {
   const clientUid = await getClientUserId(order.customerId);
-  if (!clientUid) return;
+  if (!clientUid) {
+    console.warn('notifyClientOrderChanges: cliente sin cuenta vinculada (userId).', order.customerId);
+    return;
+  }
 
   const orderNum = String(order.orderNumber).padStart(5, '0');
   const lines: string[] = [`Pedido #${orderNum} — ${order.customerName}`];
@@ -210,7 +255,6 @@ export async function notifyClientOrderChanges(
 }
 
 export async function markNotificationRead(notificationId: string): Promise<void> {
-  const { updateDoc } = await import('firebase/firestore');
   await updateDoc(doc(db, 'notifications', notificationId), { read: true });
 }
 

@@ -1,12 +1,10 @@
-import {initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
 import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {MercadoPagoConfig, Preference, Payment} from "mercadopago";
 import {allocatePaymentFifo, allocatePaymentToOrder} from "./paymentAllocation.js";
+import {db} from "./admin.js";
 
-initializeApp();
-
-const db = getFirestore();
+export {sendNotificationPush} from "./pushNotifications.js";
+export {notifyStaffOnNewOrder} from "./orderNotifications.js";
 
 const HOSTING_URL = process.env.HOSTING_URL || "https://dualgi3de.web.app";
 

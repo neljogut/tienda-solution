@@ -1,4 +1,6 @@
 import React, { useEffect } from 'react';
+import { initNotificationAudio } from './utils/notificationAlert';
+import { setupFcmForegroundListener } from './services/fcmService';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/Layout';
@@ -53,6 +55,11 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission }: {
 };
 
 function App() {
+  useEffect(() => {
+    initNotificationAudio();
+    void setupFcmForegroundListener();
+  }, []);
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
       const data = snap.exists() ? snap.data() : null;

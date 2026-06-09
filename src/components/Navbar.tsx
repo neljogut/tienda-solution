@@ -12,7 +12,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, businessSettings }) => {
-  const { userData } = useAuth();
+  const { userData, currentUser } = useAuth();
   const { getTotalItems, toggleDrawer } = useCartStore();
   const totalItems = getTotalItems();
 
@@ -94,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, businessSettings 
           )}
         </button>
 
-        {userData && <NotificationBell />}
+        {currentUser && <NotificationBell />}
         
         {/* Auth buttons for guests */}
         {!userData && (

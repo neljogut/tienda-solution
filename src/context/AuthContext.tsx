@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { registerFcmToken, unregisterFcmToken } from '../services/fcmService';
 import type { UserData } from '../types/user';
 
 interface AuthContextType {
@@ -40,6 +41,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (user) {
+        window.setTimeout(() => {
+          void registerFcmToken(user.uid, true);
+        }, 2500);
+
         const userDocRef = doc(db, 'users', user.uid);
         unsubscribeDoc = onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) {
@@ -81,6 +86,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    if (currentUser) {
+      await unregisterFcmToken(currentUser.uid).catch(() => {});
+    }
     await signOut(auth);
   };
 

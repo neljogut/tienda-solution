@@ -1,19 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testMercadoPagoConnection = exports.saveMercadoPagoCredentials = exports.mercadoPagoWebhook = exports.createMercadoPagoPreference = exports.createPaymentIntent = exports.createCatalogOrder = void 0;
-const app_1 = require("firebase-admin/app");
-const firestore_1 = require("firebase-admin/firestore");
+exports.testMercadoPagoConnection = exports.saveMercadoPagoCredentials = exports.mercadoPagoWebhook = exports.createMercadoPagoPreference = exports.createPaymentIntent = exports.createCatalogOrder = exports.notifyStaffOnNewOrder = exports.sendNotificationPush = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const mercadopago_1 = require("mercadopago");
 const paymentAllocation_js_1 = require("./paymentAllocation.js");
-(0, app_1.initializeApp)();
-const db = (0, firestore_1.getFirestore)();
+const admin_js_1 = require("./admin.js");
+var pushNotifications_js_1 = require("./pushNotifications.js");
+Object.defineProperty(exports, "sendNotificationPush", { enumerable: true, get: function () { return pushNotifications_js_1.sendNotificationPush; } });
+var orderNotifications_js_1 = require("./orderNotifications.js");
+Object.defineProperty(exports, "notifyStaffOnNewOrder", { enumerable: true, get: function () { return orderNotifications_js_1.notifyStaffOnNewOrder; } });
 const HOSTING_URL = process.env.HOSTING_URL || "https://dualgi3de.web.app";
 async function requireRole(uid, allowed) {
     if (!uid) {
         throw new https_1.HttpsError("unauthenticated", "Tenés que iniciar sesión.");
     }
-    const user = await db.collection("users").doc(uid).get();
+    const user = await admin_js_1.db.collection("users").doc(uid).get();
     const role = user.get("role");
     if (!role || !allowed.includes(role)) {
         throw new https_1.HttpsError("permission-denied", "No tenés permiso para esta acción.");
@@ -21,7 +22,7 @@ async function requireRole(uid, allowed) {
     return { uid, role, data: user.data() ?? {} };
 }
 async function getMercadoPagoAccessToken() {
-    const privateSnap = await db.collection("settings_private").doc("mercadopago").get();
+    const privateSnap = await admin_js_1.db.collection("settings_private").doc("mercadopago").get();
     const token = privateSnap.get("accessToken");
     if (token)
         return token;
@@ -34,12 +35,12 @@ async function resolveCustomerId(uid, userData) {
     let customerId = userData.customerId;
     if (customerId)
         return customerId;
-    const byUser = await db.collection("clients").where("userId", "==", uid).limit(1).get();
+    const byUser = await admin_js_1.db.collection("clients").where("userId", "==", uid).limit(1).get();
     if (!byUser.empty)
         return byUser.docs[0].id;
     const email = userData.email;
     if (email) {
-        const byEmail = await db.collection("clients").where("email", "==", email).limit(1).get();
+        const byEmail = await admin_js_1.db.collection("clients").where("email", "==", email).limit(1).get();
         if (!byEmail.empty)
             return byEmail.docs[0].id;
     }
@@ -53,16 +54,16 @@ exports.createCatalogOrder = (0, https_1.onCall)(async (request) => {
     }
     const customerId = await resolveCustomerId(user.uid, user.data);
     const customerName = payload.customerName?.trim() || "Cliente";
-    const exchangeRateSnap = await db.collection("settings").doc("exchangeRate").get();
+    const exchangeRateSnap = await admin_js_1.db.collection("settings").doc("exchangeRate").get();
     const exchangeRate = exchangeRateSnap.get("currentUsdToArs") || 1000;
-    const ordersColl = db.collection("orders");
+    const ordersColl = admin_js_1.db.collection("orders");
     const countSnap = await ordersColl.count().get();
     const orderNumber = countSnap.data().count + 1;
     const orderItems = [];
     let totalAmount = 0;
     let totalCost = 0;
     for (const item of payload.items) {
-        const prodSnap = await db.collection("products").doc(item.productId).get();
+        const prodSnap = await admin_js_1.db.collection("products").doc(item.productId).get();
         if (!prodSnap.exists) {
             throw new https_1.HttpsError("not-found", `Producto no encontrado: ${item.name}`);
         }
@@ -108,8 +109,8 @@ exports.createCatalogOrder = (0, https_1.onCall)(async (request) => {
         totalProfit: totalAmount - totalCost,
     };
     await orderRef.set(newOrder);
-    const batch = db.batch();
-    const clientRef = db.collection("clients").doc(customerId);
+    const batch = admin_js_1.db.batch();
+    const clientRef = admin_js_1.db.collection("clients").doc(customerId);
     const clientSnap = await clientRef.get();
     if (clientSnap.exists) {
         const clientData = clientSnap.data();
@@ -120,7 +121,7 @@ exports.createCatalogOrder = (0, https_1.onCall)(async (request) => {
     }
     const saleLines = [];
     for (const item of orderItems) {
-        const prodRef = db.collection("products").doc(item.productId);
+        const prodRef = admin_js_1.db.collection("products").doc(item.productId);
         const prodSnap = await prodRef.get();
         if (!prodSnap.exists)
             continue;
@@ -148,7 +149,7 @@ exports.createCatalogOrder = (0, https_1.onCall)(async (request) => {
                 const weightToDeduct = (line.grams || 0) * item.quantity;
                 if (!filamentId || weightToDeduct <= 0)
                     continue;
-                const filRef = db.collection("inventory").doc(filamentId);
+                const filRef = admin_js_1.db.collection("inventory").doc(filamentId);
                 const filSnap = await filRef.get();
                 if (filSnap.exists) {
                     const filData = filSnap.data();
@@ -169,7 +170,7 @@ exports.createCatalogOrder = (0, https_1.onCall)(async (request) => {
                 for (const supplyObj of product.supplyIds) {
                     const supplyId = supplyObj.supplyId;
                     const qtyNeeded = supplyObj.quantity * item.quantity;
-                    const supRef = db.collection("inventory").doc(supplyId);
+                    const supRef = admin_js_1.db.collection("inventory").doc(supplyId);
                     const supSnap = await supRef.get();
                     if (supSnap.exists) {
                         const supData = supSnap.data();
@@ -191,7 +192,7 @@ exports.createCatalogOrder = (0, https_1.onCall)(async (request) => {
     }
     await batch.commit();
     if (saleLines.length > 0) {
-        await db.collection("inventory_movements").add({
+        await admin_js_1.db.collection("inventory_movements").add({
             date: new Date().toISOString(),
             movementType: "sale",
             reason: `Venta · Pedido #${orderNumber} (Checkout)`,
@@ -215,13 +216,13 @@ exports.createPaymentIntent = (0, https_1.onCall)(async (request) => {
         }
     }
     if (payload.type === "balance") {
-        const clientSnap = await db.collection("clients").doc(payload.customerId).get();
+        const clientSnap = await admin_js_1.db.collection("clients").doc(payload.customerId).get();
         const totalOwed = clientSnap.get("totalOwed") || 0;
         if (payload.amount > totalOwed) {
             throw new https_1.HttpsError("invalid-argument", "El monto supera tu deuda.");
         }
     }
-    const intentRef = db.collection("payment_intents").doc();
+    const intentRef = admin_js_1.db.collection("payment_intents").doc();
     await intentRef.set({
         type: payload.type,
         customerId: payload.customerId,
@@ -240,7 +241,7 @@ exports.createMercadoPagoPreference = (0, https_1.onCall)(async (request) => {
     if (!payload.paymentIntentId) {
         throw new https_1.HttpsError("invalid-argument", "Falta el intent de pago.");
     }
-    const intentSnap = await db.collection("payment_intents").doc(payload.paymentIntentId).get();
+    const intentSnap = await admin_js_1.db.collection("payment_intents").doc(payload.paymentIntentId).get();
     if (!intentSnap.exists) {
         throw new https_1.HttpsError("not-found", "Intent de pago no encontrado.");
     }
@@ -284,7 +285,7 @@ exports.createMercadoPagoPreference = (0, https_1.onCall)(async (request) => {
     return { initPoint, preferenceId, paymentIntentId: payload.paymentIntentId };
 });
 async function processApprovedPayment(paymentIntentId, mpPaymentId, amountPaid) {
-    const intentRef = db.collection("payment_intents").doc(paymentIntentId);
+    const intentRef = admin_js_1.db.collection("payment_intents").doc(paymentIntentId);
     const intentSnap = await intentRef.get();
     if (!intentSnap.exists)
         return;
@@ -293,10 +294,10 @@ async function processApprovedPayment(paymentIntentId, mpPaymentId, amountPaid) 
         return;
     const customerId = intent.customerId;
     const type = intent.type;
-    const batch = db.batch();
+    const batch = admin_js_1.db.batch();
     let totalApplied = amountPaid;
     if (type === "catalog" && intent.orderId) {
-        const orderRef = db.collection("orders").doc(intent.orderId);
+        const orderRef = admin_js_1.db.collection("orders").doc(intent.orderId);
         const orderSnap = await orderRef.get();
         if (orderSnap.exists) {
             const order = { id: orderSnap.id, ...orderSnap.data() };
@@ -315,7 +316,7 @@ async function processApprovedPayment(paymentIntentId, mpPaymentId, amountPaid) 
         }
     }
     else if (type === "balance") {
-        const ordersSnap = await db.collection("orders")
+        const ordersSnap = await admin_js_1.db.collection("orders")
             .where("customerId", "==", customerId)
             .where("paymentStatus", "in", ["unpaid", "partial"])
             .get();
@@ -325,7 +326,7 @@ async function processApprovedPayment(paymentIntentId, mpPaymentId, amountPaid) 
         const fifoResult = (0, paymentAllocation_js_1.allocatePaymentFifo)(orders, amountPaid, "[Mercado Pago Cta Cte]");
         totalApplied = fifoResult.totalApplied;
         for (const upd of fifoResult.orderUpdates) {
-            const orderRef = db.collection("orders").doc(upd.orderId);
+            const orderRef = admin_js_1.db.collection("orders").doc(upd.orderId);
             batch.update(orderRef, {
                 paidAmount: upd.paidAmount,
                 pendingAmount: upd.pendingAmount,
@@ -335,14 +336,14 @@ async function processApprovedPayment(paymentIntentId, mpPaymentId, amountPaid) 
             });
         }
     }
-    const clientRef = db.collection("clients").doc(customerId);
+    const clientRef = admin_js_1.db.collection("clients").doc(customerId);
     const clientSnap = await clientRef.get();
     if (clientSnap.exists && totalApplied > 0) {
         const currentOwed = clientSnap.get("totalOwed") || 0;
         batch.update(clientRef, { totalOwed: Math.max(0, currentOwed - totalApplied) });
     }
     batch.update(intentRef, { status: "approved", mpPaymentId });
-    const onlinePaymentRef = db.collection("online_payments").doc();
+    const onlinePaymentRef = admin_js_1.db.collection("online_payments").doc();
     batch.set(onlinePaymentRef, {
         paymentIntentId,
         customerId,
@@ -355,7 +356,7 @@ async function processApprovedPayment(paymentIntentId, mpPaymentId, amountPaid) 
         note: "Pago aprobado vía webhook Mercado Pago",
     });
     await batch.commit();
-    await db.collection("settings").doc("payments").set({
+    await admin_js_1.db.collection("settings").doc("payments").set({
         mercadopago: { lastWebhookAt: new Date().toISOString() },
     }, { merge: true });
 }
@@ -392,14 +393,14 @@ exports.saveMercadoPagoCredentials = (0, https_1.onCall)(async (request) => {
     if (!payload.accessToken?.trim()) {
         throw new https_1.HttpsError("invalid-argument", "El Access Token es obligatorio.");
     }
-    await db.collection("settings_private").doc("mercadopago").set({
+    await admin_js_1.db.collection("settings_private").doc("mercadopago").set({
         accessToken: payload.accessToken.trim(),
         updatedAt: new Date().toISOString(),
         updatedBy: request.auth.uid,
     });
-    const paymentsSnap = await db.collection("settings").doc("payments").get();
+    const paymentsSnap = await admin_js_1.db.collection("settings").doc("payments").get();
     const existing = paymentsSnap.data() || {};
-    await db.collection("settings").doc("payments").set({
+    await admin_js_1.db.collection("settings").doc("payments").set({
         ...existing,
         mercadopago: {
             ...(existing.mercadopago || {}),

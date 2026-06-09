@@ -1,4 +1,40 @@
-/* Auto-generado por scripts/generate-fcm-sw.mjs — no editar a mano */
+/**
+ * Genera public/sw.js con la config Firebase del proyecto actual (.env.local).
+ * Ejecutar antes de cada build/deploy.
+ */
+import fs from 'fs';
+import path from 'path';
+
+const rootDir = process.cwd();
+const envPath = path.join(rootDir, '.env.local');
+const outPath = path.join(rootDir, 'public', 'sw.js');
+
+function readEnv() {
+  if (!fs.existsSync(envPath)) {
+    console.warn('generate-fcm-sw: .env.local no encontrado, usando placeholders.');
+    return {};
+  }
+  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+  const env = {};
+  for (const line of lines) {
+    const m = line.match(/^([^=]+)=(.*)$/);
+    if (m) env[m[1].trim()] = m[2].trim();
+  }
+  return env;
+}
+
+const env = readEnv();
+
+const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY || '',
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: env.VITE_FIREBASE_APP_ID || '',
+};
+
+const swContent = `/* Auto-generado por scripts/generate-fcm-sw.mjs — no editar a mano */
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js');
 
@@ -10,14 +46,7 @@ const STATIC_ASSETS = [
   '/favicon.svg',
 ];
 
-firebase.initializeApp({
-  "apiKey": "AIzaSyAvDeGu9jbA-A72evVUT2wP8a4MbOpwcII",
-  "authDomain": "solution-3d.firebaseapp.com",
-  "projectId": "solution-3d",
-  "storageBucket": "solution-3d.firebasestorage.app",
-  "messagingSenderId": "86569253623",
-  "appId": "1:86569253623:web:52e051771a39cf18b7f1f2"
-});
+firebase.initializeApp(${JSON.stringify(firebaseConfig, null, 2)});
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
@@ -118,3 +147,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(caches.match(e.request).then((cached) => cached || fetch(e.request)));
   }
 });
+`;
+
+fs.writeFileSync(outPath, swContent, 'utf8');
+console.log(`generate-fcm-sw: sw.js generado para proyecto ${firebaseConfig.projectId || '(sin projectId)'}`);

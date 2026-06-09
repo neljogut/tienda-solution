@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/generate-fcm-sw.mjs && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "clean": "node -e \"['dist', 'node_modules'].forEach(p => require('fs').rmSync(p, { recursive: true, force: true }))\"",

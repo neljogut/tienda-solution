@@ -48,3 +48,23 @@ export interface BusinessSettings {
   tiktok?: string;
   whatsapp?: string;
 }
+
+export interface BankTransferSettings {
+  alias: string;
+  cbu: string;
+  holderName: string;
+  bankName?: string;
+  note?: string;
+}
+
+export interface MercadoPagoSettings {
+  enabled: boolean;
+  publicKey: string;
+  webhookConfigured?: boolean;
+  lastWebhookAt?: string;
+}
+
+export interface PaymentSettings {
+  bankTransfer: BankTransferSettings;
+  mercadopago: MercadoPagoSettings;
+}

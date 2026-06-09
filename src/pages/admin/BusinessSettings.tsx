@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import type { BusinessSettings } from '../../types/settings';
-import { Building2, Save, Image, X, Phone, Mail, MapPin, Landmark, Clipboard, Link } from 'lucide-react';
+import type { BusinessSettings, PaymentSettings } from '../../types/settings';
+import { defaultPaymentSettings } from '../../constants/defaults';
+import {
+  Building2, Save, Image, X, Phone, Mail, MapPin, Landmark, Clipboard, Link,
+  CreditCard, Info,
+} from 'lucide-react';
 
 const defaultBusinessSettings: BusinessSettings = {
   name: 'Dualgi 3D',
@@ -23,17 +27,22 @@ export const BusinessSettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const snap = await getDoc(doc(db, 'settings', 'business'));
-        if (snap.exists()) {
-          const data = snap.data() as BusinessSettings;
+        const [businessSnap, paymentsSnap] = await Promise.all([
+          getDoc(doc(db, 'settings', 'business')),
+          getDoc(doc(db, 'settings', 'payments')),
+        ]);
+        if (businessSnap.exists()) {
+          const data = businessSnap.data() as BusinessSettings;
           setFormData(data);
-          if (data.logoUrl) {
-            setLogoPreview(data.logoUrl);
-          }
+          if (data.logoUrl) setLogoPreview(data.logoUrl);
+        }
+        if (paymentsSnap.exists()) {
+          setPaymentSettings({ ...defaultPaymentSettings, ...paymentsSnap.data() } as PaymentSettings);
         }
       } catch (err) {
         console.error('Error loading business settings:', err);
@@ -89,7 +98,14 @@ export const BusinessSettingsPage: React.FC = () => {
     setSaving(true);
     setSuccessMsg(false);
     try {
-      await setDoc(doc(db, 'settings', 'business'), formData);
+      const paymentsToSave: PaymentSettings = {
+        ...paymentSettings,
+        mercadopago: { ...paymentSettings.mercadopago, enabled: false },
+      };
+      await Promise.all([
+        setDoc(doc(db, 'settings', 'business'), formData),
+        setDoc(doc(db, 'settings', 'payments'), paymentsToSave),
+      ]);
       setSuccessMsg(true);
       setTimeout(() => setSuccessMsg(false), 4000);
     } catch (err) {
@@ -375,6 +391,95 @@ export const BusinessSettingsPage: React.FC = () => {
                   value={formData.socialMedia || ''}
                   onChange={e => setFormData({ ...formData, socialMedia: e.target.value })}
                 />
+              </div>
+            </div>
+
+            {/* Pagos y transferencias */}
+            <div className="pt-6 border-t border-slate-200 space-y-5">
+              <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <CreditCard size={18} className="text-blue-600" />
+                Pagos y transferencias
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="input-label">Alias</label>
+                  <input
+                    className="input w-full"
+                    placeholder="Ej: dualgi.3d"
+                    value={paymentSettings.bankTransfer.alias}
+                    onChange={(e) =>
+                      setPaymentSettings((p) => ({
+                        ...p,
+                        bankTransfer: { ...p.bankTransfer, alias: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="input-label">CBU</label>
+                  <input
+                    className="input w-full font-mono"
+                    placeholder="22 dígitos"
+                    value={paymentSettings.bankTransfer.cbu}
+                    onChange={(e) =>
+                      setPaymentSettings((p) => ({
+                        ...p,
+                        bankTransfer: { ...p.bankTransfer, cbu: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="input-label">Titular</label>
+                  <input
+                    className="input w-full"
+                    value={paymentSettings.bankTransfer.holderName}
+                    onChange={(e) =>
+                      setPaymentSettings((p) => ({
+                        ...p,
+                        bankTransfer: { ...p.bankTransfer, holderName: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="input-label">Banco</label>
+                  <input
+                    className="input w-full"
+                    value={paymentSettings.bankTransfer.bankName || ''}
+                    onChange={(e) =>
+                      setPaymentSettings((p) => ({
+                        ...p,
+                        bankTransfer: { ...p.bankTransfer, bankName: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="input-label">Nota para transferencias (checkout)</label>
+                <input
+                  className="input w-full"
+                  value={paymentSettings.bankTransfer.note || ''}
+                  onChange={(e) =>
+                    setPaymentSettings((p) => ({
+                      ...p,
+                      bankTransfer: { ...p.bankTransfer, note: e.target.value },
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-slate-600">
+                <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-slate-800">Mercado Pago — no disponible en plan gratuito</p>
+                  <p className="mt-1 text-xs">
+                    Los pagos online del checkout usan <strong>transferencia bancaria + WhatsApp</strong>.
+                    Vos registrás el pago en Cuentas Corrientes cuando llega el comprobante.
+                  </p>
+                </div>
               </div>
             </div>
 

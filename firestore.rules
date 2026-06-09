@@ -39,8 +39,23 @@ service cloud.firestore {
 
     // Reglas para Pedidos
     match /orders/{orderId} {
-      // Todos los usuarios logueados pueden interactuar con los pedidos (para simplificar ahora)
       allow read, write: if isAuth();
+    }
+
+    // Credenciales privadas — solo Cloud Functions (Admin SDK)
+    match /settings_private/{docId} {
+      allow read, write: if false;
+    }
+
+    // Intents y pagos online — lectura autenticada, escritura solo Functions (Admin SDK)
+    match /payment_intents/{intentId} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+
+    match /online_payments/{paymentId} {
+      allow read: if isAuth();
+      allow write: if false;
     }
 
     // Reglas para Inventario (Filamentos y otros)

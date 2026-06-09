@@ -27,6 +27,8 @@ import { InventoryMovements } from './pages/admin/InventoryMovements';
 import { BusinessSettingsPage } from './pages/admin/BusinessSettings';
 import { Employees } from './pages/admin/Employees';
 import { MyAccountBalance } from './pages/client/MyAccountBalance';
+import { Checkout } from './pages/client/Checkout';
+import { PaymentResult } from './pages/client/PaymentResult';
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -96,6 +98,16 @@ function App() {
             <Route path="my-account" element={
               <ProtectedRoute>
                 <MyAccount />
+              </ProtectedRoute>
+            } />
+            <Route path="checkout" element={
+              <ProtectedRoute>
+                <Checkout />
+              </ProtectedRoute>
+            } />
+            <Route path="payment/result" element={
+              <ProtectedRoute>
+                <PaymentResult />
               </ProtectedRoute>
             } />
             

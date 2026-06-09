@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { collection, addDoc, doc, writeBatch, getDoc, getCountFromServer, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 interface QuantityInputProps {
   productId: string;
   quantity: number;
@@ -55,9 +56,9 @@ const QuantityInput: React.FC<QuantityInputProps> = ({ productId, quantity, maxS
 };
 
 export const CartDrawer: React.FC = () => {
-  const { isDrawerOpen, closeDrawer, items, getTotalPrice, removeItem, updateQuantity, clearCart } = useCartStore();
-  const { currentUser, userData } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { isDrawerOpen, closeDrawer, items, getTotalPrice, removeItem, updateQuantity } = useCartStore();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [pricingSettings, setPricingSettings] = useState<any>(null);
 
   useEffect(() => {
@@ -72,236 +73,14 @@ export const CartDrawer: React.FC = () => {
 
   if (!isDrawerOpen) return null;
 
-  const handleCheckout = async () => {
-    if (!currentUser || !userData) {
-      alert("Debes iniciar sesión para comprar.");
+  const handleCheckout = () => {
+    if (!currentUser) {
+      alert('Debes iniciar sesión para comprar.');
       return;
     }
-    
     if (items.length === 0) return;
-
-    setLoading(true);
-    try {
-      // Fetch settings and rate to correctly set order details
-      const [, exchangeRateSnap] = await Promise.all([
-        getDoc(doc(db, 'settings', 'pricing3d')),
-        getDoc(doc(db, 'settings', 'exchangeRate'))
-      ]);
-      const exchangeRate = exchangeRateSnap.exists() ? exchangeRateSnap.data().currentUsdToArs : 1000;
-
-      // Sequential order number
-      const coll = collection(db, 'orders');
-      const countSnapshot = await getCountFromServer(coll);
-      const orderNumber = countSnapshot.data().count + 1;
-
-      // Map cart items into full order items, resolving cost and profit snap
-      const orderItems = await Promise.all(items.map(async (item) => {
-        const prodSnap = await getDoc(doc(db, 'products', item.productId));
-        const product = prodSnap.exists() ? prodSnap.data() : null;
-        const unitCost = product ? (product.calculatedCost || 0) : 0;
-        return {
-          productId: item.productId,
-          name: item.name,
-          type: item.type,
-          quantity: item.quantity,
-          unitPrice: item.price,
-          appliedWholesale: false,
-          unitCost: unitCost,
-          unitProfit: item.price - unitCost,
-          imageUrl: item.imageUrl || '',
-          isManualPrice: product ? (product.useManualPrice || false) : false
-        };
-      }));
-
-      const totalCost = orderItems.reduce((sum, item) => sum + (item.unitCost * item.quantity), 0);
-      const totalAmount = getTotalPrice();
-
-      // Resolve correct client document ID for customerId
-      let resolvedCustomerId = userData.customerId || '';
-      if (!resolvedCustomerId) {
-        try {
-          const { query, where, getDocs, updateDoc, doc, setDoc, collection } = await import('firebase/firestore');
-          const clientQuery = query(collection(db, 'clients'), where('userId', '==', currentUser.uid));
-          const clientSnap = await getDocs(clientQuery);
-          if (!clientSnap.empty) {
-            resolvedCustomerId = clientSnap.docs[0].id;
-          } else {
-            const emailQuery = query(collection(db, 'clients'), where('email', '==', currentUser.email));
-            const emailSnap = await getDocs(emailQuery);
-            if (!emailSnap.empty) {
-              resolvedCustomerId = emailSnap.docs[0].id;
-              await updateDoc(doc(db, 'clients', resolvedCustomerId), { userId: currentUser.uid });
-            } else {
-              const names = (userData.displayName || 'Cliente').trim().split(/\s+/);
-              const firstName = names[0] || 'Cliente';
-              const lastName = names.slice(1).join(' ') || 'Registrado';
-              const newClientRef = doc(collection(db, 'clients'));
-              resolvedCustomerId = newClientRef.id;
-              await setDoc(newClientRef, {
-                firstName,
-                lastName,
-                email: currentUser.email || '',
-                userId: currentUser.uid,
-                createdAt: new Date().toISOString(),
-                totalPurchased: 0,
-                totalOwed: 0,
-                isWholesale: false,
-                isTrusted: false
-              });
-            }
-          }
-          await updateDoc(doc(db, 'users', currentUser.uid), { customerId: resolvedCustomerId });
-        } catch (e) {
-          console.error("Error resolving/linking client on checkout:", e);
-          resolvedCustomerId = currentUser.uid;
-        }
-      }
-
-      // Create new Order
-      const newOrder = {
-        orderNumber,
-        customerId: resolvedCustomerId,
-        customerName: userData.displayName || 'Cliente',
-        date: new Date().toISOString(),
-        items: orderItems,
-        totalAmount,
-        paidAmount: 0,
-        pendingAmount: totalAmount,
-        paymentStatus: 'unpaid',
-        orderStatus: 'pending',
-        observationsPublic: 'Pedido creado desde el carrito web.',
-        observationsInternal: 'Creado desde el carrito web del cliente.',
-        exchangeRateUsdUsed: exchangeRate,
-        exchangeRateDate: new Date().toISOString(),
-        totalCost,
-        totalProfit: totalAmount - totalCost,
-      };
-
-      const orderRef = await addDoc(collection(db, 'orders'), newOrder);
-      const orderId = orderRef.id;
-      
-      // Update stocks, materials, and client totals
-      const batch = writeBatch(db);
-
-      if (resolvedCustomerId) {
-        const clientRef = doc(db, 'clients', resolvedCustomerId);
-        const clientSnap = await getDoc(clientRef);
-        if (clientSnap.exists()) {
-          const clientData = clientSnap.data();
-          const currentPurchased = clientData.totalPurchased || 0;
-          const currentOwed = clientData.totalOwed || 0;
-          batch.update(clientRef, {
-            totalPurchased: currentPurchased + totalAmount,
-            totalOwed: currentOwed + totalAmount
-          });
-        }
-      }
-
-      const saleLines: any[] = [];
-
-      for (const item of orderItems) {
-        const prodRef = doc(db, 'products', item.productId);
-        const prodSnap = await getDoc(prodRef);
-        if (prodSnap.exists()) {
-          const product = prodSnap.data();
-          const prevStock = product.stock || 0;
-          const newStock = Math.max(0, prevStock - item.quantity);
-          batch.update(prodRef, { stock: newStock });
-
-          saleLines.push({
-            itemId: item.productId,
-            itemType: 'product',
-            lineType: 'out_sale',
-            previousQuantity: prevStock,
-            modifiedQuantity: -item.quantity,
-            finalQuantity: newStock,
-          });
-
-          // Deduct 3D materials
-          if (product.type === '3d') {
-            const filamentLines = product.filamentLines?.length
-              ? product.filamentLines
-              : (product.filamentIds ?? []).map((filamentId: string) => ({
-                  supplyId: filamentId,
-                  grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds.length),
-                }));
-
-            for (const line of filamentLines) {
-              const filamentId = line.supplyId;
-              const weightToDeduct = (line.grams || 0) * item.quantity;
-              if (!filamentId || weightToDeduct <= 0) continue;
-
-              const filRef = doc(db, 'inventory', filamentId);
-              const filSnap = await getDoc(filRef);
-              if (filSnap.exists()) {
-                const filData = filSnap.data();
-                const prevWeight = filData.availableWeightGrams || 0;
-                const newWeight = Math.max(0, prevWeight - weightToDeduct);
-
-                batch.update(filRef, { availableWeightGrams: newWeight });
-
-                saleLines.push({
-                  itemId: filamentId,
-                  itemType: 'filament',
-                  lineType: 'consumption',
-                  previousQuantity: prevWeight,
-                  modifiedQuantity: -weightToDeduct,
-                  finalQuantity: newWeight,
-                });
-              }
-            }
-
-            if (product.supplyIds && product.supplyIds.length > 0) {
-              for (const supplyObj of product.supplyIds) {
-                const supplyId = supplyObj.supplyId;
-                const qtyNeeded = supplyObj.quantity * item.quantity;
-
-                const supRef = doc(db, 'inventory', supplyId);
-                const supSnap = await getDoc(supRef);
-                if (supSnap.exists()) {
-                  const supData = supSnap.data();
-                  const prevQty = supData.currentStock || 0;
-                  const newQty = Math.max(0, prevQty - qtyNeeded);
-
-                  batch.update(supRef, { currentStock: newQty });
-
-                  saleLines.push({
-                    itemId: supplyId,
-                    itemType: 'supply',
-                    lineType: 'consumption',
-                    previousQuantity: prevQty,
-                    modifiedQuantity: -qtyNeeded,
-                    finalQuantity: newQty,
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-
-      await batch.commit();
-
-      if (saleLines.length > 0) {
-        await addDoc(collection(db, 'inventory_movements'), {
-          date: new Date().toISOString(),
-          movementType: 'sale',
-          reason: `Venta · Pedido #${orderNumber} (Carrito)`,
-          userId: currentUser.uid,
-          orderId,
-          lines: saleLines,
-        });
-      }
-
-      clearCart();
-      closeDrawer();
-      alert(`¡Pedido #${newOrder.orderNumber} creado con éxito! Nos contactaremos pronto.`);
-    } catch (error) {
-      console.error("Error creating order:", error);
-      alert("Ocurrió un error al procesar el pedido.");
-    } finally {
-      setLoading(false);
-    }
+    closeDrawer();
+    navigate('/checkout');
   };
 
   return (
@@ -506,10 +285,10 @@ export const CartDrawer: React.FC = () => {
           
           <button 
             onClick={handleCheckout}
-            disabled={items.length === 0 || loading}
+            disabled={items.length === 0}
             className="w-full btn-primary py-3 flex justify-center items-center gap-2 text-lg disabled:opacity-50"
           >
-            {loading ? <Loader2 size={20} className="animate-spin" /> : 'Finalizar Compra'}
+            Finalizar Compra
           </button>
         </div>
       </div>

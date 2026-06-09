@@ -38,6 +38,8 @@ export interface Order {
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   paymentMethod?: PaymentMethod;
+  mpPreferenceId?: string;
+  mpPaymentId?: string;
   
   observationsPublic: string;
   observationsInternal: string;

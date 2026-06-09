@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import type { Client } from '../../types/client';
 import { migrateClient } from '../../types/client';
 import type { Order } from '../../types/order';
+import { allocatePaymentFifo } from '../../services/paymentAllocation';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useAuth } from '../../context/AuthContext';
 import { CreditCard, Search, DollarSign, Receipt, ChevronDown, ChevronUp, X, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
@@ -121,40 +122,17 @@ export const CurrentAccounts: React.FC = () => {
       );
       const ordersSnap = await getDocs(customerOrdersQuery);
       
-      const clientOrders = ordersSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Order))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const clientOrders = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
+      const { orderUpdates } = allocatePaymentFifo(clientOrders, amt, '[Pago Cta Cte]');
 
       const batch = writeBatch(db);
-      let remainingPayment = amt;
-
-      // Distribute payment across orders (oldest first)
-      for (const order of clientOrders) {
-        if (remainingPayment <= 0) break;
-
-        const currentPending = order.pendingAmount || 0;
-        const currentPaid = order.paidAmount || 0;
-
-        let appliedAmount = 0;
-        if (remainingPayment >= currentPending) {
-          appliedAmount = currentPending;
-          remainingPayment -= currentPending;
-        } else {
-          appliedAmount = remainingPayment;
-          remainingPayment = 0;
-        }
-
-        const newPaid = currentPaid + appliedAmount;
-        const newPending = Math.max(0, currentPending - appliedAmount);
-        const newPaymentStatus: Order['paymentStatus'] = newPending === 0 ? 'paid' : 'partial';
-
-        // Update order in batch
-        const orderRef = doc(db, 'orders', order.id);
+      for (const upd of orderUpdates) {
+        const orderRef = doc(db, 'orders', upd.orderId);
         batch.update(orderRef, {
-          paidAmount: newPaid,
-          pendingAmount: newPending,
-          paymentStatus: newPaymentStatus,
-          observationsInternal: (order.observationsInternal || '') + `\n[Pago Cta Cte] $${appliedAmount.toLocaleString('es-AR')} abonado vía Cuentas Corrientes.`
+          paidAmount: upd.paidAmount,
+          pendingAmount: upd.pendingAmount,
+          paymentStatus: upd.paymentStatus,
+          observationsInternal: upd.observationsInternal,
         });
       }
 

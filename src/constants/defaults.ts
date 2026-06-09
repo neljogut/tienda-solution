@@ -1,4 +1,4 @@
-import type { PricingSettings3D, PricingSettingsResale, DepositSettings } from '../types/settings';
+import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings } from '../types/settings';
 
 export const default3D: PricingSettings3D = {
   "filamentPriceUsdKg": 9.68,
@@ -26,4 +26,19 @@ export const defaultDeposit: DepositSettings = {
   "requiredDepositPercent": 30,
   "trustedClientBypassDeposit": true,
   "note": "Los clientes de confianza pueden omitir la seña."
+};
+
+export const defaultPaymentSettings: PaymentSettings = {
+  bankTransfer: {
+    alias: '',
+    cbu: '',
+    holderName: '',
+    bankName: '',
+    note: 'Enviá el comprobante por WhatsApp para registrar el pago.',
+  },
+  mercadopago: {
+    enabled: false,
+    publicKey: '',
+    webhookConfigured: false,
+  },
 };

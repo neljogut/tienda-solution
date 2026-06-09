@@ -2,19 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { 
   CreditCard, Receipt, CheckCircle,
-  ArrowDownLeft, AlertCircle, Calendar, MessageSquare
+  ArrowDownLeft, AlertCircle, Calendar, MessageSquare, Wallet
 } from 'lucide-react';
+import { NumericInput } from '../../components/NumericInput';
 import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
 
 export const MyAccountBalance: React.FC = () => {
   const { currentUser, userData } = useAuth();
+  const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [customPayAmount, setCustomPayAmount] = useState<number | ''>('');
 
   useEffect(() => {
     if (!currentUser) return;
@@ -148,6 +152,14 @@ export const MyAccountBalance: React.FC = () => {
   }
 
   const pendingOrders = orders.filter(o => o.paymentStatus !== 'paid');
+  const totalOwed = orders
+    .filter(o => o.orderStatus !== 'cancelled')
+    .reduce((sum, o) => sum + (o.pendingAmount || 0), 0);
+
+  const goToPay = (amount: number) => {
+    if (amount <= 0) return;
+    navigate(`/checkout?mode=balance&amount=${amount}`);
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-fadeIn">
@@ -222,15 +234,47 @@ export const MyAccountBalance: React.FC = () => {
         </div>
 
         {/* Total Owed Card */}
-        <div className="card p-5 border-t-4 border-t-amber-500 border border-slate-200/80 shadow-sm flex flex-col justify-center">
-          <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Saldo Adeudado</p>
-          <p className="text-3xl font-extrabold text-amber-600 mt-1">
-            ${orders
-              .filter(o => o.orderStatus !== 'cancelled')
-              .reduce((sum, o) => sum + (o.pendingAmount || 0), 0)
-              .toLocaleString('es-AR')}
-          </p>
-          <p className="text-[10px] text-slate-400 mt-2 font-medium">Suma de saldos pendientes de tus pedidos.</p>
+        <div className="card p-5 border-t-4 border-t-amber-500 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Saldo Adeudado</p>
+            <p className="text-3xl font-extrabold text-amber-600 mt-1">
+              ${totalOwed.toLocaleString('es-AR')}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-2 font-medium">Suma de saldos pendientes de tus pedidos.</p>
+          </div>
+          {totalOwed > 0 && (
+            <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+              <button
+                onClick={() => goToPay(totalOwed)}
+                className="btn-primary w-full text-sm flex items-center justify-center gap-2"
+              >
+                <Wallet size={16} />
+                Pagar todo (${totalOwed.toLocaleString('es-AR')})
+              </button>
+              <div className="flex gap-2">
+                <NumericInput
+                  className="input flex-1 !py-2 text-sm"
+                  value={customPayAmount}
+                  allowDecimals
+                  onChange={setCustomPayAmount}
+                  placeholder="Monto personalizado"
+                />
+                <button
+                  onClick={() => {
+                    const amt = customPayAmount === '' ? 0 : Number(customPayAmount);
+                    if (amt > 0 && amt <= totalOwed) goToPay(amt);
+                    else alert(`Ingresá un monto entre $1 y $${totalOwed.toLocaleString('es-AR')}`);
+                  }}
+                  className="btn-secondary text-sm px-4"
+                >
+                  Pagar
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Pagás por transferencia y enviás el comprobante por WhatsApp. El pago se aplica del pedido más antiguo al más reciente.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

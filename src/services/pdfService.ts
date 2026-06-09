@@ -45,7 +45,11 @@ const getOrderDisplayCode = (order: Order) => {
   return `PED-${dd}${mm}${yyyy}-${suffix}`;
 };
 
-export const generateClientPDF = async (order: Order, business: BusinessSettings) => {
+export const generateClientPDF = async (
+  order: Order,
+  business: BusinessSettings,
+  asBlob = false
+): Promise<Blob | void> => {
   const docPdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -249,8 +253,15 @@ export const generateClientPDF = async (order: Order, business: BusinessSettings
   docPdf.setTextColor(greyLight);
   docPdf.text(`Gracias por tu compra - ${business.name}`, 105, 285, { align: 'center' });
 
-  docPdf.save(`Factura_${getOrderDisplayCode(order)}.pdf`);
+  const filename = `Factura_${getOrderDisplayCode(order)}.pdf`;
+  if (asBlob) {
+    return docPdf.output('blob') as Blob;
+  }
+  docPdf.save(filename);
 };
+
+export const getClientPDFBlob = (order: Order, business: BusinessSettings) =>
+  generateClientPDF(order, business, true) as Promise<Blob>;
 
 export const generateInternalPDF = async (order: Order, business: BusinessSettings) => {
   const docPdf = new jsPDF({

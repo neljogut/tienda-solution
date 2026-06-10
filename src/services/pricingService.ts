@@ -66,6 +66,49 @@ export function roundPriceUp10(value: number): number {
   return Math.ceil(value / 10) * 10;
 }
 
+export interface Cost3DBreakdown {
+  filament: number;
+  supplies: number;
+  electricity: number;
+  maintenance: number;
+  errorMargin: number;
+  /** Suma sin redondeo (filamento + electricidad + mantenimiento + margen + insumos). */
+  total: number;
+  /** Igual que calculate3DCost: Math.ceil(total). */
+  totalRounded: number;
+}
+
+export function calculate3DCostBreakdown(
+  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
+  settings: PricingSettings3D,
+  exchangeRate: ExchangeRateData,
+  inventoryMap?: Map<string, InventoryItem>
+): Cost3DBreakdown {
+  const filament = filamentCostArs(product, settings, exchangeRate, inventoryMap);
+  const supplies = suppliesCostArs(product.supplyIds, inventoryMap);
+
+  const printerWattsToKw = settings.printerWatts / 1000;
+  const printTimeHours = product.printTimeMinutes / 60;
+  const electricity = printerWattsToKw * printTimeHours * settings.kwhPriceArs;
+
+  const maintenanceCostPerHour = settings.estimatedSparesCostArs / settings.printerLifespanHours;
+  const maintenance = maintenanceCostPerHour * printTimeHours;
+
+  const subtotal = filament + electricity + maintenance;
+  const errorMargin = subtotal * (settings.errorMarginPercent / 100);
+  const total = subtotal + errorMargin + supplies;
+
+  return {
+    filament,
+    supplies,
+    electricity,
+    maintenance,
+    errorMargin,
+    total,
+    totalRounded: Math.ceil(total),
+  };
+}
+
 // Calculate cost for a 3D printed product (filamento, insumos, energía, mantenimiento)
 export function calculate3DCost(
   product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
@@ -73,20 +116,7 @@ export function calculate3DCost(
   exchangeRate: ExchangeRateData,
   inventoryMap?: Map<string, InventoryItem>
 ): number {
-  const filamentCost = filamentCostArs(product, settings, exchangeRate, inventoryMap);
-  const suppliesCost = suppliesCostArs(product.supplyIds, inventoryMap);
-
-  const printerWattsToKw = settings.printerWatts / 1000;
-  const printTimeHours = product.printTimeMinutes / 60;
-  const electricityCost = printerWattsToKw * printTimeHours * settings.kwhPriceArs;
-
-  const maintenanceCostPerHour = settings.estimatedSparesCostArs / settings.printerLifespanHours;
-  const maintenanceCost = maintenanceCostPerHour * printTimeHours;
-
-  const subtotal = filamentCost + electricityCost + maintenanceCost;
-  const errorMargin = subtotal * (settings.errorMarginPercent / 100);
-
-  return Math.ceil(subtotal + errorMargin + suppliesCost);
+  return calculate3DCostBreakdown(product, settings, exchangeRate, inventoryMap).totalRounded;
 }
 
 // Calculate retail price for a 3D product

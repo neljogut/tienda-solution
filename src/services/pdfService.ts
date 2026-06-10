@@ -2,7 +2,8 @@ import { jsPDF } from 'jspdf';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Order } from '../types/order';
-import type { BusinessSettings } from '../types/settings';
+import type { BusinessSettings, PricingSettings3D } from '../types/settings';
+import { calculate3DCostBreakdown } from './pricingService';
 
 // Utility to format dates
 const formatDate = (isoString?: string) => {
@@ -334,9 +335,12 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
   let totalCostoDesgaste = 0;
   let totalCostoLuz = 0;
   let totalCostoMargenError = 0;
+  let totalCostoReventa = 0;
 
   const rate = order.exchangeRateUsdUsed || 1000;
   const globalFilPriceUsd = pricing3d?.filamentPriceUsdKg || 20;
+  const pricingSettings3d = (pricing3d || {}) as PricingSettings3D;
+  const exchangeRate = { currentUsdToArs: rate, lastUpdate: '', provider: '' };
 
   order.items.forEach((item) => {
     const originalProd = productsDataMap.get(item.productId);
@@ -395,32 +399,59 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
         });
       });
 
-      // Machine and utilities parameters
-      const hours = ((originalProd.printTimeMinutes || 0) / 60) * item.quantity;
-      const consumptionKwh = hours * (pricing3d?.printerWatts || 300) / 1000;
-      const light = consumptionKwh * (pricing3d?.kwhPriceArs || 150);
-      const machineWear = hours * (pricing3d?.estimatedSparesCostArs || 60000) / (pricing3d?.printerLifespanHours || 8000);
-      
-      const subtotalCost3d = (totalCostoFilamento + totalCostoInsumo + light + machineWear);
-      const errorMargin = subtotalCost3d * ((pricing3d?.errorMarginPercent || 10) / 100);
-
-      totalCostoDesgaste += machineWear;
-      totalCostoLuz += light;
-      totalCostoMargenError += errorMargin;
+      const breakdown = calculate3DCostBreakdown(
+        originalProd,
+        pricingSettings3d,
+        exchangeRate,
+        suppliesMap
+      );
+      const qty = item.quantity;
+      totalCostoDesgaste += breakdown.maintenance * qty;
+      totalCostoLuz += breakdown.electricity * qty;
+      totalCostoMargenError += breakdown.errorMargin * qty;
     } else if (item.type === 'resale') {
       const originalProd = productsDataMap.get(item.productId);
       const uCost = originalProd?.purchaseCost || item.unitCost || 0;
+      const costoTotal = uCost * item.quantity;
+      totalCostoReventa += costoTotal;
       resaleRows.push({
         productName: item.name,
         productCode: `PROD-${item.productId.slice(0, 8).toUpperCase()}`,
         quantity: item.quantity,
         costoCompraUnit: uCost,
-        costoTotal: uCost * item.quantity
+        costoTotal
       });
     }
   });
 
-  const ganancia = order.totalProfit;
+  const totalCostosDesglose =
+    totalCostoFilamento +
+    totalCostoInsumo +
+    totalCostoDesgaste +
+    totalCostoLuz +
+    totalCostoMargenError +
+    totalCostoReventa;
+
+  // Pedidos viejos pueden tener unitCost/totalCost en 0 (ganancia = ingreso completo).
+  // Si hay costos guardados en el ítem, usamos el snapshot del pedido; si no, el desglose recalculado.
+  const orderCostFromItems = order.items.reduce(
+    (sum, item) => sum + (item.unitCost || 0) * item.quantity,
+    0
+  );
+  const hasStoredCost = orderCostFromItems > 0 && (order.totalCost || 0) > 0;
+
+  let totalCostosFinal: number;
+  if (hasStoredCost) {
+    totalCostosFinal = order.totalCost;
+    const ajusteRedondeo = order.totalCost - totalCostosDesglose;
+    if (Math.abs(ajusteRedondeo) >= 0.5) {
+      totalCostoMargenError += ajusteRedondeo;
+    }
+  } else {
+    totalCostosFinal = totalCostosDesglose;
+  }
+
+  const ganancia = order.totalAmount - totalCostosFinal;
 
   // Header Layout
   let y = 15;
@@ -560,7 +591,6 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
     docPdf.text('Costo de productos', 193, y + 4.5, { align: 'right' });
 
     docPdf.setFont('helvetica', 'normal');
-    let totalCostoReventa = 0;
     resaleRows.forEach((r) => {
       y += 6;
       docPdf.rect(15, y, 180, 6, 'S');
@@ -570,7 +600,6 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
       docPdf.setTextColor('#991b1b');
       docPdf.text(`- ${formatCurrency(r.costoTotal)}`, 193, y + 4.5, { align: 'right' });
       docPdf.setTextColor(greyDark);
-      totalCostoReventa += r.costoTotal;
     });
 
     y += 6;
@@ -831,9 +860,10 @@ export const generateBalancePDF = (balance: any, periodLabel: string, business: 
     '#eff6ff', // blue50
     [
       { concepto: 'Costos de filamentos', rubro: 'Costos', value: balance.cost3DDetails?.filament || 0, kind: 'expense' },
-      { concepto: 'Costos de insumos', rubro: 'Costos', value: balance.cost3DDetails?.insumos || 0, kind: 'expense' },
+      { concepto: 'Costos de insumos', rubro: 'Costos', value: balance.cost3DDetails?.supplies || 0, kind: 'expense' },
       { concepto: 'Costo de mantenimiento de máquinas', rubro: 'Costos', value: balance.cost3DDetails?.maintenance || 0, kind: 'expense' },
       { concepto: 'Costo de consumo eléctrico', rubro: 'Costos', value: balance.cost3DDetails?.electricity || 0, kind: 'expense' },
+      { concepto: 'Margen de error', rubro: 'Costos', value: balance.cost3DDetails?.errorMargin || 0, kind: 'expense' },
       { concepto: 'Productos señados', rubro: 'Comprometido', value: balance.signals3D || 0, kind: 'neutral' },
       { concepto: 'Falta por cobrar', rubro: 'Cobros', value: balance.pending3D || 0, kind: 'neutral' },
       { concepto: 'Total de ingresos (catálogo)', rubro: 'Ingresos', value: balance.paid3D || 0, kind: 'income' }

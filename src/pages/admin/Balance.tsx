@@ -5,6 +5,7 @@ import type { Order } from '../../types/order';
 import type { Product } from '../../types/product';
 import type { PricingSettings3D, BusinessSettings } from '../../types/settings';
 import { generateBalancePDF } from '../../services/pdfService';
+import { calculate3DCostBreakdown } from '../../services/pricingService';
 import { 
   BarChart3, TrendingUp, TrendingDown, DollarSign, 
   RefreshCw, ShoppingBag, CreditCard, Award, 
@@ -157,7 +158,8 @@ export const Balance: React.FC = () => {
     filament: 0,
     electricity: 0,
     maintenance: 0,
-    insumos: 0
+    supplies: 0,
+    errorMargin: 0,
   };
 
   // Resale Specifics
@@ -232,36 +234,34 @@ export const Balance: React.FC = () => {
         cost3D += itemCostTotal;
         profit3D += item.unitProfit * item.quantity;
 
-        // Breakdown cost
         const originalProd = products.find(p => p.id === item.productId);
         if (originalProd && originalProd.type === '3d') {
           const rate = order.exchangeRateUsdUsed || 1000;
-          
-          const filCost = originalProd.weightGrams * (settings3d.filamentPriceUsdKg * rate) / 1000;
-          const elecCost = (settings3d.printerWatts / 1000) * (originalProd.printTimeMinutes / 60) * settings3d.kwhPriceArs;
-          const maintCost = (settings3d.estimatedSparesCostArs / settings3d.printerLifespanHours) * (originalProd.printTimeMinutes / 60);
-          const rawSubtotal = filCost + elecCost + maintCost;
-          const errorMargin = rawSubtotal * (settings3d.errorMarginPercent / 100);
-          const totalEst = rawSubtotal + errorMargin;
+          const breakdown = calculate3DCostBreakdown(
+            originalProd,
+            settings3d,
+            { currentUsdToArs: rate, lastUpdate: '', provider: '' }
+          );
+          const unitBreakdownTotal = breakdown.total * item.quantity;
 
-          if (totalEst > 0) {
-            cost3DDetails.filament += itemCostTotal * (filCost / totalEst);
-            cost3DDetails.electricity += itemCostTotal * (elecCost / totalEst);
-            cost3DDetails.maintenance += itemCostTotal * (maintCost / totalEst);
-            cost3DDetails.insumos += itemCostTotal * (errorMargin / totalEst);
+          if (unitBreakdownTotal > 0) {
+            const factor = itemCostTotal / unitBreakdownTotal;
+            cost3DDetails.filament += breakdown.filament * item.quantity * factor;
+            cost3DDetails.electricity += breakdown.electricity * item.quantity * factor;
+            cost3DDetails.maintenance += breakdown.maintenance * item.quantity * factor;
+            cost3DDetails.supplies += breakdown.supplies * item.quantity * factor;
+            cost3DDetails.errorMargin += breakdown.errorMargin * item.quantity * factor;
           } else {
-            // fallback equal split
             cost3DDetails.filament += itemCostTotal * 0.70;
             cost3DDetails.electricity += itemCostTotal * 0.12;
             cost3DDetails.maintenance += itemCostTotal * 0.13;
-            cost3DDetails.insumos += itemCostTotal * 0.05;
+            cost3DDetails.errorMargin += itemCostTotal * 0.05;
           }
         } else {
-          // Standard estimate fallback
           cost3DDetails.filament += itemCostTotal * 0.70;
           cost3DDetails.electricity += itemCostTotal * 0.12;
           cost3DDetails.maintenance += itemCostTotal * 0.13;
-          cost3DDetails.insumos += itemCostTotal * 0.05;
+          cost3DDetails.errorMargin += itemCostTotal * 0.05;
         }
       } else {
         revenueResale += item.unitPrice * item.quantity;
@@ -542,8 +542,12 @@ export const Balance: React.FC = () => {
                     <span className="font-semibold text-slate-800">${cost3DDetails.maintenance.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Insumos adicionales / Error:</span>
-                    <span className="font-semibold text-slate-800">${cost3DDetails.insumos.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
+                    <span>Insumos adicionales:</span>
+                    <span className="font-semibold text-slate-800">${cost3DDetails.supplies.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Margen de error:</span>
+                    <span className="font-semibold text-slate-800">${cost3DDetails.errorMargin.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
                   </div>
                   <div className="flex justify-between font-bold text-slate-800 border-t pt-1.5 mt-2">
                     <span>Costo Real Consumido:</span>

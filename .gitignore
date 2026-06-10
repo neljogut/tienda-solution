@@ -14,6 +14,14 @@ dist-ssr
 importar/integraciones/
 *-firebase-adminsdk*.json
 
+# Artefactos regenerables / temporales
+functions/lib
+.firebase
+.vite
+pdf/
+scratch/
+scratch_inspect.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

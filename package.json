@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "clean": "node -e \"['dist', 'node_modules'].forEach(p => require('fs').rmSync(p, { recursive: true, force: true }))\"",
+    "clean:backup": "node scripts/clean-backup.mjs",
     "import:data": "node scripts/import-gestion-data.mjs",
     "import:data:execute": "node scripts/import-gestion-data.mjs --execute",
     "import:movements": "node scripts/import-gestion-data.mjs --execute --only=inventory_movements",

@@ -235,7 +235,8 @@ export const Checkout: React.FC = () => {
           });
 
           clearCart();
-          window.location.href = prefResult.initPoint;
+          window.open(prefResult.initPoint, '_blank');
+          navigate(`/payment/result?status=pending&intent=${intentResult.paymentIntentId}`);
           return;
         }
 
@@ -275,7 +276,8 @@ export const Checkout: React.FC = () => {
           title: `Pago Saldo Cuenta Corriente - Dualgi 3D`,
         });
 
-        window.location.href = prefResult.initPoint;
+        window.open(prefResult.initPoint, '_blank');
+        navigate(`/payment/result?status=pending&intent=${intentResult.paymentIntentId}&mode=balance`);
         return;
       }
 

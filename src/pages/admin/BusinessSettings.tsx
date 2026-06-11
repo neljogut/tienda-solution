@@ -640,7 +640,7 @@ export const BusinessSettingsPage: React.FC = () => {
                   <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">URL del Webhook para Mercado Pago:</h4>
                   <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
                     <span className="font-mono text-[9px] text-slate-600 break-all select-all flex-grow">
-                      https://us-central1-{firebaseConfig.projectId}.cloudfunctions.net/mercadoPagoWebhook
+                      https://{getFunctionsRegion()}-{firebaseConfig.projectId}.cloudfunctions.net/mercadoPagoWebhook
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-relaxed">

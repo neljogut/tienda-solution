@@ -345,7 +345,7 @@ export const createMercadoPagoPreference = onCall({ region: getFirestoreRegion()
         { id: "bank_transfer" }
       ]
     },
-    notification_url: `https://us-central1-${process.env.GCLOUD_PROJECT || "dualgi3de"}.cloudfunctions.net/mercadoPagoWebhook`,
+    notification_url: `https://${getFirestoreRegion()}-${process.env.GCLOUD_PROJECT || "dualgi3de"}.cloudfunctions.net/mercadoPagoWebhook`,
   };
 
   const result = await preference.create({body: preferenceBody});

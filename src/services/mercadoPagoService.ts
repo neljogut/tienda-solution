@@ -1,8 +1,8 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '../firebase';
+import { app, getFunctionsRegion } from '../firebase';
 
 // Initialize functions in the correct region
-const functions = getFunctions(app, 'southamerica-east1');
+const functions = getFunctions(app, getFunctionsRegion());
 
 export interface PaymentIntentPayload {
   type: 'catalog' | 'balance';

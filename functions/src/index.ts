@@ -7,6 +7,16 @@ export {sendNotificationPush} from "./pushNotifications.js";
 export {notifyStaffOnNewOrder} from "./orderNotifications.js";
 export {notifyStaffOnPaymentDeclaration} from "./paymentNotifications.js";
 
+function getFirestoreRegion(): string {
+  const projectId =
+    process.env.GCLOUD_PROJECT ||
+    process.env.GCP_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    "";
+  if (projectId === "solution-3d") return "southamerica-west1";
+  return "southamerica-east1";
+}
+
 const HOSTING_URL = process.env.HOSTING_URL || "https://dualgi3de.web.app";
 
 type Role = "owner" | "employee" | "client";
@@ -57,7 +67,7 @@ interface CartItemPayload {
   imageUrl?: string;
 }
 
-export const createCatalogOrder = onCall(async (request) => {
+export const createCatalogOrder = onCall({ region: getFirestoreRegion() }, async (request) => {
   const user = await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
   const payload = request.data as {items: CartItemPayload[]; customerName: string};
 
@@ -232,7 +242,7 @@ export const createCatalogOrder = onCall(async (request) => {
   return {orderId: orderRef.id, orderNumber, totalAmount};
 });
 
-export const createPaymentIntent = onCall(async (request) => {
+export const createPaymentIntent = onCall({ region: getFirestoreRegion() }, async (request) => {
   const user = await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
   const payload = request.data as {
     type: "catalog" | "balance";
@@ -289,7 +299,7 @@ export const createPaymentIntent = onCall(async (request) => {
   return {paymentIntentId: intentRef.id};
 });
 
-export const createMercadoPagoPreference = onCall(async (request) => {
+export const createMercadoPagoPreference = onCall({ region: getFirestoreRegion() }, async (request) => {
   await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
   const payload = request.data as {paymentIntentId: string; title: string};
 
@@ -449,7 +459,7 @@ async function processApprovedPayment(
   }, {merge: true});
 }
 
-export const mercadoPagoWebhook = onRequest({cors: false}, async (req, res) => {
+export const mercadoPagoWebhook = onRequest({cors: false, region: getFirestoreRegion()}, async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).send("Method not allowed");
     return;
@@ -481,7 +491,7 @@ export const mercadoPagoWebhook = onRequest({cors: false}, async (req, res) => {
   }
 });
 
-export const saveMercadoPagoCredentials = onCall(async (request) => {
+export const saveMercadoPagoCredentials = onCall({ region: getFirestoreRegion() }, async (request) => {
   await requireRole(request.auth?.uid, ["owner"]);
   const payload = request.data as {accessToken: string; publicKey: string; enabled: boolean};
 
@@ -509,7 +519,7 @@ export const saveMercadoPagoCredentials = onCall(async (request) => {
   return {ok: true};
 });
 
-export const testMercadoPagoConnection = onCall(async (request) => {
+export const testMercadoPagoConnection = onCall({ region: getFirestoreRegion() }, async (request) => {
   await requireRole(request.auth?.uid, ["owner"]);
   try {
     const accessToken = await getMercadoPagoAccessToken();

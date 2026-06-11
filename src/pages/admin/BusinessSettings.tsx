@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, firebaseConfig, app } from '../../firebase';
+import { db, firebaseConfig, app, getFunctionsRegion } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { BusinessSettings, PaymentSettings } from '../../types/settings';
 import { defaultPaymentSettings } from '../../constants/defaults';
@@ -112,7 +112,7 @@ export const BusinessSettingsPage: React.FC = () => {
       setSavingMp(true);
       setMpSuccessMsg(false);
       try {
-        const functions = getFunctions(app, 'southamerica-east1');
+        const functions = getFunctions(app, getFunctionsRegion());
         const saveFn = httpsCallable<{ accessToken: string; publicKey: string; enabled: boolean }, { ok: boolean }>(
           functions,
           'saveMercadoPagoCredentials'
@@ -148,7 +148,7 @@ export const BusinessSettingsPage: React.FC = () => {
       setTestingMp(true);
       setMpTestResult(null);
       try {
-        const functions = getFunctions(app, 'southamerica-east1');
+        const functions = getFunctions(app, getFunctionsRegion());
         const testFn = httpsCallable<void, { ok: boolean; message: string }>(
           functions,
           'testMercadoPagoConnection'

@@ -49,9 +49,9 @@ function deployTo(targetName, config) {
   console.log(`Switching Firebase CLI to use project: ${config.projectId}...`);
   execSync(`npx firebase use ${config.projectId}`, { stdio: 'inherit' });
 
-  console.log(`Deploying ONLY Hosting and modified Mercado Pago Functions...`);
+  console.log(`Deploying Hosting and Functions...`);
   execSync(
-    `npx firebase deploy --only functions:createPaymentIntent,functions:createMercadoPagoPreference,functions:mercadoPagoWebhook,functions:saveMercadoPagoCredentials,functions:testMercadoPagoConnection,hosting --force`,
+    `npx firebase deploy --only functions,hosting --force`,
     {
       stdio: 'inherit',
       env: {

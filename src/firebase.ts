@@ -12,8 +12,14 @@ export const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+export function getFunctionsRegion(): string {
+  if (firebaseConfig.projectId === 'solution-3d') {
+    return 'southamerica-west1';
+  }
+  return 'southamerica-east1';
+}

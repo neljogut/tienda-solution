@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, query, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, onSnapshot, doc, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
-import type { InventoryMovement, InventoryMovementType, InventoryMovementLine } from '../../types/inventory';
+import type { InventoryMovement, InventoryMovementType, InventoryMovementLine, Filament } from '../../types/inventory';
 import { isGroupedMovement } from '../../types/inventory';
 import type { Order } from '../../types/order';
 import { formatWeightGrams } from '../../utils/weightGrams';
 import {
   ArrowLeftRight, Search, Filter, Eye, X,
   ArrowUpRight, ArrowDownRight, Edit3, User, Clock, AlertCircle, ShoppingBag,
-  Package, Droplet, Receipt,
+  Package, Droplet, Receipt, Loader2, Trash2, Edit,
 } from 'lucide-react';
 
 type ItemInfo = { name: string; image?: string; type: string; unit: 'g' | 'u.' };
@@ -75,8 +75,17 @@ export const InventoryMovements: React.FC = () => {
   const [itemsMap, setItemsMap] = useState<Record<string, ItemInfo>>({});
   const [ordersMap, setOrdersMap] = useState<Record<string, OrderInfo>>({});
 
+  // Editing state for movements
+  const [isEditingLines, setIsEditingLines] = useState(false);
+  const [editingLines, setEditingLines] = useState<{ itemId: string; name: string; grams: number }[]>([]);
+  const [allFilaments, setAllFilaments] = useState<Filament[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
+
   useEffect(() => {
-    if (!selectedMovement) return;
+    if (!selectedMovement) {
+      setIsEditingLines(false);
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedMovement(null);
     };
@@ -154,6 +163,118 @@ export const InventoryMovements: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!isEditingLines) return;
+    const fetchFilaments = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'inventory'));
+        const fils: Filament[] = [];
+        snap.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data.type === 'filament' && data.isActive) {
+            fils.push({ id: doc.id, ...data } as Filament);
+          }
+        });
+        setAllFilaments(fils);
+      } catch (err) {
+        console.error('Error fetching filaments for edit:', err);
+      }
+    };
+    fetchFilaments();
+  }, [isEditingLines]);
+
+  const handleStartEdit = () => {
+    if (!selectedMovement) return;
+    const lines = getLines(selectedMovement);
+    const filamentLines = lines.filter((l) => l.itemType === 'filament');
+    const mapped = filamentLines.map((l) => {
+      const info = itemsMap[l.itemId];
+      return {
+        itemId: l.itemId,
+        name: info?.name || `Filamento ID: ${l.itemId}`,
+        grams: Math.abs(l.modifiedQuantity),
+      };
+    });
+    setEditingLines(mapped);
+    setIsEditingLines(true);
+  };
+
+  const handleSaveEditedLines = async () => {
+    if (!selectedMovement) return;
+    setSavingEdit(true);
+    try {
+      const m = selectedMovement;
+      const originalLines = getLines(m);
+      
+      const originalFilamentLines = originalLines.filter((l) => l.itemType === 'filament');
+      const nonFilamentLines = originalLines.filter((l) => l.itemType !== 'filament');
+      
+      const batch = writeBatch(db);
+      
+      const originalMap = new Map<string, number>();
+      originalFilamentLines.forEach((l) => {
+        originalMap.set(l.itemId, l.modifiedQuantity);
+      });
+      
+      const newMap = new Map<string, number>();
+      editingLines.forEach((line) => {
+        if (line.grams > 0) {
+          newMap.set(line.itemId, -line.grams);
+        }
+      });
+      
+      const allItemIds = Array.from(new Set([...Array.from(originalMap.keys()), ...Array.from(newMap.keys())]));
+      
+      const newMovementLines: InventoryMovementLine[] = [...nonFilamentLines];
+      
+      for (const itemId of allItemIds) {
+        const oldQty = originalMap.get(itemId) || 0;
+        const newQty = newMap.get(itemId) || 0;
+        const delta = newQty - oldQty;
+        
+        const filRef = doc(db, 'inventory', itemId);
+        const filSnap = await getDoc(filRef);
+        if (filSnap.exists()) {
+          const filData = filSnap.data();
+          const currentWeight = filData.availableWeightGrams || 0;
+          const newWeight = Math.max(0, currentWeight + delta);
+          
+          batch.update(filRef, { availableWeightGrams: newWeight });
+          
+          if (newQty < 0) {
+            newMovementLines.push({
+              itemId,
+              itemType: 'filament',
+              lineType: 'consumption',
+              modifiedQuantity: newQty,
+              previousQuantity: currentWeight,
+              finalQuantity: newWeight,
+            });
+          }
+        }
+      }
+      
+      const movementRef = doc(db, 'inventory_movements', m.id);
+      batch.update(movementRef, { lines: newMovementLines });
+      
+      await batch.commit();
+      
+      setMovements((prevMovements) =>
+        prevMovements.map((item) =>
+          item.id === m.id ? { ...item, lines: newMovementLines } : item
+        )
+      );
+      
+      setSelectedMovement((prev) => (prev ? { ...prev, lines: newMovementLines } : null));
+      setIsEditingLines(false);
+    } catch (err) {
+      console.error('Error saving edited filament lines:', err);
+      alert('Error al guardar los cambios en el movimiento.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const getMovementBadgeStyles = (type: InventoryMovementType) => {
     switch (type) {
@@ -369,38 +490,149 @@ export const InventoryMovements: React.FC = () => {
           </div>
 
           {/* Body */}
-          <div className="p-5 overflow-y-auto space-y-5 min-h-[120px]">
-            {lines.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-6">Este movimiento no tiene ítems registrados.</p>
-            ) : (
-              LINE_SECTIONS.map((section) => {
-                const sectionLines = lines.filter((l) => l.itemType === section.itemType);
-                if (!sectionLines.length) return null;
-                return (
-                  <div key={section.itemType}>
-                    <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                      <span className="text-slate-400">{section.icon}</span>
-                      {section.label}
-                      <span className="text-slate-300 font-normal">({sectionLines.length})</span>
-                    </h3>
-                    <div className="space-y-2">
-                      {sectionLines.map((line, idx) => renderLineCard(line, `${m.id}-${section.itemType}-${idx}`))}
+          {isEditingLines ? (
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Ajustar Consumos de Filamento
+              </p>
+              
+              <div className="space-y-3">
+                {editingLines.length === 0 ? (
+                  <p className="text-xs text-slate-505 py-2 text-slate-400">No hay filamentos cargados en este movimiento.</p>
+                ) : (
+                  editingLines.map((line, idx) => (
+                    <div key={line.itemId} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-805 text-xs truncate text-slate-800" title={line.name}>{line.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <input
+                          type="number"
+                          min="0"
+                          value={line.grams === 0 ? '' : line.grams}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Number(e.target.value);
+                            setEditingLines((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, grams: val } : item))
+                            );
+                          }}
+                          className="w-20 p-1 border rounded text-right text-xs font-semibold"
+                          placeholder="0"
+                        />
+                        <span className="text-xs text-slate-400 font-medium">g</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingLines((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          className="p-1.5 rounded-lg transition-colors text-red-500 hover:text-red-705 hover:bg-red-50"
+                          title="Quitar filamento"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  ))
+                )}
+              </div>
+              
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex gap-2 items-center">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const filId = e.target.value;
+                      if (!filId) return;
+                      const filamentObj = allFilaments.find((f) => f.id === filId);
+                      if (filamentObj) {
+                        const name = `${filamentObj.brand} ${filamentObj.color} (${filamentObj.material})`;
+                        setEditingLines((prev) => [...prev, { itemId: filId, name, grams: 100 }]);
+                      }
+                    }}
+                    className="flex-1 border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">-- Agregar Filamento del Inventario --</option>
+                    {allFilaments
+                      .filter((f) => !editingLines.some((el) => el.itemId === f.id))
+                      .map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.brand} {f.color} ({f.material})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-5 overflow-y-auto space-y-5 min-h-[120px]">
+              {lines.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6">Este movimiento no tiene ítems registrados.</p>
+              ) : (
+                LINE_SECTIONS.map((section) => {
+                  const sectionLines = lines.filter((l) => l.itemType === section.itemType);
+                  if (!sectionLines.length) return null;
+                  return (
+                    <div key={section.itemType}>
+                      <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                        <span className="text-slate-400">{section.icon}</span>
+                        {section.label}
+                        <span className="text-slate-300 font-normal">({sectionLines.length})</span>
+                      </h3>
+                      <div className="space-y-2">
+                        {sectionLines.map((line, idx) => renderLineCard(line, `${m.id}-${section.itemType}-${idx}`))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
-            <span className="flex items-center gap-1.5 text-xs text-slate-500">
-              <User size={13} />
-              {m.userId ? `Operador ${m.userId.slice(0, 8)}` : 'Sistema'}
-            </span>
-            <button type="button" onClick={() => setSelectedMovement(null)} className="btn-secondary text-sm">
-              Cerrar
-            </button>
+            {isEditingLines ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingLines(false)}
+                  className="btn-secondary text-sm"
+                  disabled={savingEdit}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedLines}
+                  className="btn-primary text-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm"
+                  disabled={savingEdit}
+                >
+                  {savingEdit && <Loader2 size={14} className="animate-spin" />}
+                  Guardar Cambios
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <User size={13} />
+                  {m.userId ? `Operador ${m.userId.slice(0, 8)}` : 'Sistema'}
+                </span>
+                <div className="flex gap-2">
+                  {(m.movementType === 'sale' || m.movementType === 'consumption') && (
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="btn-secondary text-sm flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                    >
+                      <Edit size={14} />
+                      Editar Consumos
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setSelectedMovement(null)} className="btn-secondary text-sm">
+                    Cerrar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>,

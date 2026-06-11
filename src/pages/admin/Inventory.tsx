@@ -11,7 +11,8 @@ import { recalculateAllProductsInFirestore } from '../../services/pricingService
 import { generateInventoryOrderPDF } from '../../services/pdfService';
 import { 
   Plus, Edit, Trash2, Droplet, Package, AlertTriangle, 
-  Search, Image, X, Settings, Loader2, ArrowUpDown, FileText, CheckSquare, Square
+  Search, Image, X, Settings, Loader2, ArrowUpDown, FileText, CheckSquare, Square,
+  Copy
 } from 'lucide-react';
 import { NumericInput } from '../../components/NumericInput';
 import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
@@ -148,6 +149,21 @@ export const Inventory: React.FC = () => {
 
   const openModal = (item?: any) => {
     setEditingItem(item || null);
+    setIsModalOpen(true);
+  };
+
+  const handleDuplicate = (item: any) => {
+    const cloned = { ...item };
+    delete cloned.id;
+    if (cloned.type === 'filament') {
+      cloned.color = `${cloned.color} (Copia)`;
+      cloned.availableWeightGrams = 0;
+      cloned.initialWeightGrams = 0;
+    } else {
+      cloned.name = `${cloned.name} (Copia)`;
+      cloned.currentStock = 0;
+    }
+    setEditingItem(cloned);
     setIsModalOpen(true);
   };
 
@@ -670,6 +686,13 @@ export const Inventory: React.FC = () => {
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-1">
                           <button 
+                            onClick={() => handleDuplicate(f)} 
+                            className="p-1.5 text-slate-400 hover:text-purple-600 rounded-lg hover:bg-slate-100 transition-colors"
+                            title="Duplicar"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button 
                             onClick={() => openModal(f)} 
                             className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
                             title="Editar"
@@ -785,6 +808,13 @@ export const Inventory: React.FC = () => {
                         {f.provider ? `Proveedor: ${f.provider}` : 'Sin proveedor'}
                       </span>
                       <div className="flex items-center gap-1.5">
+                        <button 
+                          onClick={() => handleDuplicate(f)} 
+                          className="p-1.5 text-slate-505 hover:text-purple-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                          title="Duplicar"
+                        >
+                          <Copy size={14} />
+                        </button>
                         <button 
                           onClick={() => openModal(f)} 
                           className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
@@ -905,6 +935,13 @@ export const Inventory: React.FC = () => {
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-1">
                           <button 
+                            onClick={() => handleDuplicate(s)} 
+                            className="p-1.5 text-slate-400 hover:text-purple-600 rounded-lg hover:bg-slate-100 transition-colors"
+                            title="Duplicar"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button 
                             onClick={() => openModal(s)} 
                             className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
                             title="Editar"
@@ -1006,6 +1043,13 @@ export const Inventory: React.FC = () => {
                         {s.observations || 'Sin observaciones'}
                       </span>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button 
+                          onClick={() => handleDuplicate(s)} 
+                          className="p-1.5 text-slate-500 hover:text-purple-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                          title="Duplicar"
+                        >
+                          <Copy size={14} />
+                        </button>
                         <button 
                           onClick={() => openModal(s)} 
                           className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"

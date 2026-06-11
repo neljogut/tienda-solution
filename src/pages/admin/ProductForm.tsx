@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, setDoc, addDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product, FilamentLine, SupplyLine } from '../../types/product';
@@ -30,10 +30,12 @@ interface ImageEntry {
 export const ProductForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const duplicateId = searchParams.get('duplicateId');
   const isNew = !id;
 
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(!isNew);
+  const [fetching, setFetching] = useState(!!id || !!duplicateId);
   const [images, setImages] = useState<ImageEntry[]>([]);
   const [mainImageUrl, setMainImageUrl] = useState<string>('');
 
@@ -102,11 +104,17 @@ export const ProductForm: React.FC = () => {
           setExchangeRate(data.currentUsdToArs);
         }
 
-        if (!isNew && id) {
-          const docSnap = await getDoc(doc(db, 'products', id));
+        const targetId = id || duplicateId;
+        if (targetId) {
+          const docSnap = await getDoc(doc(db, 'products', targetId));
           if (docSnap.exists()) {
             const data = docSnap.data() as Product;
             const normalized = { ...data } as any;
+            if (duplicateId) {
+              normalized.name = `${data.name} (Copia)`;
+              normalized.stock = 0;
+              delete normalized.id;
+            }
             if (data.type === '3d') {
               if (!normalized.filamentLines?.length && normalized.filamentIds?.length) {
                 const perFil = (normalized.weightGrams || 0) / normalized.filamentIds.length;
@@ -131,7 +139,7 @@ export const ProductForm: React.FC = () => {
       }
     };
     loadInitialData();
-  }, [id, isNew]);
+  }, [id, duplicateId, isNew]);
 
   const flatCategories = useMemo(
     () => flattenCategoriesForSelect(categories),

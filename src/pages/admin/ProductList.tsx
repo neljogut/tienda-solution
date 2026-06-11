@@ -5,7 +5,7 @@ import type { Product } from '../../types/product';
 import type { Category } from '../../types/category';
 import { dedupeCategories, resolveCategoryId, getSortedCategoryTree } from '../../utils/categories';
 import { useNavigate } from 'react-router-dom';
-import { Edit, Trash2, Plus, Power, PowerOff, Search } from 'lucide-react';
+import { Edit, Trash2, Plus, Power, PowerOff, Search, Copy } from 'lucide-react';
 import { formatPrintTime } from '../../utils/printTime';
 import { useAuth } from '../../context/AuthContext';
 
@@ -287,6 +287,13 @@ export const ProductList: React.FC = () => {
                         <td className="p-4">
                           <div className="flex justify-end gap-2">
                             <button
+                              onClick={() => navigate(`/admin/products/new?duplicateId=${product.id}`)}
+                              className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                              title="Duplicar"
+                            >
+                              <Copy size={18} />
+                            </button>
+                            <button
                               onClick={() => navigate(`/admin/products/${product.id}`)}
                               className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                               title="Editar"
@@ -397,6 +404,13 @@ export const ProductList: React.FC = () => {
                           {product.isActive ? 'Activo' : 'Inactivo'}
                         </button>
                         <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => navigate(`/admin/products/new?duplicateId=${product.id}`)}
+                            className="p-1.5 text-slate-500 hover:text-purple-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
+                            title="Duplicar"
+                          >
+                            <Copy size={14} />
+                          </button>
                           <button
                             onClick={() => navigate(`/admin/products/${product.id}`)}
                             className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"

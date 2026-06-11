@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   ShoppingBag, Landmark, Loader2, Copy, Check,
-  Shield, AlertCircle, ArrowLeft,
+  Shield, AlertCircle, ArrowLeft, CreditCard,
 } from 'lucide-react';
+import { createMPPaymentIntent, createMPPreference } from '../../services/mercadoPagoService';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useCartStore } from '../../store/cartStore';
@@ -50,6 +51,7 @@ export const Checkout: React.FC = () => {
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [confirmedPayAmount, setConfirmedPayAmount] = useState(0);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'mercadopago'>('transfer');
   const checkoutInProgressRef = useRef(false);
 
   const cartTotal = getTotalPrice();
@@ -81,6 +83,10 @@ export const Checkout: React.FC = () => {
 
   const transferConfigured =
     !!paymentSettings.bankTransfer?.alias?.trim() || !!paymentSettings.bankTransfer?.cbu?.trim();
+
+  const mpCommissionPercent = paymentSettings.mercadopago?.commissionPercent || 0;
+  const mpCommissionAmount = payAmount * (mpCommissionPercent / 100);
+  const totalWithCommission = payAmount + mpCommissionAmount;
 
   useEffect(() => {
     if (!currentUser) {
@@ -170,7 +176,7 @@ export const Checkout: React.FC = () => {
       alert('Ingresá el monto que querés abonar ahora.');
       return false;
     }
-    if (payAmount > 0 && !transferConfigured) {
+    if (payAmount > 0 && paymentMethod === 'transfer' && !transferConfigured) {
       alert('Los datos bancarios aún no están configurados. Contactá al negocio.');
       return false;
     }
@@ -204,6 +210,36 @@ export const Checkout: React.FC = () => {
           return;
         }
 
+        if (paymentMethod === 'mercadopago') {
+          // 1. Update order in Firestore with Mercado Pago method
+          await updateDoc(doc(db, 'orders', result.orderId), {
+            paymentMethod: 'mercadopago',
+            observationsInternal:
+              (orderData.observationsInternal || '') +
+              `\n[Checkout] Pago iniciado vía Mercado Pago por $${totalWithCommission.toLocaleString('es-AR')} (Neto: $${payAmount.toLocaleString('es-AR')}).`,
+          });
+
+          // 2. Create Payment Intent (passing the net amount, functions will calculate the commission)
+          const intentResult = await createMPPaymentIntent({
+            type: 'catalog',
+            customerId: client.id,
+            amount: payAmount,
+            method: 'mercadopago',
+            orderId: result.orderId,
+          });
+
+          // 3. Create MP Preference
+          const prefResult = await createMPPreference({
+            paymentIntentId: intentResult.paymentIntentId,
+            title: `Pedido #${String(result.orderNumber).padStart(5, '0')} - Dualgi 3D`,
+          });
+
+          clearCart();
+          window.location.href = prefResult.initPoint;
+          return;
+        }
+
+        // Transfer method (existing logic)
         await updateDoc(doc(db, 'orders', result.orderId), {
           paymentMethod: 'transfer',
           observationsInternal:
@@ -224,7 +260,25 @@ export const Checkout: React.FC = () => {
         return;
       }
 
-      // Pago de cuenta corriente — solo transferencia + WhatsApp
+      // Debt balance payment
+      if (paymentMethod === 'mercadopago') {
+        const intentResult = await createMPPaymentIntent({
+          type: 'balance',
+          customerId: client.id,
+          amount: payAmount,
+          method: 'mercadopago',
+          orderId: null,
+        });
+
+        const prefResult = await createMPPreference({
+          paymentIntentId: intentResult.paymentIntentId,
+          title: `Pago Saldo Cuenta Corriente - Dualgi 3D`,
+        });
+
+        window.location.href = prefResult.initPoint;
+        return;
+      }
+
       if (!transferConfigured) {
         alert('Los datos bancarios aún no están configurados.');
         return;
@@ -558,20 +612,92 @@ export const Checkout: React.FC = () => {
       )}
 
       {payAmount > 0 && (
-        <div className="card p-5 border border-emerald-200/80 bg-emerald-50/30">
-          <div className="flex items-start gap-3">
-            <Landmark size={20} className="text-emerald-600 mt-0.5" />
-            <div>
-              <p className="font-semibold text-slate-800">Pago por transferencia bancaria</p>
-              <p className="text-xs text-slate-500 mt-1">
-                Te mostramos CBU/alias para copiar. Enviá el comprobante por WhatsApp para registrar el pago.
-              </p>
-            </div>
+        <div className="card p-5 border border-slate-200/80 space-y-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">Seleccioná el método de pago</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Elegí cómo preferís realizar tu pago.</p>
           </div>
-          {!transferConfigured && (
-            <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg mt-3">
-              <AlertCircle size={16} />
-              Los datos bancarios aún no están configurados en el negocio.
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Transfer Option */}
+            <label
+              className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
+                paymentMethod === 'transfer' ? 'border-blue-500 bg-blue-50/40' : 'border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="paymentMethod"
+                checked={paymentMethod === 'transfer'}
+                onChange={() => setPaymentMethod('transfer')}
+                className="mt-1"
+              />
+              <div>
+                <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Landmark size={14} className="text-slate-600" />
+                  Transferencia
+                </p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Alias/CBU. Confirmación manual por WhatsApp.
+                </p>
+              </div>
+            </label>
+
+            {/* Mercado Pago Option */}
+            {paymentSettings.mercadopago?.enabled && (
+              <label
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
+                  paymentMethod === 'mercadopago' ? 'border-blue-500 bg-blue-50/40' : 'border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  checked={paymentMethod === 'mercadopago'}
+                  onChange={() => setPaymentMethod('mercadopago')}
+                  className="mt-1"
+                />
+                <div>
+                  <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <CreditCard size={14} className="text-blue-600" />
+                    Mercado Pago
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Tarjetas, dinero en cuenta. Aprobación inmediata.
+                  </p>
+                </div>
+              </label>
+            )}
+          </div>
+
+          {/* Transfer Info */}
+          {paymentMethod === 'transfer' && (
+            <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-100/50 text-[11px] text-slate-600 leading-relaxed">
+              <p className="font-bold text-slate-700">Pago por transferencia bancaria:</p>
+              <p className="mt-0.5">Te mostramos los datos bancarios en el siguiente paso. Debes enviar el comprobante por WhatsApp para acreditarlo.</p>
+              {!transferConfigured && (
+                <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg mt-2">
+                  <AlertCircle size={14} /> Los datos bancarios aún no están configurados en el negocio.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Mercado Pago Info / Fee Breakdown */}
+          {paymentMethod === 'mercadopago' && (
+            <div className="p-4 bg-blue-50/30 rounded-xl border border-blue-100 space-y-3">
+              <div className="flex justify-between items-center text-xs text-slate-600 pb-2 border-b border-blue-100/50">
+                <span className="font-medium">Monto a abonar (Neto):</span>
+                <span className="font-bold text-slate-800">${payAmount.toLocaleString('es-AR')}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs text-slate-600 pb-2 border-b border-blue-100/50">
+                <span className="font-medium">Costo de procesamiento (Mercado Pago {mpCommissionPercent}%):</span>
+                <span className="font-bold text-slate-800">${mpCommissionAmount.toLocaleString('es-AR')}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-bold text-blue-800">
+                <span>Total a pagar online:</span>
+                <span className="text-base">${totalWithCommission.toLocaleString('es-AR')}</span>
+              </div>
             </div>
           )}
         </div>
@@ -580,15 +706,26 @@ export const Checkout: React.FC = () => {
       <div className="card p-5 bg-slate-50 border border-slate-200/80">
         <div className="flex justify-between items-center mb-4">
           <span className="text-slate-600 font-medium">Vas a abonar</span>
-          <span className="text-2xl font-black text-blue-600">${payAmount.toLocaleString('es-AR')}</span>
+          <span className="text-2xl font-black text-blue-600">
+            ${(paymentMethod === 'mercadopago' ? totalWithCommission : payAmount).toLocaleString('es-AR')}
+          </span>
         </div>
         <button
           onClick={handleConfirm}
-          disabled={processing || (payAmount > 0 && !transferConfigured) || depositBelowMin || depositAboveMax}
+          disabled={
+            processing ||
+            (payAmount > 0 && paymentMethod === 'transfer' && !transferConfigured) ||
+            depositBelowMin ||
+            depositAboveMax
+          }
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
           {processing ? <Loader2 size={18} className="animate-spin" /> : null}
-          {payAmount === 0 ? 'Confirmar pedido sin abono' : 'Continuar con transferencia'}
+          {payAmount === 0
+            ? 'Confirmar pedido sin abono'
+            : paymentMethod === 'mercadopago'
+              ? 'Pagar con Mercado Pago'
+              : 'Continuar con transferencia'}
         </button>
       </div>
     </div>

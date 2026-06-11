@@ -261,12 +261,25 @@ export const createPaymentIntent = onCall(async (request) => {
     }
   }
 
+  let feeAmount = 0;
+  let totalAmount = payload.amount;
+  if (payload.method === "mercadopago") {
+    const paymentsSnap = await db.collection("settings").doc("payments").get();
+    if (paymentsSnap.exists) {
+      const commissionPercent = paymentsSnap.get("mercadopago.commissionPercent") as number || 0;
+      feeAmount = Math.round(payload.amount * (commissionPercent / 100));
+      totalAmount = payload.amount + feeAmount;
+    }
+  }
+
   const intentRef = db.collection("payment_intents").doc();
   await intentRef.set({
     type: payload.type,
     customerId: payload.customerId,
     orderId: payload.orderId || null,
-    amount: payload.amount,
+    netAmount: payload.amount,
+    feeAmount,
+    amount: totalAmount,
     method: payload.method,
     status: payload.method === "transfer" ? "declared" : "pending",
     createdAt: new Date().toISOString(),
@@ -316,6 +329,12 @@ export const createMercadoPagoPreference = onCall(async (request) => {
       pending: `${HOSTING_URL}/payment/result?status=pending&intent=${payload.paymentIntentId}`,
     },
     auto_return: "approved" as const,
+    payment_methods: {
+      excluded_payment_types: [
+        { id: "ticket" },
+        { id: "bank_transfer" }
+      ]
+    },
     notification_url: `https://us-central1-${process.env.GCLOUD_PROJECT || "dualgi3de"}.cloudfunctions.net/mercadoPagoWebhook`,
   };
 
@@ -351,14 +370,15 @@ async function processApprovedPayment(
   const type = intent.type as string;
   const batch = db.batch();
 
-  let totalApplied = amountPaid;
+  const netAmount = (intent.netAmount !== undefined ? intent.netAmount : intent.amount) as number;
+  let totalApplied = netAmount;
 
   if (type === "catalog" && intent.orderId) {
     const orderRef = db.collection("orders").doc(intent.orderId as string);
     const orderSnap = await orderRef.get();
     if (orderSnap.exists) {
       const order = {id: orderSnap.id, ...orderSnap.data()} as Parameters<typeof allocatePaymentToOrder>[0];
-      const update = allocatePaymentToOrder(order, amountPaid, "[Mercado Pago]");
+      const update = allocatePaymentToOrder(order, netAmount, "[Mercado Pago]");
       if (update) {
         totalApplied = update.appliedAmount;
         batch.update(orderRef, {
@@ -383,7 +403,7 @@ async function processApprovedPayment(
 
     const fifoResult = allocatePaymentFifo(
       orders as Parameters<typeof allocatePaymentFifo>[0],
-      amountPaid,
+      netAmount,
       "[Mercado Pago Cta Cte]"
     );
     totalApplied = fifoResult.totalApplied;
@@ -436,8 +456,8 @@ export const mercadoPagoWebhook = onRequest({cors: false}, async (req, res) => {
   }
 
   try {
-    const topic = (req.query.topic || req.query.type) as string | undefined;
-    const paymentId = (req.query["data.id"] || req.query.id) as string | undefined;
+    const topic = (req.query.topic || req.query.type || req.body?.type || req.body?.topic) as string | undefined;
+    const paymentId = (req.query["data.id"] || req.query.id || req.body?.data?.id || req.body?.id) as string | undefined;
 
     if (topic === "payment" && paymentId) {
       const accessToken = await getMercadoPagoAccessToken();

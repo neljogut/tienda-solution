@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, firebaseConfig, app } from '../../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { BusinessSettings, PaymentSettings } from '../../types/settings';
 import { defaultPaymentSettings } from '../../constants/defaults';
 import {
   Building2, Save, Image, X, Phone, Mail, MapPin, Landmark, Clipboard, Link,
-  CreditCard, Info,
+  CreditCard, Loader2, CheckCircle, AlertCircle, RefreshCw,
 } from 'lucide-react';
 
 const defaultBusinessSettings: BusinessSettings = {
@@ -28,6 +29,13 @@ export const BusinessSettingsPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
+  const [mpPublicKey, setMpPublicKey] = useState('');
+  const [mpAccessToken, setMpAccessToken] = useState('');
+  const [mpEnabled, setMpEnabled] = useState(false);
+  const [savingMp, setSavingMp] = useState(false);
+  const [testingMp, setTestingMp] = useState(false);
+  const [mpTestResult, setMpTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [mpSuccessMsg, setMpSuccessMsg] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -42,7 +50,10 @@ export const BusinessSettingsPage: React.FC = () => {
           if (data.logoUrl) setLogoPreview(data.logoUrl);
         }
         if (paymentsSnap.exists()) {
-          setPaymentSettings({ ...defaultPaymentSettings, ...paymentsSnap.data() } as PaymentSettings);
+          const payData = paymentsSnap.data() as PaymentSettings;
+          setPaymentSettings({ ...defaultPaymentSettings, ...payData } as PaymentSettings);
+          setMpPublicKey(payData.mercadopago?.publicKey || '');
+          setMpEnabled(payData.mercadopago?.enabled || false);
         }
       } catch (err) {
         console.error('Error loading business settings:', err);
@@ -93,28 +104,94 @@ export const BusinessSettingsPage: React.FC = () => {
     };
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setSuccessMsg(false);
-    try {
-      const paymentsToSave: PaymentSettings = {
-        ...paymentSettings,
-        mercadopago: { ...paymentSettings.mercadopago, enabled: false },
-      };
-      await Promise.all([
-        setDoc(doc(db, 'settings', 'business'), formData),
-        setDoc(doc(db, 'settings', 'payments'), paymentsToSave),
-      ]);
-      setSuccessMsg(true);
-      setTimeout(() => setSuccessMsg(false), 4000);
-    } catch (err) {
-      console.error('Error saving business settings:', err);
-      alert('Error al guardar la configuración.');
-    } finally {
-      setSaving(false);
-    }
-  };
+    const handleSaveMpCredentials = async () => {
+      if (!mpPublicKey.trim()) {
+        alert('La Public Key es requerida.');
+        return;
+      }
+      setSavingMp(true);
+      setMpSuccessMsg(false);
+      try {
+        const functions = getFunctions(app, 'southamerica-east1');
+        const saveFn = httpsCallable<{ accessToken: string; publicKey: string; enabled: boolean }, { ok: boolean }>(
+          functions,
+          'saveMercadoPagoCredentials'
+        );
+        await saveFn({
+          accessToken: mpAccessToken,
+          publicKey: mpPublicKey.trim(),
+          enabled: mpEnabled,
+        });
+
+        const paymentsToSave = {
+          ...paymentSettings,
+          mercadopago: {
+            ...paymentSettings.mercadopago,
+            enabled: mpEnabled,
+            publicKey: mpPublicKey.trim(),
+          },
+        };
+        await setDoc(doc(db, 'settings', 'payments'), paymentsToSave);
+        setPaymentSettings(paymentsToSave);
+
+        setMpSuccessMsg(true);
+        setTimeout(() => setMpSuccessMsg(false), 4000);
+      } catch (err) {
+        console.error('Error saving MP credentials:', err);
+        alert('Error al guardar credenciales: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+      } finally {
+        setSavingMp(false);
+      }
+    };
+
+    const handleTestMpConnection = async () => {
+      setTestingMp(true);
+      setMpTestResult(null);
+      try {
+        const functions = getFunctions(app, 'southamerica-east1');
+        const testFn = httpsCallable<void, { ok: boolean; message: string }>(
+          functions,
+          'testMercadoPagoConnection'
+        );
+        const res = await testFn();
+        setMpTestResult({ ok: res.data.ok, message: res.data.message });
+      } catch (err) {
+        console.error('Error testing MP connection:', err);
+        setMpTestResult({
+          ok: false,
+          message: 'Error al conectar: ' + (err instanceof Error ? err.message : 'Error desconocido'),
+        });
+      } finally {
+        setTestingMp(false);
+      }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      setSuccessMsg(false);
+      try {
+        const paymentsToSave: PaymentSettings = {
+          ...paymentSettings,
+          mercadopago: {
+            ...paymentSettings.mercadopago,
+            enabled: mpEnabled,
+            publicKey: mpPublicKey.trim(),
+          },
+        };
+        await Promise.all([
+          setDoc(doc(db, 'settings', 'business'), formData),
+          setDoc(doc(db, 'settings', 'payments'), paymentsToSave),
+        ]);
+        setSuccessMsg(true);
+        setTimeout(() => setSuccessMsg(false), 4000);
+      } catch (err) {
+        console.error('Error saving business settings:', err);
+        alert('Error al guardar la configuración.');
+      } finally {
+        setSaving(false);
+      }
+    };
 
   if (loading) {
     return (
@@ -471,13 +548,103 @@ export const BusinessSettingsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-slate-600">
-                <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-slate-800">Mercado Pago — no disponible en plan gratuito</p>
-                  <p className="mt-1 text-xs">
-                    Los pagos online del checkout usan <strong>transferencia bancaria + WhatsApp</strong>.
-                    Vos registrás el pago en Cuentas Corrientes cuando llega el comprobante.
+              <div className="pt-6 border-t border-slate-200 space-y-4">
+                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <CreditCard size={16} className="text-blue-500" />
+                  Mercado Pago (Pagos Online)
+                </h3>
+
+                {mpSuccessMsg && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-semibold animate-fadeIn flex items-center gap-2">
+                    <CheckCircle size={14} /> ¡Credenciales de Mercado Pago guardadas correctamente!
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setMpEnabled(!mpEnabled)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      mpEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        mpEnabled ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs font-bold text-slate-700">
+                    {mpEnabled ? 'Mercado Pago activado en checkout' : 'Mercado Pago desactivado en checkout'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="input-label">Public Key</label>
+                    <input
+                      className="input w-full font-mono"
+                      placeholder="APP_USR-..."
+                      value={mpPublicKey}
+                      onChange={(e) => setMpPublicKey(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="input-label">Access Token</label>
+                    <input
+                      type="password"
+                      className="input w-full font-mono"
+                      placeholder={paymentSettings.mercadopago?.enabled ? '••••••••••••••••••••••••' : 'APP_USR-...'}
+                      value={mpAccessToken}
+                      onChange={(e) => setMpAccessToken(e.target.value)}
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Solo ingrésalo si deseas actualizarlo (se guarda de forma privada).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSaveMpCredentials}
+                    disabled={savingMp}
+                    className="btn-secondary text-[10px] font-bold py-2 px-4 rounded-xl flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer inline-block"
+                  >
+                    {savingMp ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    Guardar Credenciales MP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestMpConnection}
+                    disabled={testingMp}
+                    className="btn-secondary text-[10px] font-bold py-2 px-4 rounded-xl flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer inline-block"
+                  >
+                    {testingMp ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                    Probar Conexión
+                  </button>
+                </div>
+
+                {mpTestResult && (
+                  <div className={`p-3 rounded-xl border flex items-start gap-2 text-[10px] leading-relaxed font-medium ${
+                    mpTestResult.ok
+                      ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                      : 'bg-red-50 border-red-100 text-red-700'
+                  }`}>
+                    {mpTestResult.ok ? <CheckCircle size={14} className="mt-0.5 shrink-0" /> : <AlertCircle size={14} className="mt-0.5 shrink-0" />}
+                    <span>{mpTestResult.message}</span>
+                  </div>
+                )}
+
+                <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100/50 space-y-2 text-xs">
+                  <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">URL del Webhook para Mercado Pago:</h4>
+                  <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="font-mono text-[9px] text-slate-600 break-all select-all flex-grow">
+                      https://us-central1-{firebaseConfig.projectId}.cloudfunctions.net/mercadoPagoWebhook
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Registrá esta URL en tu panel de Mercado Pago Developers bajo la sección de Webhooks, seleccionando el evento de tipo <strong>payment</strong>.
                   </p>
                 </div>
               </div>

@@ -16,7 +16,9 @@ export const PaymentResult: React.FC = () => {
   const orderId = searchParams.get('orderId');
   const intentId = searchParams.get('intent');
   const amount = Number(searchParams.get('amount') || 0);
-  const balanceMode = searchParams.get('mode') === 'balance';
+  const [resolvedOrderId, setResolvedOrderId] = useState<string | null>(orderId);
+  const [resolvedAmount, setResolvedAmount] = useState<number>(amount);
+  const [resolvedBalanceMode, setResolvedBalanceMode] = useState<boolean>(searchParams.get('mode') === 'balance');
 
   const [order, setOrder] = useState<Order | null>(null);
   const [business, setBusiness] = useState<BusinessSettings | null>(null);
@@ -28,50 +30,67 @@ export const PaymentResult: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!orderId) {
+    if (!intentId) return;
+    getDoc(doc(db, 'payment_intents', intentId)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.orderId) setResolvedOrderId(data.orderId);
+        if (data.netAmount !== undefined) setResolvedAmount(data.netAmount);
+        else if (data.amount) setResolvedAmount(data.amount);
+        if (data.type === 'balance') setResolvedBalanceMode(true);
+      }
+    });
+  }, [intentId]);
+
+  useEffect(() => {
+    if (!resolvedOrderId) {
       setLoading(false);
       return;
     }
-    const unsub = onSnapshot(doc(db, 'orders', orderId), (snap) => {
+    const unsub = onSnapshot(doc(db, 'orders', resolvedOrderId), (snap) => {
       if (snap.exists()) {
         setOrder({ id: snap.id, ...snap.data() } as Order);
       }
       setLoading(false);
     });
     return unsub;
-  }, [orderId]);
+  }, [resolvedOrderId]);
 
   const statusConfig: Record<string, { icon: React.ReactNode; title: string; desc: string; color: string }> = {
     success: {
       icon: <CheckCircle2 size={48} className="text-emerald-500" />,
-      title: '¡Pedido confirmado!',
-      desc: amount === 0
-        ? 'Tu pedido fue registrado. Te contactamos por WhatsApp.'
-        : 'Tu pedido fue registrado correctamente.',
+      title: resolvedBalanceMode ? '¡Pago de saldo registrado!' : '¡Pedido confirmado!',
+      desc: resolvedBalanceMode
+        ? 'El pago de tu saldo de cuenta corriente fue registrado correctamente.'
+        : (resolvedAmount === 0
+          ? 'Tu pedido fue registrado. Te contactamos por WhatsApp.'
+          : 'Tu pedido fue registrado correctamente.'),
       color: 'text-emerald-700',
     },
     pending: {
       icon: <Clock size={48} className="text-amber-500" />,
       title: 'Pago pendiente',
-      desc: 'Tu pago está en proceso de confirmación.',
+      desc: resolvedBalanceMode
+        ? 'Tu pago de saldo está en proceso de confirmación.'
+        : 'Tu pago está en proceso de confirmación.',
       color: 'text-amber-700',
     },
     failure: {
       icon: <XCircle size={48} className="text-red-500" />,
-      title: 'Pago no completado',
+      title: resolvedBalanceMode ? 'Pago de saldo no completado' : 'Pago no completado',
       desc: 'El pago no se realizó. Podés intentar de nuevo.',
       color: 'text-red-700',
     },
     transfer: {
       icon: <Clock size={48} className="text-blue-500" />,
-      title: 'Transferencia registrada',
+      title: resolvedBalanceMode ? 'Pago de saldo registrado' : 'Transferencia registrada',
       desc: 'Recordá enviar el comprobante por WhatsApp para que registremos el pago.',
       color: 'text-blue-700',
     },
   };
   const config = statusConfig[status] || statusConfig.pending;
 
-  if (loading && orderId) {
+  if (loading && resolvedOrderId) {
     return (
       <div className="flex justify-center py-24">
         <Loader2 className="animate-spin text-slate-400" size={32} />
@@ -95,9 +114,9 @@ export const PaymentResult: React.FC = () => {
           </div>
         )}
 
-        {balanceMode && amount > 0 && (
+        {resolvedBalanceMode && resolvedAmount > 0 && (
           <p className="mt-4 text-sm text-slate-600">
-            Monto informado: <strong>${amount.toLocaleString('es-AR')}</strong>
+            Monto informado: <strong>${resolvedAmount.toLocaleString('es-AR')}</strong>
           </p>
         )}
 
@@ -112,16 +131,16 @@ export const PaymentResult: React.FC = () => {
             <button
               onClick={() => {
                 const whatsappWin = window.open('about:blank', '_blank');
-                if (balanceMode) {
+                if (resolvedBalanceMode) {
                   finalizeBalancePaymentWithWhatsApp({
                     customerName: userData?.displayName || 'Cliente',
-                    amount,
+                    amount: resolvedAmount,
                     method: 'transfer',
                   }, { preOpenedWindow: whatsappWin });
                 } else if (order) {
                   finalizeCheckoutWithWhatsApp({
                     order,
-                    amountPaid: amount || order.paidAmount,
+                    amountPaid: resolvedAmount || order.paidAmount,
                     method: status === 'transfer' ? 'transfer' : 'none',
                   }, { preOpenedWindow: whatsappWin });
                 }

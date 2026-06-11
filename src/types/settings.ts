@@ -62,6 +62,7 @@ export interface MercadoPagoSettings {
   publicKey: string;
   webhookConfigured?: boolean;
   lastWebhookAt?: string;
+  commissionPercent?: number;
 }
 
 export interface PaymentSettings {

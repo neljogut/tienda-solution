@@ -7,14 +7,14 @@ import { recalculateAllProductsInFirestore } from '../../services/pricingService
 import { NumericInput } from '../../components/NumericInput';
 import { formatWeightGrams } from '../../utils/weightGrams';
 import { formatPrintTime } from '../../utils/printTime';
-import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData, DepositSettings } from '../../types/settings';
+import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData, DepositSettings, PaymentSettings } from '../../types/settings';
 import {
   Settings, DollarSign, Printer, Calculator, Percent,
   RefreshCw, Shield, Save, CheckCircle, AlertTriangle,
   Clock, TrendingUp, Package, Zap, Wrench, Scale,
 } from 'lucide-react';
 
-import { default3D, defaultResale, defaultDeposit } from '../../constants/defaults';
+import { default3D, defaultResale, defaultDeposit, defaultPaymentSettings } from '../../constants/defaults';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,7 @@ export const PricingSettings: React.FC = () => {
   const [settingsResale, setSettingsResale] = useState<PricingSettingsResale>(defaultResale);
   const [depositSettings, setDepositSettings] = useState<DepositSettings>(defaultDeposit);
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
 
   const [saving, setSaving] = useState(false);
   const [savingDefaults, setSavingDefaults] = useState(false);
@@ -79,6 +80,9 @@ export const PricingSettings: React.FC = () => {
       }),
       onSnapshot(doc(db, 'settings', 'exchangeRate'), (snap) => {
         if (snap.exists()) setExchangeRate(snap.data() as ExchangeRateData);
+      }),
+      onSnapshot(doc(db, 'settings', 'payments'), (snap) => {
+        if (snap.exists()) setPaymentSettings({ ...defaultPaymentSettings, ...snap.data() } as PaymentSettings);
       }),
     ];
     return () => unsubs.forEach((u) => u());
@@ -115,6 +119,7 @@ export const PricingSettings: React.FC = () => {
         setDoc(doc(db, 'settings', 'pricing3d'), clean3D),
         setDoc(doc(db, 'settings', 'pricingResale'), cleanResale),
         setDoc(doc(db, 'settings', 'deposit'), cleanDeposit),
+        setDoc(doc(db, 'settings', 'payments'), paymentSettings),
       ]);
 
       // Recalcular precios de todos los productos en caliente en Firestore
@@ -548,6 +553,38 @@ export const PricingSettings: React.FC = () => {
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-start gap-2">
             <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
             <span>La seña se calcula como el {depositSettings.requiredDepositPercent}% del total del pedido. {depositSettings.trustedClientBypassDeposit ? 'Los clientes de confianza pueden ser exceptuados automáticamente (seña obligatoria = $0).' : 'La seña es obligatoria para todos los clientes sin excepción.'}</span>
+          </div>
+        </div>
+      </section>
+      
+      {/* ─── 4b. Mercado Pago Commission ─────────────────────────────────── */}
+      <section className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 flex items-center gap-3">
+          <Percent size={22} className="text-blue-600" />
+          <h2 className="text-lg font-bold text-slate-800">Comisión de Mercado Pago</h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <FieldCard
+              label="Comisión que cobra Mercado Pago"
+              icon={<Percent size={16} />}
+              value={paymentSettings.mercadopago?.commissionPercent ?? 0}
+              onChange={(v) => {
+                setPaymentSettings(prev => ({
+                  ...prev,
+                  mercadopago: {
+                    ...prev.mercadopago,
+                    commissionPercent: v === '' ? 0 : Number(v)
+                  }
+                }));
+              }}
+              suffix="%"
+            />
+            <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+              <span className="text-xs font-semibold text-slate-600 leading-relaxed">
+                Esta comisión se sumará automáticamente al subtotal que debe abonar el cliente final en el checkout, cobrándole el recargo correspondiente para cubrir los costos de procesamiento del pago.
+              </span>
+            </div>
           </div>
         </div>
       </section>

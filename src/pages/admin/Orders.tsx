@@ -150,6 +150,27 @@ export const Orders: React.FC = () => {
     return <span className="text-blue-600 ml-1">{sortOrder === 'asc' ? '▲' : '▼'}</span>;
   };
 
+  const renderMobileSortButton = (field: typeof sortBy, label: string) => {
+    const isActive = sortBy === field;
+    return (
+      <button
+        onClick={() => handleSort(field)}
+        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap shadow-sm border ${
+          isActive
+            ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:border-blue-700 active:scale-95'
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 active:bg-slate-100 active:scale-95'
+        }`}
+      >
+        {label}
+        {isActive ? (
+          <span className="text-[10px] font-extrabold">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+        ) : (
+          <span className="text-slate-300">⇅</span>
+        )}
+      </button>
+    );
+  };
+
   const canChangeOrderState = hasPermission('changeOrderState');
   const canRegisterPayments = hasPermission('registerPayments');
 
@@ -752,6 +773,19 @@ export const Orders: React.FC = () => {
 
             {/* Mobile View: Cards */}
             <div className="block md:hidden divide-y divide-slate-100 text-xs">
+              {/* Mobile Sorting Controls */}
+              <div className="p-3 bg-slate-50/50 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar select-none">
+                <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 mr-1 whitespace-nowrap">
+                  Ordenar por:
+                </span>
+                {renderMobileSortButton('date', 'Fecha')}
+                {renderMobileSortButton('orderNumber', 'Nº Pedido')}
+                {renderMobileSortButton('customerName', 'Cliente')}
+                {renderMobileSortButton('orderStatus', 'Estado')}
+                {renderMobileSortButton('paymentStatus', 'Pago')}
+                {renderMobileSortButton('totalAmount', 'Total')}
+              </div>
+
               {sortedOrders.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">
                   No se encontraron pedidos registrados.
@@ -1011,7 +1045,14 @@ export const Orders: React.FC = () => {
                 disabled={savingId === editingOrder.id}
                 className="btn-primary text-sm flex items-center gap-2"
               >
-                {savingId === editingOrder.id && <Loader2 size={16} className="animate-spin" />}
+                {savingId === editingOrder.id ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  'Guardar Cambios'
+                )}
               </button>
             </div>
           </div>

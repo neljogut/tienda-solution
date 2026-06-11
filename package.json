@@ -44,6 +44,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "firebase-admin": "^13.10.0",
+    "firebase-tools": "^15.20.0",
     "globals": "^17.6.0",
     "google-auth-library": "^10.7.0",
     "postcss": "^8.5.15",

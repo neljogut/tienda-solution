@@ -1,5 +1,6 @@
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../types/settings';
 import type { Product, Product3D, ProductResale, PriceTier, FilamentLine, SupplyLine } from '../types/product';
+import type { Category } from '../types/category';
 import { getFilamentPriceUsdKg } from '../types/inventory';
 import { doc, getDoc, getDocs, collection, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -197,6 +198,40 @@ export function getTierPrice(
   if (quantity > sortedTiers[0]?.maxQty) return sortedTiers[0].unitPrice;
 
   return basePrice;
+}
+
+/** Resolves the price tiers for a product, walking up the category hierarchy if needed. */
+export function resolveInheritedPriceTiers(
+  priceTiers: PriceTier[] | undefined,
+  categoryId: string | undefined,
+  categories: Category[]
+): PriceTier[] | undefined {
+  if (priceTiers && priceTiers.length > 0) {
+    return priceTiers;
+  }
+
+  if (!categoryId || !categories || categories.length === 0) {
+    return undefined;
+  }
+
+  let currentId: string | null = categoryId;
+  const visited = new Set<string>();
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+    const category = categories.find(c => c.id === currentId);
+    if (!category) {
+      break;
+    }
+
+    if (category.priceTiers && category.priceTiers.length > 0) {
+      return category.priceTiers;
+    }
+
+    currentId = category.parentId;
+  }
+
+  return undefined;
 }
 
 // Validate that a tier price doesn't generate a loss

@@ -11,6 +11,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Category } from '../../types/category';
+import type { PriceTier } from '../../types/product';
+import { NumericInput } from '../../components/NumericInput';
 import { dedupeCategories, countProductsInSubtree } from '../../utils/categories';
 import {
   Tag,
@@ -166,6 +168,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         >
           {category.name}
         </span>
+
+        {/* Price Tiers badge */}
+        {category.priceTiers && category.priceTiers.length > 0 && (
+          <span className="badge badge-green text-[9px] sm:text-[10px] flex-shrink-0 mr-1" title={`${category.priceTiers.length} tramos de precios configurados`}>
+            Tramos: {category.priceTiers.length}
+          </span>
+        )}
  
         {/* Product count badge */}
         <span
@@ -257,6 +266,7 @@ export const Categories: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formName, setFormName] = useState('');
   const [formParentId, setFormParentId] = useState<string | null>(null);
+  const [formPriceTiers, setFormPriceTiers] = useState<PriceTier[]>([]);
   const [saving, setSaving] = useState(false);
 
   // ── Firestore listeners ────────────────────────────────────────────────────
@@ -346,6 +356,7 @@ export const Categories: React.FC = () => {
     setEditingCategory(null);
     setFormName('');
     setFormParentId(parentId);
+    setFormPriceTiers([]);
     setShowForm(true);
   };
 
@@ -353,6 +364,7 @@ export const Categories: React.FC = () => {
     setEditingCategory(cat);
     setFormName(cat.name);
     setFormParentId(cat.parentId);
+    setFormPriceTiers(cat.priceTiers || []);
     setShowForm(true);
   };
 
@@ -361,6 +373,7 @@ export const Categories: React.FC = () => {
     setEditingCategory(null);
     setFormName('');
     setFormParentId(null);
+    setFormPriceTiers([]);
   };
 
   const handleSave = async () => {
@@ -369,11 +382,19 @@ export const Categories: React.FC = () => {
 
     setSaving(true);
     try {
+      // Sanitize priceTiers
+      const priceTiersToSave = formPriceTiers.map((t) => ({
+        minQty: Number(t.minQty),
+        maxQty: Number(t.maxQty),
+        unitPrice: Number(t.unitPrice),
+      }));
+
       if (editingCategory) {
         // Update
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           name: trimmed,
           parentId: formParentId,
+          priceTiers: priceTiersToSave,
         });
       } else {
         // Compute next order within this parent
@@ -384,6 +405,7 @@ export const Categories: React.FC = () => {
           name: trimmed,
           parentId: formParentId,
           order: nextOrder,
+          priceTiers: priceTiersToSave,
           createdAt: new Date().toISOString(),
         });
       }
@@ -469,7 +491,7 @@ export const Categories: React.FC = () => {
       {/* Form modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="card-glass p-6 w-full max-w-md mx-4 space-y-5 animate-fadeIn">
+          <div className="card-glass p-6 w-full max-w-lg mx-4 space-y-5 animate-fadeIn">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">
                 {editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}
@@ -509,6 +531,92 @@ export const Categories: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Price Tiers (Tramos de precio) */}
+              <div className="border-t pt-4 space-y-3">
+                <h3 className="font-semibold text-sm text-slate-800 flex items-center justify-between">
+                  <span>Tramos de Precios heredables</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const lastTier = formPriceTiers[formPriceTiers.length - 1];
+                      const nextMin = lastTier ? lastTier.maxQty + 1 : 2;
+                      
+                      setFormPriceTiers([
+                        ...formPriceTiers,
+                        { minQty: nextMin, maxQty: nextMin + 9, unitPrice: 0 }
+                      ]);
+                    }}
+                    className="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Agregar Tramo
+                  </button>
+                </h3>
+                
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {(!formPriceTiers || formPriceTiers.length === 0) && (
+                    <p className="text-xs text-slate-400 text-center py-2">
+                      Sin tramos configurados. Los productos heredarán de ancestros o usarán su propio precio base.
+                    </p>
+                  )}
+                  
+                  {formPriceTiers?.map((tier, index) => (
+                    <div key={index} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-lg border border-slate-200">
+                      <div className="flex-1 grid grid-cols-3 gap-1.5">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">Min</label>
+                          <NumericInput
+                            required
+                            value={tier.minQty}
+                            onChange={(val) => {
+                              const newTiers = [...formPriceTiers];
+                              newTiers[index].minQty = val === '' ? 0 : val;
+                              setFormPriceTiers(newTiers);
+                            }}
+                            className="w-full border border-slate-300 rounded-md p-1 text-xs text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">Max</label>
+                          <NumericInput
+                            required
+                            value={tier.maxQty}
+                            onChange={(val) => {
+                              const newTiers = [...formPriceTiers];
+                              newTiers[index].maxQty = val === '' ? 0 : val;
+                              setFormPriceTiers(newTiers);
+                            }}
+                            className="w-full border border-slate-300 rounded-md p-1 text-xs text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">Precio Unit ($)</label>
+                          <NumericInput
+                            required
+                            value={tier.unitPrice}
+                            onChange={(val) => {
+                              const newTiers = [...formPriceTiers];
+                              newTiers[index].unitPrice = val === '' ? 0 : val;
+                              setFormPriceTiers(newTiers);
+                            }}
+                            className="w-full border border-slate-300 rounded-md p-1 text-xs text-right font-semibold text-emerald-600"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTiers = formPriceTiers.filter((_, i) => i !== index);
+                          setFormPriceTiers(newTiers);
+                        }}
+                        className="text-red-500 hover:bg-red-50 p-1 rounded-lg self-end"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

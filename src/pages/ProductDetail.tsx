@@ -78,6 +78,7 @@ export const ProductDetail: React.FC = () => {
       basePrice: price,
       priceTiers: product.priceTiers,
       weightGrams: (product as any).weightGrams,
+      categoryId: product.categoryId,
       category: product.category,
       isKeychain: (product as any).isKeychain,
       imageUrl: product.mainImage,

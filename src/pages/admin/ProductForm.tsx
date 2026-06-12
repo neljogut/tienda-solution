@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, setDoc, addDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product, FilamentLine, SupplyLine } from '../../types/product';
 import type { Filament, Supply } from '../../types/inventory';
 import type { Category } from '../../types/category';
-import { flattenCategoriesForSelect } from '../../utils/categories';
+
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../../types/settings';
 import {
   calculate3DCost,
@@ -15,18 +15,88 @@ import {
   calculateResaleWholesalePrice,
   roundPriceUp10
 } from '../../services/pricingService';
-import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star, Folder, Package, Palette, Check } from 'lucide-react';
 import { getProductImages } from '../../utils/productImages';
 import { NumericInput } from '../../components/NumericInput';
 import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
 import { TimeHoursMinutesInput } from '../../components/TimeHoursMinutesInput';
 import { formatWeightGrams } from '../../utils/weightGrams';
 
+// Helper to get color preview styles for filaments
+function getFilamentColorStyle(colorName: string): React.CSSProperties {
+  const name = colorName.toLowerCase().trim();
+  
+  if (name.includes('arcoiris') || name.includes('rainbow') || name.includes('arcoris') || name.includes('multicolor')) {
+    return { background: 'linear-gradient(135deg, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6)' };
+  }
+  if (name.includes('oro') || name.includes('dorado') || name.includes('gold')) {
+    return { background: 'linear-gradient(135deg, #f5c453, #c58d20)' };
+  }
+  if (name.includes('plata') || name.includes('plateado') || name.includes('silver')) {
+    return { background: 'linear-gradient(135deg, #e2e8f0, #94a3b8)' };
+  }
+  if (name.includes('cobre') || name.includes('copper')) {
+    return { background: 'linear-gradient(135deg, #f97316, #b45309)' };
+  }
+  if (name.includes('bronce') || name.includes('bronze')) {
+    return { background: 'linear-gradient(135deg, #ca8a04, #854d0e)' };
+  }
+  if (name.includes('transparente') || name.includes('clear')) {
+    return { 
+      background: 'repeating-linear-gradient(45deg, #e2e8f0, #e2e8f0 4px, #ffffff 4px, #ffffff 8px)',
+      border: '1px solid #cbd5e1'
+    };
+  }
+
+  const colorMap: Record<string, string> = {
+    negro: '#1e293b',
+    black: '#1e293b',
+    blanco: '#f8fafc',
+    white: '#f8fafc',
+    rojo: '#ef4444',
+    red: '#ef4444',
+    azul: '#3b82f6',
+    blue: '#3b82f6',
+    verde: '#10b981',
+    green: '#10b981',
+    amarillo: '#f59e0b',
+    yellow: '#f59e0b',
+    gris: '#64748b',
+    gray: '#64748b',
+    naranja: '#f97316',
+    orange: '#f97316',
+    rosa: '#ec4899',
+    pink: '#ec4899',
+    violeta: '#8b5cf6',
+    purpura: '#8b5cf6',
+    purple: '#8b5cf6',
+    fucsia: '#d946ef',
+    celeste: '#60a5fa',
+    turquesa: '#14b8a6',
+    teal: '#14b8a6'
+  };
+
+  for (const [key, hex] of Object.entries(colorMap)) {
+    if (name.includes(key)) {
+      const border = hex === '#f8fafc' ? '1px solid #cbd5e1' : 'none';
+      return { backgroundColor: hex, border };
+    }
+  }
+
+  return { background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' };
+}
+
+const ChevronDownIcon = () => (
+  <svg className="w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+  </svg>
+);
+
 // Searchable Category Select Component
 const SearchableCategorySelect: React.FC<{
   value: string;
   onChange: (value: string) => void;
-  categories: { id: string; label: string }[];
+  categories: Category[];
   placeholder?: string;
   required?: boolean;
 }> = ({
@@ -39,14 +109,43 @@ const SearchableCategorySelect: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   
-  const selectedCat = categories.find(c => c.id === value);
-  const displayValue = selectedCat ? selectedCat.label : '';
+  const getCategoryPath = useCallback((catId: string): Category[] => {
+    const path: Category[] = [];
+    let current: Category | undefined = categories.find(c => c.id === catId);
+    const visited = new Set<string>();
+    while (current) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      path.unshift(current);
+      const parentId: string | null = current.parentId;
+      current = parentId ? categories.find(c => c.id === parentId) : undefined;
+    }
+    return path;
+  }, [categories]);
+
+  const displayValue = useMemo(() => {
+    if (!value) return '';
+    const path = getCategoryPath(value);
+    return path.map((c: Category) => c.name).join(' › ');
+  }, [value, getCategoryPath]);
+
+  const categoriesWithPaths = useMemo(() => {
+    return categories.map(cat => {
+      const path = getCategoryPath(cat.id);
+      const fullPathLabel = path.map((c: Category) => c.name).join(' › ');
+      return {
+        ...cat,
+        path,
+        fullPathLabel
+      };
+    });
+  }, [categories, getCategoryPath]);
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
-    if (!term) return categories;
-    return categories.filter(c => c.label.toLowerCase().includes(term));
-  }, [categories, search]);
+    if (!term) return categoriesWithPaths;
+    return categoriesWithPaths.filter((c: Category & { path: Category[]; fullPathLabel: string }) => c.fullPathLabel.toLowerCase().includes(term));
+  }, [categoriesWithPaths, search]);
 
   const handleFocus = () => {
     setIsOpen(true);
@@ -62,28 +161,37 @@ const SearchableCategorySelect: React.FC<{
 
   return (
     <div className="relative w-full" onClick={e => e.stopPropagation()}>
-      <input
-        type="text"
-        placeholder={placeholder}
-        required={required && !value}
-        value={isOpen ? search : displayValue}
-        onChange={e => setSearch(e.target.value)}
-        onFocus={handleFocus}
-        className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 bg-white pr-8 text-ellipsis truncate text-sm"
-      />
-      <div className="absolute right-2.5 top-3.5 text-slate-400 pointer-events-none">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          required={required && !value}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-3 top-3.5 text-slate-400">
+          <Folder size={16} />
+        </div>
+        <div className="absolute right-2.5 top-3.5 text-slate-400 pointer-events-none">
+          <ChevronDownIcon />
+        </div>
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 text-xs">
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-xl shadow-2xl z-50 py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin">
           {filtered.length === 0 ? (
-            <p className="text-slate-400 p-2.5 text-center">No se encontraron categorías</p>
+            <div className="text-slate-400 py-6 text-center flex flex-col items-center gap-1">
+              <Folder size={20} className="opacity-40" />
+              <span>No se encontraron categorías</span>
+            </div>
           ) : (
-            filtered.map(c => {
+            filtered.map((c: Category & { path: Category[]; fullPathLabel: string }) => {
               const isSelected = c.id === value;
+              const parentPath = c.path.slice(0, -1);
+              const name = c.name;
+
               return (
                 <button
                   key={c.id}
@@ -92,13 +200,21 @@ const SearchableCategorySelect: React.FC<{
                     onChange(c.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 transition-colors ${
+                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
                     isSelected 
-                      ? 'bg-blue-600 text-white font-semibold' 
+                      ? 'bg-blue-50 text-blue-700 font-semibold' 
                       : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  {c.label}
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    {parentPath.length > 0 && (
+                      <span className={`text-[9px] uppercase tracking-wider font-medium truncate ${isSelected ? 'text-blue-500/80' : 'text-slate-400'}`}>
+                        {parentPath.map((p: Category) => p.name).join(' › ')}
+                      </span>
+                    )}
+                    <span className="font-semibold text-slate-700 text-xs truncate">{name}</span>
+                  </div>
+                  {isSelected && <Check size={14} className="text-blue-600 flex-shrink-0" />}
                 </button>
               );
             })
@@ -150,27 +266,42 @@ const SearchableSupplySelect: React.FC<{
 
   return (
     <div className="relative w-full" onClick={e => e.stopPropagation()}>
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={isOpen ? search : displayValue}
-        onChange={e => setSearch(e.target.value)}
-        onFocus={handleFocus}
-        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white pr-8 text-ellipsis truncate"
-      />
-      <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-3 top-3 text-slate-400">
+          <Package size={16} />
+        </div>
+        <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
+          <ChevronDownIcon />
+        </div>
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 text-[11px]">
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-xl shadow-2xl z-50 py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin">
           {filtered.length === 0 ? (
-            <p className="text-slate-400 p-2.5 text-center">No se encontraron insumos</p>
+            <div className="text-slate-400 py-6 text-center flex flex-col items-center gap-1">
+              <Package size={20} className="opacity-40" />
+              <span>No se encontraron insumos</span>
+            </div>
           ) : (
             filtered.map(s => {
               const isSelected = s.id === value;
+              
+              const isLowStock = s.currentStock <= (s.minStock || 0);
+              let stockBadgeClass = 'badge-green';
+              if (s.currentStock === 0) {
+                stockBadgeClass = 'badge-red';
+              } else if (isLowStock) {
+                stockBadgeClass = 'badge-yellow';
+              }
+
               return (
                 <button
                   key={s.id}
@@ -179,16 +310,25 @@ const SearchableSupplySelect: React.FC<{
                     onChange(s.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 transition-colors flex flex-col ${
+                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
                     isSelected 
-                      ? 'bg-blue-600 text-white font-semibold' 
+                      ? 'bg-blue-50 text-blue-700' 
                       : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="font-bold">{s.name}</span>
-                  <span className={`text-[9px] ${isSelected ? 'text-white/85' : 'text-slate-400 font-medium'}`}>
-                    Categoría: {s.category || 'Sin categoría'} · Stock: {s.currentStock || 0} {s.unitOfMeasure || 'u.'}
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-semibold text-slate-800 truncate">{s.name}</span>
+                    <span className={`text-[10px] truncate ${isSelected ? 'text-blue-500 font-medium' : 'text-slate-400'}`}>
+                      Categoría: {s.category || 'Sin categoría'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`badge ${stockBadgeClass} text-[9px] px-1.5 py-0.5`}>
+                      Stock: {s.currentStock} {s.unitOfMeasure || 'u.'}
+                    </span>
+                    {isSelected && <Check size={14} className="text-blue-600" />}
+                  </div>
                 </button>
               );
             })
@@ -243,27 +383,42 @@ const SearchableFilamentSelect: React.FC<{
 
   return (
     <div className="relative w-full" onClick={e => e.stopPropagation()}>
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={isOpen ? search : displayValue}
-        onChange={e => setSearch(e.target.value)}
-        onFocus={handleFocus}
-        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white pr-8 text-ellipsis truncate"
-      />
-      <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-3 top-3 text-slate-400">
+          <Palette size={16} />
+        </div>
+        <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
+          <ChevronDownIcon />
+        </div>
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 text-[11px]">
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-xl shadow-2xl z-50 py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin">
           {filtered.length === 0 ? (
-            <p className="text-slate-400 p-2.5 text-center">No se encontraron filamentos</p>
+            <div className="text-slate-400 py-6 text-center flex flex-col items-center gap-1">
+              <Palette size={20} className="opacity-40" />
+              <span>No se encontraron filamentos</span>
+            </div>
           ) : (
             filtered.map(f => {
               const isSelected = f.id === value;
+              const colorStyle = getFilamentColorStyle(f.color);
+              
+              let stockBadgeClass = 'badge-green';
+              if (f.availableWeightGrams < 50) {
+                stockBadgeClass = 'badge-red';
+              } else if (f.availableWeightGrams < 200) {
+                stockBadgeClass = 'badge-yellow';
+              }
+
               return (
                 <button
                   key={f.id}
@@ -272,16 +427,31 @@ const SearchableFilamentSelect: React.FC<{
                     onChange(f.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 transition-colors flex flex-col ${
+                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
                     isSelected 
-                      ? 'bg-blue-600 text-white font-semibold' 
+                      ? 'bg-blue-50 text-blue-700' 
                       : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="font-bold">{f.brand} · {f.color}</span>
-                  <span className={`text-[9px] ${isSelected ? 'text-white/85' : 'text-slate-400 font-medium'}`}>
-                    {f.material} · Disp: {f.availableWeightGrams}g
-                  </span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div 
+                      className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-sm border border-black/10" 
+                      style={colorStyle}
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-slate-800 truncate">{f.brand} · {f.color}</span>
+                      <span className={`text-[10px] truncate ${isSelected ? 'text-blue-500 font-medium' : 'text-slate-400'}`}>
+                        {f.material}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`badge ${stockBadgeClass} text-[9px] px-1.5 py-0.5`}>
+                      {f.availableWeightGrams}g
+                    </span>
+                    {isSelected && <Check size={14} className="text-blue-600" />}
+                  </div>
                 </button>
               );
             })
@@ -411,10 +581,7 @@ export const ProductForm: React.FC = () => {
     loadInitialData();
   }, [id, duplicateId, isNew]);
 
-  const flatCategories = useMemo(
-    () => flattenCategoriesForSelect(categories),
-    [categories]
-  );
+
 
   const resolveCategoryLabel = (catId: string) => {
     const cat = categories.find((c) => c.id === catId);
@@ -670,7 +837,7 @@ export const ProductForm: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
                 <SearchableCategorySelect
                   required
-                  categories={flatCategories}
+                  categories={categories}
                   value={formData.categoryId || ''}
                   onChange={catId => {
                     setFormData({
@@ -958,7 +1125,7 @@ export const ProductForm: React.FC = () => {
               
               <div className="space-y-3">
                 {(!formData.priceTiers || formData.priceTiers.length === 0) &&
-                  <p className="text-sm text-slate-400 text-center py-4">No hay tramos de precios definidos para este producto. Se venderá al precio base.</p>
+                  <p className="text-sm text-slate-400 text-center py-4">No hay tramos de precios personalizados definidos para este producto. Se venderá al precio base o heredará los tramos de su categoría.</p>
                 }
                 
                 {formData.priceTiers?.map((tier: any, index: number) => (

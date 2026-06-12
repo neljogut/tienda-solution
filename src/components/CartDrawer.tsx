@@ -113,7 +113,7 @@ export const CartDrawer: React.FC = () => {
             let weightKeychain = 0;
             items.forEach(item => {
               // If it has price tiers, it does not count towards threshold weights
-              if (item.priceTiers && item.priceTiers.length > 0) return;
+              if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) return;
               
               if (item.type === '3d') {
                 const w = (item.weightGrams || 0) * item.quantity;
@@ -131,8 +131,8 @@ export const CartDrawer: React.FC = () => {
             const discountPercentNormal = pricingSettings?.wholesaleDiscountPercentNormal ?? 15;
             const discountPercentKeychain = pricingSettings?.wholesaleDiscountPercentKeychain ?? 10;
 
-            const has3DNormal = items.some(i => i.type === '3d' && !i.isKeychain && (!i.priceTiers || i.priceTiers.length === 0));
-            const has3DKeychain = items.some(i => i.type === '3d' && i.isKeychain && (!i.priceTiers || i.priceTiers.length === 0));
+            const has3DNormal = items.some(i => i.type === '3d' && !i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
+            const has3DKeychain = items.some(i => i.type === '3d' && i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
 
             if (!has3DNormal && !has3DKeychain) return null;
 
@@ -210,8 +210,8 @@ export const CartDrawer: React.FC = () => {
                     </div>
 
                     {/* Price tier next discount hint */}
-                    {item.priceTiers && item.priceTiers.length > 0 && (() => {
-                      const sortedTiers = [...item.priceTiers].sort((a, b) => a.minQty - b.minQty);
+                    {item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0 && (() => {
+                      const sortedTiers = [...item.resolvedPriceTiers].sort((a, b) => a.minQty - b.minQty);
                       const nextTier = sortedTiers.find(t => t.minQty > item.quantity);
                       const currentTier = sortedTiers.find(t => item.quantity >= t.minQty && item.quantity <= t.maxQty);
                       const lastTier = sortedTiers[sortedTiers.length - 1];

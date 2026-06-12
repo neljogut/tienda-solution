@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ProductType, PriceTier } from '../types/product';
-import { getTierPrice, roundPriceUp10 } from '../services/pricingService';
-import { doc, onSnapshot } from 'firebase/firestore';
+import type { Category } from '../types/category';
+import { getTierPrice, roundPriceUp10, resolveInheritedPriceTiers } from '../services/pricingService';
+import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { PricingSettings3D } from '../types/settings';
 
 let pricing3dSettings: PricingSettings3D | null = null;
+let allCategories: Category[] = [];
 
 export interface CartItem {
   productId: string;
@@ -16,9 +18,11 @@ export interface CartItem {
   price: number;
   basePrice: number;
   priceTiers?: PriceTier[];
+  resolvedPriceTiers?: PriceTier[];
   imageUrl?: string;
   maxStock: number;
   weightGrams?: number;
+  categoryId?: string;
   category?: string;
   isKeychain?: boolean;
 }
@@ -45,13 +49,19 @@ interface CartState {
 }
 
 function recalculateCartItems(items: CartItem[]): CartItem[] {
-  // 1. Calculate total weight of 3D products (excluding those with tiers)
+  // 1. Resolve price tiers for each item first, storing it in resolvedPriceTiers
+  const itemsWithResolved = items.map(item => {
+    const resolvedPriceTiers = resolveInheritedPriceTiers(item.priceTiers, item.categoryId, allCategories);
+    return { ...item, resolvedPriceTiers };
+  });
+
+  // 2. Calculate total weight of 3D products (excluding those with tiers)
   let total3DWeightNormal = 0;
   let total3DWeightKeychain = 0;
 
-  items.forEach(item => {
-    // If it has price tiers, it does NOT count towards threshold weight and does NOT receive threshold discounts
-    if (item.priceTiers && item.priceTiers.length > 0) {
+  itemsWithResolved.forEach(item => {
+    // If it has price tiers (directly or inherited), it does NOT count towards threshold weight and does NOT receive threshold discounts
+    if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
       return;
     }
     if (item.type === '3d') {
@@ -73,10 +83,10 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
   const meetsNormal = total3DWeightNormal >= thresholdNormal;
   const meetsKeychain = total3DWeightKeychain >= thresholdKeychain;
 
-  return items.map(item => {
+  return itemsWithResolved.map(item => {
     // Priority 1: Price Tiers
-    if (item.priceTiers && item.priceTiers.length > 0) {
-      const price = getTierPrice(item.quantity, item.basePrice, item.priceTiers);
+    if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
+      const price = getTierPrice(item.quantity, item.basePrice, item.resolvedPriceTiers);
       return { ...item, price };
     }
 
@@ -119,6 +129,7 @@ export const useCartStore = create<CartState>()(
                   ...i, 
                   quantity: newQuantity,
                   category: i.category || newItem.category,
+                  categoryId: i.categoryId || newItem.categoryId,
                   isKeychain: i.isKeychain !== undefined ? i.isKeychain : newItem.isKeychain,
                   weightGrams: i.weightGrams || newItem.weightGrams,
                   priceTiers: i.priceTiers || newItem.priceTiers
@@ -136,6 +147,7 @@ export const useCartStore = create<CartState>()(
             maxStock: newItem.maxStock,
             priceTiers: newItem.priceTiers,
             weightGrams: newItem.weightGrams,
+            categoryId: newItem.categoryId,
             category: newItem.category,
             isKeychain: newItem.isKeychain,
             basePrice,
@@ -200,5 +212,24 @@ onSnapshot(doc(db, 'settings', 'pricing3d'), (snap) => {
     } catch (e) {
       console.warn("Zustand store not fully initialized during config fetch:", e);
     }
+  }
+});
+
+// Subscribe to categories
+onSnapshot(collection(db, 'categories'), (snap) => {
+  const cats: Category[] = [];
+  snap.forEach((d) => {
+    cats.push({ id: d.id, ...d.data() } as Category);
+  });
+  allCategories = cats;
+  
+  // Trigger recalculation if the store is already initialized and has items
+  try {
+    const store = useCartStore.getState();
+    if (store && store.items.length > 0) {
+      store.recalculatePrices();
+    }
+  } catch (e) {
+    console.warn("Zustand store not fully initialized during categories fetch:", e);
   }
 });

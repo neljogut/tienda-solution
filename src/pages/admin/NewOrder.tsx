@@ -12,7 +12,7 @@ import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getTierPrice, recalculateAllProductsInFirestore } from '../../services/pricingService';
+import { getTierPrice, recalculateAllProductsInFirestore, resolveInheritedPriceTiers } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
 
 export const NewOrder: React.FC = () => {
@@ -258,9 +258,10 @@ export const NewOrder: React.FC = () => {
     total3DWeightKeychain = 0
   ) => {
     // 0. If product has price tiers, it ignores wholesale client / threshold discounts and uses tier price
-    if (product.priceTiers && product.priceTiers.length > 0) {
+    const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+    if (resolvedTiers && resolvedTiers.length > 0) {
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
-      return getTierPrice(quantity, basePrice, product.priceTiers);
+      return getTierPrice(quantity, basePrice, resolvedTiers);
     }
 
     const isClientWholesale = client?.isWholesale ?? false;
@@ -293,7 +294,7 @@ export const NewOrder: React.FC = () => {
     
     // 2. Otherwise (minorista / trusted), apply tier pricing if available
     const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
-    return getTierPrice(quantity, basePrice, product.priceTiers);
+    return getTierPrice(quantity, basePrice, resolvedTiers);
   };
 
   // Recalculate cart item prices whenever the client or items change
@@ -305,7 +306,8 @@ export const NewOrder: React.FC = () => {
     items.forEach(item => {
       const product = products.find(p => p.id === item.productId);
       if (product && product.type === '3d') {
-        const hasTiers = product.priceTiers && product.priceTiers.length > 0;
+        const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+        const hasTiers = resolvedTiers && resolvedTiers.length > 0;
         if (hasTiers) return; // Price tiers ignore wholesale thresholds
 
         const weight = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
@@ -330,7 +332,8 @@ export const NewOrder: React.FC = () => {
         total3DWeightNormal,
         total3DWeightKeychain
       );
-      const hasTiers = product.priceTiers && product.priceTiers.length > 0;
+      const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+      const hasTiers = resolvedTiers && resolvedTiers.length > 0;
       
       let isWholesaleApplied = false;
       if (!hasTiers) {

@@ -1205,8 +1205,12 @@ const InventoryModal = ({
           ? (dataToSave.priceUsdKg === '' ? 0 : Number(dataToSave.priceUsdKg))
           : 0;
         dataToSave.minStockGrams = dataToSave.minStockGrams === '' ? 0 : Number(dataToSave.minStockGrams);
-        dataToSave.initialWeightGrams = dataToSave.initialWeightGrams === '' ? 0 : Number(dataToSave.initialWeightGrams);
         dataToSave.availableWeightGrams = dataToSave.availableWeightGrams === '' ? 0 : Number(dataToSave.availableWeightGrams);
+        if (!item?.id) {
+          dataToSave.initialWeightGrams = dataToSave.availableWeightGrams;
+        } else {
+          dataToSave.initialWeightGrams = item.initialWeightGrams ?? dataToSave.availableWeightGrams;
+        }
       } else {
         dataToSave.currentStock = dataToSave.currentStock === '' ? 0 : Number(dataToSave.currentStock);
         dataToSave.minStock = dataToSave.minStock === '' ? 0 : Number(dataToSave.minStock);
@@ -1450,27 +1454,13 @@ const InventoryModal = ({
                 onChangeGrams={val => setFormData({ ...formData, minStockGrams: val })}
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <WeightKgGramsInput
-                  label="Peso Inicial Bobina"
-                  required
-                  valueGrams={formData.initialWeightGrams}
-                  onChangeGrams={val => {
-                    setFormData({
-                      ...formData,
-                      initialWeightGrams: val,
-                      availableWeightGrams: item ? formData.availableWeightGrams : val,
-                    });
-                  }}
-                />
-                <WeightKgGramsInput
-                  label="Peso Disponible Actual"
-                  required
-                  valueGrams={formData.availableWeightGrams}
-                  onChangeGrams={val => setFormData({ ...formData, availableWeightGrams: val })}
-                  className="[&_input]:font-bold [&_input]:text-blue-600"
-                />
-              </div>
+              <WeightKgGramsInput
+                label="Peso Disponible Actual"
+                required
+                valueGrams={formData.availableWeightGrams}
+                onChangeGrams={val => setFormData({ ...formData, availableWeightGrams: val })}
+                className="[&_input]:font-bold [&_input]:text-blue-600"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

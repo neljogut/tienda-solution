@@ -95,6 +95,7 @@
   .badge-yellow  { @apply bg-amber-50 text-amber-700 border border-amber-200; }
   .badge-red     { @apply bg-red-50 text-red-700 border border-red-200; }
   .badge-purple  { @apply bg-purple-50 text-purple-700 border border-purple-200; }
+  .badge-cyan    { @apply bg-cyan-50 text-cyan-700 border border-cyan-200; }
   .badge-gray    { @apply bg-slate-100 text-slate-600 border border-slate-200; }
 
   .stat-card {

@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { UserData } from '../../types/user';
 import {
   Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin,
-  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert
+  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert, Store
 } from 'lucide-react';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
@@ -25,14 +25,18 @@ const emptyForm = () => ({
   cuit: '',
   isWholesale: false,
   isTrusted: false,
+  isLocal: false,
   observations: '',
   employeeId: '',
   employeeName: '',
 });
 
-function getClientBadges(client: Pick<Client, 'isWholesale' | 'isTrusted'>) {
+function getClientBadges(client: Pick<Client, 'isWholesale' | 'isTrusted' | 'isLocal'>) {
   const badges: { label: string; className: string; icon: React.ReactNode }[] = [];
 
+  if (client.isLocal) {
+    badges.push({ label: 'Negocio', className: 'badge badge-cyan', icon: <Store size={12} /> });
+  }
   if (client.isWholesale) {
     badges.push({ label: 'Mayorista', className: 'badge badge-purple', icon: <Crown size={12} /> });
   }
@@ -270,6 +274,7 @@ export const ClientsManager: React.FC = () => {
       cuit: client.cuit || '',
       isWholesale: client.isWholesale ?? false,
       isTrusted: client.isTrusted ?? false,
+      isLocal: client.isLocal ?? false,
       observations: client.observations || '',
       employeeId: client.employeeId || '',
       employeeName: client.employeeName || '',
@@ -305,6 +310,7 @@ export const ClientsManager: React.FC = () => {
         cuit: form.cuit?.trim() || '',
         isWholesale: form.isWholesale,
         isTrusted: form.isTrusted,
+        isLocal: form.isLocal,
         observations: form.observations?.trim() || '',
       };
 
@@ -1320,7 +1326,7 @@ export const ClientsManager: React.FC = () => {
               {/* ── Classification toggles ── */}
               <div className="space-y-3">
                 <label className="input-label">Clasificación del Cliente</label>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {/* Wholesale toggle */}
                   {userData?.role !== 'employee' && (
                     <button
@@ -1337,7 +1343,7 @@ export const ClientsManager: React.FC = () => {
                       }`}>
                         <Crown size={20} />
                       </div>
-                      <div className="text-left">
+                      <div className="text-left col-span-2">
                         <p className={`font-semibold text-sm ${form.isWholesale ? 'text-purple-700' : 'text-slate-700'}`}>
                           Mayorista
                         </p>
@@ -1366,7 +1372,7 @@ export const ClientsManager: React.FC = () => {
                     }`}>
                       <Shield size={20} />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left col-span-2">
                       <p className={`font-semibold text-sm ${form.isTrusted ? 'text-amber-700' : 'text-slate-700'}`}>
                         De Confianza
                       </p>
@@ -1376,6 +1382,34 @@ export const ClientsManager: React.FC = () => {
                       form.isTrusted ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-300'
                     }`}>
                       {form.isTrusted && <span className="text-xs font-bold">✓</span>}
+                    </div>
+                  </button>
+
+                  {/* Local toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, isLocal: !form.isLocal })}
+                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      form.isLocal
+                        ? 'border-cyan-500 bg-cyan-50 shadow-md shadow-cyan-500/10'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                      form.isLocal ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      <Store size={20} />
+                    </div>
+                    <div className="text-left col-span-2">
+                      <p className={`font-semibold text-sm ${form.isLocal ? 'text-cyan-700' : 'text-slate-700'}`}>
+                        Es Local / Comercio
+                      </p>
+                      <p className="text-xs text-slate-400">Marcar como negocio físico</p>
+                    </div>
+                    <div className={`ml-auto w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      form.isLocal ? 'bg-cyan-500 border-cyan-500 text-white' : 'border-slate-300'
+                    }`}>
+                      {form.isLocal && <span className="text-xs font-bold">✓</span>}
                     </div>
                   </button>
                 </div>

@@ -35,6 +35,16 @@ export interface UserPermissions {
   viewCategories?: boolean;
 }
 
+export const DEFAULT_EMPLOYEE_PERMISSIONS: UserPermissions = {
+  viewOrders: true,
+  createOrders: true,
+  editOrders: true,
+  viewClients: true,
+  createClients: true,
+  generateClientInvoices: true,
+};
+
+
 export interface UserData {
   uid: string;
   email: string;

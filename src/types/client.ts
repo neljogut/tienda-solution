@@ -19,6 +19,7 @@ export interface Client {
   // New flexible classification (independent booleans)
   isWholesale: boolean;
   isTrusted: boolean;
+  isLocal: boolean;
 
   // Legacy field – kept for migration from old data
   clientType?: ClientType;
@@ -38,22 +39,29 @@ export interface Client {
  */
 export function migrateClient(raw: Record<string, unknown>): Partial<Client> {
   const hasNewFields = typeof raw.isWholesale === 'boolean';
-  if (hasNewFields) return raw as Partial<Client>;
-
-  const legacy = (raw.clientType as ClientType) || 'normal';
-  return {
+  const migrated = (hasNewFields ? raw as Partial<Client> : {
     ...raw,
-    isWholesale: legacy === 'wholesale',
-    isTrusted: legacy === 'trusted',
-  } as Partial<Client>;
+    isWholesale: raw.clientType === 'wholesale',
+    isTrusted: raw.clientType === 'trusted',
+  }) as Partial<Client>;
+
+  if (migrated.isLocal === undefined) {
+    migrated.isLocal = false;
+  }
+  return migrated;
 }
 
 /**
  * Returns a human-readable label for the client classification.
  */
-export function getClientLabel(client: Pick<Client, 'isWholesale' | 'isTrusted'>): string {
-  if (client.isWholesale && client.isTrusted) return 'Mayorista de Confianza';
-  if (client.isWholesale) return 'Mayorista';
-  if (client.isTrusted) return 'Minorista de Confianza';
-  return 'Minorista';
+export function getClientLabel(client: Pick<Client, 'isWholesale' | 'isTrusted' | 'isLocal'>): string {
+  let label = 'Minorista';
+  if (client.isWholesale && client.isTrusted) label = 'Mayorista de Confianza';
+  else if (client.isWholesale) label = 'Mayorista';
+  else if (client.isTrusted) label = 'Minorista de Confianza';
+
+  if (client.isLocal) {
+    label += ' (Local/Comercio)';
+  }
+  return label;
 }

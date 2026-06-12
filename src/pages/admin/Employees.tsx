@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { DEFAULT_EMPLOYEE_PERMISSIONS } from '../../types/user';
 import type { UserData, UserPermissions } from '../../types/user';
 import { 
   UserCog, Shield, Users, Search, Edit2, CheckSquare, 
@@ -32,7 +33,7 @@ export const Employees: React.FC = () => {
   const [addLinkEmail, setAddLinkEmail] = useState('');
   const [addPassword, setAddPassword] = useState('');
   const [addRole, setAddRole] = useState<UserData['role']>('employee');
-  const [addPermissions, setAddPermissions] = useState<UserPermissions>({});
+  const [addPermissions, setAddPermissions] = useState<UserPermissions>(DEFAULT_EMPLOYEE_PERMISSIONS);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -265,7 +266,7 @@ export const Employees: React.FC = () => {
     setAddLinkEmail('');
     setAddPassword('');
     setAddRole('employee');
-    setAddPermissions({});
+    setAddPermissions(DEFAULT_EMPLOYEE_PERMISSIONS);
     setAddError('');
     setAddDni('');
   };
@@ -294,6 +295,36 @@ export const Employees: React.FC = () => {
     } catch (err) {
       console.error('Error saving user role/permissions/dni:', err);
       alert('Error al guardar cambios.');
+    }
+  };
+
+  const handleBulkRestoreDefaults = async () => {
+    const employees = users.filter(u => u.role === 'employee');
+    if (employees.length === 0) {
+      alert('No hay empleados registrados para restablecer.');
+      return;
+    }
+
+    if (!window.confirm(`¿Está seguro de que desea restablecer los permisos de TODOS los empleados (${employees.length}) a los valores por defecto? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    
+    try {
+      const { writeBatch, doc } = await import('firebase/firestore');
+      const batch = writeBatch(db);
+      
+      employees.forEach(emp => {
+        const userRef = doc(db, 'users', emp.uid);
+        batch.update(userRef, {
+          permissions: DEFAULT_EMPLOYEE_PERMISSIONS
+        });
+      });
+
+      await batch.commit();
+      alert(`Se han restablecido los permisos de ${employees.length} empleado(s) por defecto.`);
+    } catch (err) {
+      console.error('Error restoring default permissions in bulk:', err);
+      alert('Error al restablecer permisos de forma masiva.');
     }
   };
 
@@ -465,13 +496,24 @@ export const Employees: React.FC = () => {
               Administra el acceso de los usuarios del sistema, promueve colaboradores y define permisos específicos.
             </p>
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="btn-primary flex items-center justify-center gap-2 self-start sm:self-auto text-xs py-2.5 px-4 whitespace-nowrap"
-          >
-            <UserPlus size={16} />
-            Editar roles
-          </button>
+          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={handleBulkRestoreDefaults}
+              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+            >
+              <ShieldAlert size={15} className="text-amber-600 animate-pulse" />
+              Restaurar todos por defecto
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="btn-primary flex items-center justify-center gap-2 text-xs py-2.5 px-4 whitespace-nowrap"
+            >
+              <UserPlus size={16} />
+              Editar roles
+            </button>
+          </div>
         </div>
       </div>
 
@@ -766,20 +808,35 @@ export const Employees: React.FC = () => {
               )}
             </div>
 
-            <div className="flex justify-end gap-2 border-t pt-4 mt-6">
-              <button 
-                type="button" 
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-semibold transition-colors"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSave}
-                className="btn-primary"
-              >
-                Guardar Cambios
-              </button>
+            <div className="flex justify-between items-center border-t pt-4 mt-6">
+              {selectedRole === 'employee' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('¿Desea restablecer los permisos de este colaborador a los valores por defecto?')) {
+                      setPermissions(DEFAULT_EMPLOYEE_PERMISSIONS);
+                    }
+                  }}
+                  className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-xl font-bold transition-colors border border-blue-200 text-[11px]"
+                >
+                  Restablecer por defecto
+                </button>
+              ) : <div />}
+              <div className="flex gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleSave}
+                  className="btn-primary"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
             </div>
           </div>
         </div>,

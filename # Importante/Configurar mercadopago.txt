@@ -1,0 +1,18 @@
+Paso 1: Ingresar a Mercado Pago Developers
+Iniciá sesión en el Panel de Desarrolladores de Mercado Pago.
+Hacé clic en la Aplicación que creaste (de la cual sacaste la Public Key y el Access Token).
+Paso 2: Configurar las URLs del Webhook
+En el menú izquierdo de tu aplicación, seleccioná la opción Webhooks (o Notificaciones por IPN/Webhook).
+
+Ahí deberás pegar la URL correspondiente a cada negocio en el campo URL de producción:
+
+Para Dualgi 3D: https://mercadopagowebhook-5moh2gpnha-rj.a.run.app
+Para Solution 3D: https://mercadopagowebhook-insfd3cona-tl.a.run.app
+(Podés encontrar estas mismas URLs copiables en tu panel administrativo en la sección Mi Negocio).
+
+Paso 3: Seleccionar los Eventos
+Buscá la lista de eventos o tipos de notificaciones disponibles.
+Marcá únicamente la casilla de pagos (o payment). (No es necesario marcar las demás para que el checkout funcione).
+Hacé clic en Guardar.
+Paso 4: ¡Listo!
+A partir de este momento, cada vez que un cliente complete un pago (ya sea tarjeta o dinero en cuenta), Mercado Pago le enviará automáticamente un aviso al servidor. El servidor validará la transacción y actualizará el estado de la compra o la deuda de cuenta corriente del cliente en tiempo real, sin que tengas que intervenir.

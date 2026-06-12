@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ProductType, PriceTier } from '../types/product';
 import type { Category } from '../types/category';
-import { getTierPrice, roundPriceUp10, resolveInheritedPriceTiers } from '../services/pricingService';
+import { getTierPrice, roundPriceUp10, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
 import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { PricingSettings3D } from '../types/settings';
@@ -55,12 +55,23 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
     return { ...item, resolvedPriceTiers };
   });
 
-  // 2. Calculate total weight of 3D products (excluding those with tiers)
+  // 2. Build aggregated quantity map by tier scope (category-level aggregation)
+  // Items sharing the same scope category pool their quantities for tier evaluation
+  const scopeQtyMap = aggregatedQtyByScope(
+    itemsWithResolved.map(i => ({
+      priceTiers: i.priceTiers,
+      categoryId: i.categoryId,
+      quantity: i.quantity,
+    })),
+    allCategories
+  );
+
+  // 3. Calculate total weight of 3D products (excluding those with tiers)
   let total3DWeightNormal = 0;
   let total3DWeightKeychain = 0;
 
   itemsWithResolved.forEach(item => {
-    // If it has price tiers (directly or inherited), it does NOT count towards threshold weight and does NOT receive threshold discounts
+    // If it has price tiers (directly or inherited), it does NOT count towards threshold weight
     if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
       return;
     }
@@ -84,9 +95,11 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
   const meetsKeychain = total3DWeightKeychain >= thresholdKeychain;
 
   return itemsWithResolved.map(item => {
-    // Priority 1: Price Tiers
+    // Priority 1: Price Tiers (using aggregated scope quantity)
     if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
-      const price = getTierPrice(item.quantity, item.basePrice, item.resolvedPriceTiers);
+      const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, allCategories);
+      const effectiveQty = scopeId ? (scopeQtyMap.get(scopeId) ?? item.quantity) : item.quantity;
+      const price = getTierPrice(effectiveQty, item.basePrice, item.resolvedPriceTiers);
       return { ...item, price };
     }
 

@@ -31,6 +31,7 @@ import { Employees } from './pages/admin/Employees';
 import { MyAccountBalance } from './pages/client/MyAccountBalance';
 import { Checkout } from './pages/client/Checkout';
 import { PaymentResult } from './pages/client/PaymentResult';
+import { SharedOrder } from './pages/SharedOrder';
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -90,6 +91,7 @@ function App() {
             <Route index element={<Navigate to="/catalog" replace />} />
             <Route path="catalog" element={<Catalog />} />
             <Route path="catalog/:id" element={<ProductDetail />} />
+            <Route path="shared-order/:orderId" element={<SharedOrder />} />
             
             {/* Client routes */}
             <Route path="my-orders" element={

@@ -234,6 +234,71 @@ export function resolveInheritedPriceTiers(
   return undefined;
 }
 
+/**
+ * Finds the deepest category in the hierarchy (own or ancestor) that has priceTiers defined.
+ * This category acts as the "scope" for quantity aggregation across products.
+ * If the product itself has priceTiers, returns its own categoryId.
+ * Returns null if no tier scope is found.
+ */
+export function deepestTierScopeCategoryId(
+  priceTiers: PriceTier[] | undefined,
+  categoryId: string | undefined,
+  categories: Category[]
+): string | null {
+  if (!categoryId || !categories || categories.length === 0) return null;
+
+  // If the product has its own tiers, its category is the scope
+  if (priceTiers && priceTiers.length > 0) {
+    return categoryId;
+  }
+
+  // Walk up the category tree to find the deepest ancestor with tiers
+  let currentId: string | null = categoryId;
+  const visited = new Set<string>();
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+    const category = categories.find(c => c.id === currentId);
+    if (!category) break;
+
+    if (category.priceTiers && category.priceTiers.length > 0) {
+      return category.id;
+    }
+
+    currentId = category.parentId;
+  }
+
+  return null;
+}
+
+/**
+ * Aggregates quantities by tier scope (categoryId that owns the priceTiers).
+ * Only items that have tiers (direct or inherited) are counted.
+ * Used to determine the effective quantity for tier pricing across multiple products
+ * in the same category.
+ */
+export function aggregatedQtyByScope(
+  items: Array<{ priceTiers?: PriceTier[]; categoryId?: string; quantity: number | '' }>,
+  categories: Category[]
+): Map<string, number> {
+  const scopeMap = new Map<string, number>();
+
+  for (const item of items) {
+    const qty = item.quantity === '' ? 0 : Number(item.quantity);
+    if (qty < 1) continue;
+
+    const resolvedTiers = resolveInheritedPriceTiers(item.priceTiers, item.categoryId, categories);
+    if (!resolvedTiers || resolvedTiers.length === 0) continue; // no tiers → skip
+
+    const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories);
+    if (!scopeId) continue;
+
+    scopeMap.set(scopeId, (scopeMap.get(scopeId) ?? 0) + qty);
+  }
+
+  return scopeMap;
+}
+
 // Validate that a tier price doesn't generate a loss
 export function validateTierPrice(tierPrice: number, cost: number): boolean {
   return tierPrice > cost;

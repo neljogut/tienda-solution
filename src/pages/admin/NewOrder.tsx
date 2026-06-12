@@ -11,9 +11,9 @@ import { dedupeCategories, resolveCategoryId, getCategoryTreeIds, getSortedCateg
 import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, Check, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, Check, ShoppingBag, Share2, Copy, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getTierPrice, recalculateAllProductsInFirestore, resolveInheritedPriceTiers } from '../../services/pricingService';
+import { getTierPrice, recalculateAllProductsInFirestore, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
 
 // Helper for client initials
@@ -244,6 +244,12 @@ export const NewOrder: React.FC = () => {
   const [addToast, setAddToast] = useState<string | null>(null);
   const cartSummaryRef = useRef<HTMLDivElement>(null);
 
+  // Share draft order state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
   // Settings & Exchange Rate
   const [depositSettings, setDepositSettings] = useState<DepositSettings | null>(null);
   const [pricing3dSettings, setPricing3dSettings] = useState<PricingSettings3D | null>(null);
@@ -442,19 +448,22 @@ export const NewOrder: React.FC = () => {
     return clients.find(c => c.id === selectedClientId) || null;
   }, [selectedClientId, clients]);
 
-  // Compute unit price for a product based on current selected client and cart quantity
+  // Compute unit price for a product based on current selected client, cart quantity, and scope-aggregated tier qty
   const calculateItemPrice = (
     product: Product,
     quantity: number,
     client: Client | null,
     total3DWeightNormal = 0,
-    total3DWeightKeychain = 0
+    total3DWeightKeychain = 0,
+    scopeQtyMap?: Map<string, number>
   ) => {
-    // 0. If product has price tiers, it ignores wholesale client / threshold discounts and uses tier price
+    // 0. If product has price tiers, resolve them and use aggregated scope quantity
     const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
     if (resolvedTiers && resolvedTiers.length > 0) {
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
-      return getTierPrice(quantity, basePrice, resolvedTiers);
+      const scopeId = deepestTierScopeCategoryId(product.priceTiers, product.categoryId, categories);
+      const effectiveQty = (scopeId && scopeQtyMap) ? (scopeQtyMap.get(scopeId) ?? quantity) : quantity;
+      return getTierPrice(effectiveQty, basePrice, resolvedTiers);
     }
 
     const isClientWholesale = client?.isWholesale ?? false;
@@ -492,7 +501,20 @@ export const NewOrder: React.FC = () => {
 
   // Recalculate cart item prices whenever the client or items change
   const recalculateCart = (items: any[], client: Client | null) => {
-    // 1. Calculate total weight of 3D products in the items list
+    // 1. Build aggregated quantity map by tier scope (category-level aggregation)
+    const scopeQtyMap = aggregatedQtyByScope(
+      items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        return {
+          priceTiers: product?.priceTiers,
+          categoryId: product?.categoryId,
+          quantity: item.quantity,
+        };
+      }),
+      categories
+    );
+
+    // 2. Calculate total weight of 3D products (excluding those with tiers)
     let total3DWeightNormal = 0;
     let total3DWeightKeychain = 0;
     
@@ -523,7 +545,8 @@ export const NewOrder: React.FC = () => {
         (item.quantity as any) === '' ? 1 : Number(item.quantity), 
         client, 
         total3DWeightNormal,
-        total3DWeightKeychain
+        total3DWeightKeychain,
+        scopeQtyMap
       );
       const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
       const hasTiers = resolvedTiers && resolvedTiers.length > 0;
@@ -876,8 +899,121 @@ export const NewOrder: React.FC = () => {
     }
   };
 
+  // Create a draft order and open share modal
+  const handleShareDraftOrder = async () => {
+    if (cartItems.length === 0) return alert('Agrega al menos un producto al pedido.');
+    if (!selectedClientId) return alert('Selecciona un cliente para compartir el pedido.');
+    const hasInvalidQty = cartItems.some(item => (item.quantity as any) === '' || item.quantity <= 0);
+    if (hasInvalidQty) return alert('Revisá que todos los productos tengan una cantidad válida.');
+
+    setShareLoading(true);
+    try {
+      const customerName = activeClient ? `${activeClient.firstName} ${activeClient.lastName}` : 'Cliente';
+      const sanitizedItems = cartItems.map(item => ({ ...item, quantity: Number(item.quantity) }));
+      const exchangeRateSnap = await getDoc(doc(db, 'settings', 'exchangeRate'));
+      const currentExchangeRate = exchangeRateSnap.exists() ? (exchangeRateSnap.data() as ExchangeRateData).currentUsdToArs : exchangeRate;
+
+      const draftData = {
+        orderNumber: 0, // will be assigned when finalized
+        customerId: selectedClientId,
+        customerName,
+        date: new Date().toISOString(),
+        items: sanitizedItems,
+        totalAmount,
+        paidAmount: 0,
+        pendingAmount: totalAmount,
+        paymentStatus: 'unpaid' as const,
+        orderStatus: 'draft' as const,
+        observationsPublic: observationsPublic || '',
+        observationsInternal: `Borrador compartido por ${userData?.displayName || 'owner'}`,
+        exchangeRateUsdUsed: currentExchangeRate,
+        exchangeRateDate: new Date().toISOString(),
+        totalCost,
+        totalProfit: totalAmount - totalCost,
+        sharedAt: new Date().toISOString(),
+      };
+
+      const draftRef = await addDoc(collection(db, 'orders'), draftData);
+      const generatedUrl = `${window.location.origin}/shared-order/${draftRef.id}`;
+      setShareUrl(generatedUrl);
+      setShareModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo crear el pedido compartido. Intentá de nuevo.');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn">
+      {/* Share Order Modal */}
+      {shareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShareModalOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-fadeIn"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShareModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            ><X size={18} /></button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-blue-50">
+                <Share2 size={22} className="text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-lg">Compartir pedido</h3>
+                <p className="text-slate-500 text-sm">El cliente puede finalizar el pago sin registrarse</p>
+              </div>
+            </div>
+
+            {/* Link display */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
+              <span className="text-xs text-slate-600 truncate flex-1 font-mono">{shareUrl}</span>
+              <button
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText(shareUrl); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); } catch {}
+                }}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
+              >
+                {shareCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                {shareCopied ? 'Copiado' : 'Copiar'}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {/* WhatsApp */}
+              <button
+                onClick={() => {
+                  const clientName = activeClient ? `${activeClient.firstName}` : 'el cliente';
+                  const text = encodeURIComponent(`Hola ${clientName}! Te comparto el pedido para que puedas terminarlo cuando quieras:\n${shareUrl}`);
+                  window.open(`https://wa.me/?text=${text}`, '_blank');
+                }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors shadow-md shadow-green-500/20"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Compartir por WhatsApp
+              </button>
+
+              {/* Native share */}
+              {typeof navigator.share === 'function' && (
+                <button
+                  onClick={() => navigator.share({ title: 'Pedido compartido', url: shareUrl }).catch(() => {})}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors"
+                >
+                  <Share2 size={18} />
+                  Más opciones para compartir
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1313,6 +1449,16 @@ export const NewOrder: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Share draft order button */}
+              <button
+                onClick={handleShareDraftOrder}
+                disabled={shareLoading || cartItems.length === 0 || !selectedClientId}
+                className="w-full py-2.5 text-sm flex items-center justify-center gap-2 border-2 border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 rounded-lg font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Share2 size={16} />
+                {shareLoading ? 'Generando link...' : 'Compartir pedido (sin cobrar)'}
+              </button>
 
               <button 
                 onClick={handleCreateOrder}

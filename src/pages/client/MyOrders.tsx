@@ -51,7 +51,10 @@ export const MyOrders: React.FC = () => {
       unsubscribe = onSnapshot(q, (snapshot) => {
         const fetchedOrders: Order[] = [];
         snapshot.forEach((doc) => {
-          fetchedOrders.push({ id: doc.id, ...doc.data() } as Order);
+          const o = { id: doc.id, ...doc.data() } as Order;
+          if (o.orderStatus !== 'draft') {
+            fetchedOrders.push(o);
+          }
         });
         fetchedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setOrders(fetchedOrders);

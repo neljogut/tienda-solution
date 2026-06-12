@@ -343,130 +343,132 @@ export const Orders: React.FC = () => {
     try {
       const batch = writeBatch(db);
 
-      // Restore inventories based on toggles
-      const restoreLines: any[] = [];
-      for (const item of deletingOrder.items) {
-        // 1. Restore product stock in catalog
-        if (restoreStock) {
-          const prodRef = doc(db, 'products', item.productId);
-          const prodSnap = await getDoc(prodRef);
-          if (prodSnap.exists()) {
-            const product = prodSnap.data();
-            const prevStock = product.stock || 0;
-            const newStock = prevStock + item.quantity;
-            batch.update(prodRef, { stock: newStock });
-
-            restoreLines.push({
-              itemId: item.productId,
-              itemType: 'product',
-              lineType: 'in_restored',
-              previousQuantity: prevStock,
-              modifiedQuantity: item.quantity,
-              finalQuantity: newStock,
-            });
-          }
-        }
-
-        // Deduct associated 3D materials (filaments and supplies)
-        if (item.type === '3d') {
-          // 2. Restore filaments
-          if (restoreFilament) {
+      if (deletingOrder.orderStatus !== 'draft') {
+        // Restore inventories based on toggles
+        const restoreLines: any[] = [];
+        for (const item of deletingOrder.items) {
+          // 1. Restore product stock in catalog
+          if (restoreStock) {
             const prodRef = doc(db, 'products', item.productId);
             const prodSnap = await getDoc(prodRef);
             if (prodSnap.exists()) {
               const product = prodSnap.data();
-              const filamentLines = product.filamentLines?.length
-                ? product.filamentLines
-                : (product.filamentIds ?? []).map((filamentId: string) => ({
-                    supplyId: filamentId,
-                    grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds.length),
-                  }));
+              const prevStock = product.stock || 0;
+              const newStock = prevStock + item.quantity;
+              batch.update(prodRef, { stock: newStock });
 
-              for (const line of filamentLines) {
-                const filamentId = line.supplyId;
-                const weightToRestore = (line.grams || 0) * item.quantity;
-                if (!filamentId || weightToRestore <= 0) continue;
-
-                const filRef = doc(db, 'inventory', filamentId);
-                const filSnap = await getDoc(filRef);
-                if (filSnap.exists()) {
-                  const filData = filSnap.data();
-                  const prevWeight = filData.availableWeightGrams || 0;
-                  const newWeight = prevWeight + weightToRestore;
-                  batch.update(filRef, { availableWeightGrams: newWeight });
-
-                  restoreLines.push({
-                    itemId: filamentId,
-                    itemType: 'filament',
-                    lineType: 'restored',
-                    previousQuantity: prevWeight,
-                    modifiedQuantity: weightToRestore,
-                    finalQuantity: newWeight,
-                  });
-                }
-              }
+              restoreLines.push({
+                itemId: item.productId,
+                itemType: 'product',
+                lineType: 'in_restored',
+                previousQuantity: prevStock,
+                modifiedQuantity: item.quantity,
+                finalQuantity: newStock,
+              });
             }
           }
 
-          // 3. Restore supplies
-          if (restoreSupplies) {
-            const prodRef = doc(db, 'products', item.productId);
-            const prodSnap = await getDoc(prodRef);
-            if (prodSnap.exists()) {
-              const product = prodSnap.data();
-              if (product.supplyIds && product.supplyIds.length > 0) {
-                for (const supplyObj of product.supplyIds) {
-                  const supplyId = supplyObj.supplyId;
-                  const qtyNeeded = supplyObj.quantity * item.quantity;
+          // Deduct associated 3D materials (filaments and supplies)
+          if (item.type === '3d') {
+            // 2. Restore filaments
+            if (restoreFilament) {
+              const prodRef = doc(db, 'products', item.productId);
+              const prodSnap = await getDoc(prodRef);
+              if (prodSnap.exists()) {
+                const product = prodSnap.data();
+                const filamentLines = product.filamentLines?.length
+                  ? product.filamentLines
+                  : (product.filamentIds ?? []).map((filamentId: string) => ({
+                      supplyId: filamentId,
+                      grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds.length),
+                    }));
 
-                  const supRef = doc(db, 'inventory', supplyId);
-                  const supSnap = await getDoc(supRef);
-                  if (supSnap.exists()) {
-                    const supData = supSnap.data();
-                    const prevQty = supData.currentStock || 0;
-                    const newQty = prevQty + qtyNeeded;
-                    batch.update(supRef, { currentStock: newQty });
+                for (const line of filamentLines) {
+                  const filamentId = line.supplyId;
+                  const weightToRestore = (line.grams || 0) * item.quantity;
+                  if (!filamentId || weightToRestore <= 0) continue;
+
+                  const filRef = doc(db, 'inventory', filamentId);
+                  const filSnap = await getDoc(filRef);
+                  if (filSnap.exists()) {
+                    const filData = filSnap.data();
+                    const prevWeight = filData.availableWeightGrams || 0;
+                    const newWeight = prevWeight + weightToRestore;
+                    batch.update(filRef, { availableWeightGrams: newWeight });
 
                     restoreLines.push({
-                      itemId: supplyId,
-                      itemType: 'supply',
+                      itemId: filamentId,
+                      itemType: 'filament',
                       lineType: 'restored',
-                      previousQuantity: prevQty,
-                      modifiedQuantity: qtyNeeded,
-                      finalQuantity: newQty,
+                      previousQuantity: prevWeight,
+                      modifiedQuantity: weightToRestore,
+                      finalQuantity: newWeight,
                     });
+                  }
+                }
+              }
+            }
+
+            // 3. Restore supplies
+            if (restoreSupplies) {
+              const prodRef = doc(db, 'products', item.productId);
+              const prodSnap = await getDoc(prodRef);
+              if (prodSnap.exists()) {
+                const product = prodSnap.data();
+                if (product.supplyIds && product.supplyIds.length > 0) {
+                  for (const supplyObj of product.supplyIds) {
+                    const supplyId = supplyObj.supplyId;
+                    const qtyNeeded = supplyObj.quantity * item.quantity;
+
+                    const supRef = doc(db, 'inventory', supplyId);
+                    const supSnap = await getDoc(supRef);
+                    if (supSnap.exists()) {
+                      const supData = supSnap.data();
+                      const prevQty = supData.currentStock || 0;
+                      const newQty = prevQty + qtyNeeded;
+                      batch.update(supRef, { currentStock: newQty });
+
+                      restoreLines.push({
+                        itemId: supplyId,
+                        itemType: 'supply',
+                        lineType: 'restored',
+                        previousQuantity: prevQty,
+                        modifiedQuantity: qtyNeeded,
+                        finalQuantity: newQty,
+                      });
+                    }
                   }
                 }
               }
             }
           }
         }
-      }
 
-      // Add inventory movement document if any restoration occurred
-      if (restoreLines.length > 0) {
-        await addDoc(collection(db, 'inventory_movements'), {
-          date: new Date().toISOString(),
-          movementType: 'restoration',
-          reason: `Restauración por eliminación de Pedido #${deletingOrder.orderNumber}`,
-          userId: hasPermission('changeOrderState') ? 'admin' : 'system',
-          orderId: deletingOrder.id,
-          lines: restoreLines,
-        });
-      }
-
-      // Deduct order total from customer stats
-      if (deletingOrder.customerId) {
-        const clientRef = doc(db, 'clients', deletingOrder.customerId);
-        const clientSnap = await getDoc(clientRef);
-        if (clientSnap.exists()) {
-          const clientData = clientSnap.data();
-          const currentOwed = clientData.totalOwed ?? 0;
-          const currentPurchased = clientData.totalPurchased ?? 0;
-          batch.update(clientRef, {
-            totalOwed: Math.max(0, currentOwed - deletingOrder.pendingAmount),
-            totalPurchased: Math.max(0, currentPurchased - deletingOrder.totalAmount),
+        // Add inventory movement document if any restoration occurred
+        if (restoreLines.length > 0) {
+          await addDoc(collection(db, 'inventory_movements'), {
+            date: new Date().toISOString(),
+            movementType: 'restoration',
+            reason: `Restauración por eliminación de Pedido #${deletingOrder.orderNumber}`,
+            userId: hasPermission('changeOrderState') ? 'admin' : 'system',
+            orderId: deletingOrder.id,
+            lines: restoreLines,
           });
+        }
+
+        // Deduct order total from customer stats
+        if (deletingOrder.customerId) {
+          const clientRef = doc(db, 'clients', deletingOrder.customerId);
+          const clientSnap = await getDoc(clientRef);
+          if (clientSnap.exists()) {
+            const clientData = clientSnap.data();
+            const currentOwed = clientData.totalOwed ?? 0;
+            const currentPurchased = clientData.totalPurchased ?? 0;
+            batch.update(clientRef, {
+              totalOwed: Math.max(0, currentOwed - deletingOrder.pendingAmount),
+              totalPurchased: Math.max(0, currentPurchased - deletingOrder.totalAmount),
+            });
+          }
         }
       }
 
@@ -485,6 +487,12 @@ export const Orders: React.FC = () => {
 
   const getStatusBadge = (status: Order['orderStatus']) => {
     switch (status) {
+      case 'draft':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
+            <FileText size={11} /> Borrador
+          </span>
+        );
       case 'pending':
         return (
           <span className="inline-flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded text-[10px] font-bold">
@@ -620,8 +628,12 @@ export const Orders: React.FC = () => {
                               {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
                             </td>
                             {/* Order Number */}
-                            <td className="p-4 font-bold text-slate-800">
-                              #{String(order.orderNumber).padStart(5, '0')}
+                            <td className="p-4 font-bold text-slate-800 text-xs">
+                              {order.orderStatus === 'draft' ? (
+                                <span className="text-slate-400 font-normal italic">Borrador</span>
+                              ) : (
+                                `#${String(order.orderNumber).padStart(5, '0')}`
+                              )}
                             </td>
                             
                             {/* Customer */}
@@ -677,29 +689,31 @@ export const Orders: React.FC = () => {
                                   </button>
                                 )}
                                 <button
-                                  onClick={() => generateClientPDF(order, business)}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
-                                  title="Comprobante Cliente"
-                                >
-                                  <FileDown size={16} />
-                                </button>
-                                <button
-                                  onClick={() => generateInternalPDF(order, business)}
-                                  className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
-                                  title="Balance Interno"
-                                >
-                                  <FileText size={16} />
-                                </button>
+                                   onClick={() => generateClientPDF(order, business)}
+                                   disabled={order.orderStatus === 'draft'}
+                                   className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
+                                   title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Comprobante Cliente"}
+                                 >
+                                   <FileDown size={16} />
+                                 </button>
+                                 <button
+                                   onClick={() => generateInternalPDF(order, business)}
+                                   disabled={order.orderStatus === 'draft'}
+                                   className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
+                                   title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
+                                 >
+                                   <FileText size={16} />
+                                 </button>
                                 {canEditOrder && (
                                   <button
-                                    onClick={() => {
-                                      setDeletingOrder(order);
-                                      setRestoreStock(true);
-                                      setRestoreFilament(true);
-                                      setRestoreSupplies(true);
-                                    }}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                                    title="Eliminar Pedido"
+                                     onClick={() => {
+                                       setDeletingOrder(order);
+                                       setRestoreStock(order.orderStatus !== 'draft');
+                                       setRestoreFilament(order.orderStatus !== 'draft');
+                                       setRestoreSupplies(order.orderStatus !== 'draft');
+                                     }}
+                                     className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                     title="Eliminar Pedido"
                                   >
                                     <Trash2 size={16} />
                                   </button>
@@ -798,7 +812,11 @@ export const Orders: React.FC = () => {
                       {/* Row 1: Order Number & Date */}
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-slate-800 text-sm">
-                          #{String(order.orderNumber).padStart(5, '0')}
+                          {order.orderStatus === 'draft' ? (
+                             <span className="text-slate-400 font-normal italic">Borrador</span>
+                           ) : (
+                             `#${String(order.orderNumber).padStart(5, '0')}`
+                           )}
                         </span>
                         <span className="text-slate-500">
                           {new Date(order.date).toLocaleDateString('es-AR', {
@@ -865,15 +883,17 @@ export const Orders: React.FC = () => {
                           )}
                           <button
                             onClick={() => generateClientPDF(order, business)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
-                            title="Comprobante Cliente"
+                            disabled={order.orderStatus === 'draft'}
+                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Comprobante Cliente"}
                           >
                             <FileDown size={14} />
                           </button>
                           <button
                             onClick={() => generateInternalPDF(order, business)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors"
-                            title="Balance Interno"
+                            disabled={order.orderStatus === 'draft'}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
                           >
                             <FileText size={14} />
                           </button>
@@ -881,9 +901,9 @@ export const Orders: React.FC = () => {
                             <button
                               onClick={() => {
                                 setDeletingOrder(order);
-                                setRestoreStock(true);
-                                setRestoreFilament(true);
-                                setRestoreSupplies(true);
+                                setRestoreStock(order.orderStatus !== 'draft');
+                                setRestoreFilament(order.orderStatus !== 'draft');
+                                setRestoreSupplies(order.orderStatus !== 'draft');
                               }}
                               className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
                               title="Eliminar Pedido"
@@ -949,7 +969,11 @@ export const Orders: React.FC = () => {
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <div>
                 <h2 className="text-lg font-bold text-slate-800">
-                  Pedido #{String(editingOrder.orderNumber).padStart(5, '0')}
+                  {editingOrder.orderStatus === 'draft' ? (
+                     <span className="text-slate-500 font-normal italic">Borrador</span>
+                   ) : (
+                     `Pedido #${String(editingOrder.orderNumber).padStart(5, '0')}`
+                   )}
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">{editingOrder.customerName}</p>
               </div>
@@ -970,25 +994,31 @@ export const Orders: React.FC = () => {
               {canChangeOrderState && (
                 <div>
                   <label className="input-label">Estado del pedido</label>
-                  <select
-                    className="input"
-                    value={editForm.orderStatus}
-                    onChange={(e) =>
-                      setEditForm((prev) =>
-                        prev ? { ...prev, orderStatus: e.target.value as OrderStatus } : prev
-                      )
-                    }
-                  >
-                    {ORDER_STATUS_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                  {editingOrder.orderStatus === 'draft' ? (
+                     <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                       Este pedido es un borrador y debe ser finalizado por el cliente a través del enlace de pago para actualizar su estado.
+                     </div>
+                   ) : (
+                     <select
+                       className="input"
+                       value={editForm.orderStatus}
+                       onChange={(e) =>
+                         setEditForm((prev) =>
+                           prev ? { ...prev, orderStatus: e.target.value as OrderStatus } : prev
+                         )
+                       }
+                     >
+                       {ORDER_STATUS_OPTIONS.map((opt) => (
+                         <option key={opt.value} value={opt.value}>
+                           {opt.label}
+                         </option>
+                       ))}
+                     </select>
+                   )}
                 </div>
               )}
 
-              {canRegisterPayments && (
+              {canRegisterPayments && editingOrder.orderStatus !== 'draft' && (
                 <>
                   <div>
                     <label className="input-label">Estado de pago</label>
@@ -1037,23 +1067,25 @@ export const Orders: React.FC = () => {
 
             <div className="flex justify-end gap-3 p-6 border-t border-slate-100">
               <button type="button" onClick={closeEditModal} className="btn-secondary text-sm">
-                Cancelar
+                {editingOrder.orderStatus === 'draft' ? 'Cerrar' : 'Cancelar'}
               </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                disabled={savingId === editingOrder.id}
-                className="btn-primary text-sm flex items-center gap-2"
-              >
-                {savingId === editingOrder.id ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Guardando...</span>
-                  </>
-                ) : (
-                  'Guardar Cambios'
-                )}
-              </button>
+              {editingOrder.orderStatus !== 'draft' && (
+                 <button
+                   type="button"
+                   onClick={handleSaveEdit}
+                   disabled={savingId === editingOrder.id}
+                   className="btn-primary text-sm flex items-center gap-2"
+                 >
+                   {savingId === editingOrder.id ? (
+                     <>
+                       <Loader2 size={16} className="animate-spin" />
+                       <span>Guardando...</span>
+                     </>
+                   ) : (
+                     'Guardar Cambios'
+                   )}
+                 </button>
+               )}
             </div>
           </div>
         </div>,
@@ -1087,55 +1119,65 @@ export const Orders: React.FC = () => {
 
             <div className="p-6 space-y-4">
               <p className="text-sm text-slate-600">
-                ¿Estás seguro de que deseas eliminar permanentemente el <strong>Pedido #{String(deletingOrder.orderNumber).padStart(5, '0')}</strong> de <strong>{deletingOrder.customerName}</strong>?
+                ¿Estás seguro de que deseas eliminar permanentemente el{' '}
+                 <strong>
+                   {deletingOrder.orderStatus === 'draft' ? (
+                     <span className="italic">Borrador</span>
+                   ) : (
+                     `Pedido #${String(deletingOrder.orderNumber).padStart(5, '0')}`
+                   )}
+                 </strong>{' '}
+                 de <strong>{deletingOrder.customerName}</strong>?
               </p>
               
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Restauración de Inventario</h3>
-                
-                <label className="flex items-center gap-3 cursor-pointer p-1">
-                  <input
-                    type="checkbox"
-                    checked={restoreStock}
-                    onChange={(e) => setRestoreStock(e.target.checked)}
-                    className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 block">Restaurar Stock de Catálogo</span>
-                    <span className="text-[10px] text-slate-400">Devuelve las unidades vendidas al stock de productos.</span>
-                  </div>
-                </label>
+              {deletingOrder.orderStatus !== 'draft' && (
+                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Restauración de Inventario</h3>
+                   
+                   <label className="flex items-center gap-3 cursor-pointer p-1">
+                     <input
+                       type="checkbox"
+                       checked={restoreStock}
+                       onChange={(e) => setRestoreStock(e.target.checked)}
+                       className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
+                     />
+                     <div>
+                       <span className="text-xs font-bold text-slate-700 block">Restaurar Stock de Catálogo</span>
+                       <span className="text-[10px] text-slate-400">Devuelve las unidades vendidas al stock de productos.</span>
+                     </div>
+                   </label>
 
-                {deletingOrder.items.some(i => i.type === '3d') && (
-                  <>
-                    <label className="flex items-center gap-3 cursor-pointer p-1 border-t border-slate-200/50 pt-2">
-                      <input
-                        type="checkbox"
-                        checked={restoreFilament}
-                        onChange={(e) => setRestoreFilament(e.target.checked)}
-                        className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-slate-700 block">Restaurar Gramos de Filamento</span>
-                        <span className="text-[10px] text-slate-400">Devuelve los gramos de filamentos asociados al stock.</span>
-                      </div>
-                    </label>
+                   {deletingOrder.items.some(i => i.type === '3d') && (
+                     <>
+                       <label className="flex items-center gap-3 cursor-pointer p-1 border-t border-slate-200/50 pt-2">
+                         <input
+                           type="checkbox"
+                           checked={restoreFilament}
+                           onChange={(e) => setRestoreFilament(e.target.checked)}
+                           className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
+                         />
+                         <div>
+                           <span className="text-xs font-bold text-slate-700 block">Restaurar Gramos de Filamento</span>
+                           <span className="text-[10px] text-slate-400">Devuelve los gramos de filamentos asociados al stock.</span>
+                         </div>
+                       </label>
 
-                    <label className="flex items-center gap-3 cursor-pointer p-1 border-t border-slate-200/50 pt-2">
-                      <input
-                        type="checkbox"
-                        checked={restoreSupplies}
-                        onChange={(e) => setRestoreSupplies(e.target.checked)}
-                        className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-slate-700 block">Restaurar Insumos/Tornillos</span>
-                        <span className="text-[10px] text-slate-400">Devuelve los insumos consumidos al inventario.</span>
-                      </div>
-                    </label>
-                  </>
-                )}
-              </div>
+                       <label className="flex items-center gap-3 cursor-pointer p-1 border-t border-slate-200/50 pt-2">
+                         <input
+                           type="checkbox"
+                           checked={restoreSupplies}
+                           onChange={(e) => setRestoreSupplies(e.target.checked)}
+                           className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
+                         />
+                         <div>
+                           <span className="text-xs font-bold text-slate-700 block">Restaurar Insumos/Tornillos</span>
+                           <span className="text-[10px] text-slate-400">Devuelve los insumos consumidos al inventario.</span>
+                         </div>
+                       </label>
+                     </>
+                   )}
+                 </div>
+               )}
             </div>
 
             <div className="flex justify-end gap-3 p-6 border-t border-slate-100">

@@ -349,6 +349,7 @@ const MiniStat = ({ label, value, icon: Icon, className }: { label: string; valu
 
 const OrderStatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { label: string; className: string }> = {
+    draft: { label: 'Borrador', className: 'badge-gray' },
     pending: { label: 'Pendiente', className: 'badge-yellow' },
     processing: { label: 'En Proceso', className: 'badge-blue' },
     finished: { label: 'Terminado', className: 'badge-green' },

@@ -13,6 +13,7 @@ import type { Order, OrderItem, OrderStatus, PaymentStatus } from '../types/orde
 import type { NotificationType } from '../types/notification';
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  draft: 'Borrador',
   pending: 'Pendiente',
   processing: 'En proceso',
   finished: 'Terminado',

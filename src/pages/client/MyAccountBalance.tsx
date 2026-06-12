@@ -57,7 +57,7 @@ export const MyAccountBalance: React.FC = () => {
         const list: Order[] = [];
         snap.forEach(d => {
           const o = { id: d.id, ...d.data() } as Order;
-          if (o.orderStatus !== 'cancelled') {
+          if (o.orderStatus !== 'cancelled' && o.orderStatus !== 'draft') {
             list.push(o);
           }
         });

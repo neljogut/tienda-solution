@@ -1,7 +1,7 @@
 import type { ProductType } from './product';
 
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
-export type OrderStatus = 'pending' | 'processing' | 'finished' | 'delivered' | 'cancelled';
+export type OrderStatus = 'draft' | 'pending' | 'processing' | 'finished' | 'delivered' | 'cancelled';
 export type PaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'card' | 'other';
 
 export interface OrderItem {
@@ -53,4 +53,7 @@ export interface Order {
   // Global totals (Internal use)
   totalCost: number;
   totalProfit: number;
+
+  // Shared draft order
+  sharedAt?: string; // ISO date when the draft was shared by owner
 }

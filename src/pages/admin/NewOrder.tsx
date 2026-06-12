@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, query, addDoc, getCountFromServer, doc, getDoc, updateDoc, writeBatch, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product } from '../../types/product';
@@ -10,10 +11,210 @@ import { dedupeCategories, resolveCategoryId, getCategoryTreeIds, getSortedCateg
 import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, Check, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice, recalculateAllProductsInFirestore, resolveInheritedPriceTiers } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
+
+// Helper for client initials
+function getClientInitials(firstName: string, lastName: string): string {
+  const f = firstName ? firstName.trim().charAt(0).toUpperCase() : '';
+  const l = lastName ? lastName.trim().charAt(0).toUpperCase() : '';
+  return `${f}${l}` || '?';
+}
+
+// Helper for client avatar background color style based on the first letter of their first name
+function getClientAvatarStyle(firstName: string): React.CSSProperties {
+  const name = (firstName || '').trim().toLowerCase();
+  if (!name) return { backgroundColor: '#f1f5f9', color: '#475569' };
+  
+  const charCode = name.charCodeAt(0) || 0;
+  
+  const palettes = [
+    { bg: '#e2e8f0', text: '#334155' }, // Slate 200 / 700
+    { bg: '#dbeafe', text: '#1e40af' }, // Blue 100 / 800
+    { bg: '#e0e7ff', text: '#3730a3' }, // Indigo 100 / 800
+    { bg: '#e0f2fe', text: '#0369a1' }, // Sky 100 / 700
+    { bg: '#f1f5f9', text: '#475569' }, // Slate 100 / 600
+    { bg: '#eff6ff', text: '#2563eb' }, // Blue 50 / 600
+    { bg: '#f5f3ff', text: '#5b21b6' }, // Violet 50 / 800
+    { bg: '#ecfeff', text: '#0891b2' }, // Cyan 50 / 800
+  ];
+  
+  const index = charCode % palettes.length;
+  return {
+    backgroundColor: palettes[index].bg,
+    color: palettes[index].text
+  };
+}
+
+interface SearchableClientSelectProps {
+  clients: Client[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
+  clients,
+  value,
+  onChange,
+  placeholder = 'Buscar y seleccionar cliente...'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  const selectedClient = clients.find(c => c.id === value);
+  const displayValue = selectedClient 
+    ? `${selectedClient.firstName} ${selectedClient.lastName}`
+    : '';
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return clients;
+    return clients.filter(c => 
+      c.firstName.toLowerCase().includes(term) ||
+      c.lastName.toLowerCase().includes(term)
+    );
+  }, [clients, search]);
+
+  const updateCoords = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+    }
+  };
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+    updateCoords();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('resize', updateCoords);
+    window.addEventListener('scroll', updateCoords, true);
+
+    const clickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        const portalDropdown = document.getElementById('portal-client-dropdown');
+        if (portalDropdown && portalDropdown.contains(e.target as Node)) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', clickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, true);
+      document.removeEventListener('mousedown', clickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-3 top-3 text-slate-400">
+          <User size={15} />
+        </div>
+        <div className="absolute right-3 top-3 text-slate-400 pointer-events-none">
+          <ChevronDown size={15} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && coords && createPortal(
+        <div 
+          id="portal-client-dropdown"
+          className="fixed bg-white border border-slate-200/80 rounded-xl shadow-2xl z-[999] py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin max-h-56 overflow-y-auto"
+          style={{
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            top: `${coords.top + coords.height + 4}px`,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {filtered.length === 0 ? (
+            <div className="text-slate-400 py-4 text-center flex flex-col items-center gap-1">
+              <User size={18} className="opacity-40" />
+              <span>No se encontraron clientes</span>
+            </div>
+          ) : (
+            filtered.map(c => {
+              const isSelected = c.id === value;
+              const initials = getClientInitials(c.firstName, c.lastName);
+              const avatarStyle = getClientAvatarStyle(c.firstName);
+              const label = getClientLabel(c);
+
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(c.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
+                    isSelected 
+                      ? 'bg-blue-50 text-blue-700' 
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div 
+                      className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold shadow-sm" 
+                      style={avatarStyle}
+                    >
+                      {initials}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-slate-800 truncate">{c.firstName} {c.lastName}</span>
+                      <span className={`text-[10px] truncate font-medium ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}>
+                        {label}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {isSelected && <Check size={14} className="text-blue-600" />}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -25,22 +226,14 @@ export const NewOrder: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
-  const [clientSearchTerm, setClientSearchTerm] = useState('');
-
-  // Sort and filter clients alphabetically
-  const sortedAndFilteredClients = useMemo(() => {
-    const sorted = [...clients].sort((a, b) => {
+  // Sort clients alphabetically
+  const sortedClients = useMemo(() => {
+    return [...clients].sort((a, b) => {
       const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
       const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
       return nameA.localeCompare(nameB, 'es');
     });
-    if (!clientSearchTerm.trim()) return sorted;
-    const term = clientSearchTerm.toLowerCase();
-    return sorted.filter(c => 
-      c.firstName.toLowerCase().includes(term) || 
-      c.lastName.toLowerCase().includes(term)
-    );
-  }, [clients, clientSearchTerm]);
+  }, [clients]);
 
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [paidAmount, setPaidAmount] = useState<number | ''>(0);
@@ -892,39 +1085,12 @@ export const NewOrder: React.FC = () => {
                   Cliente Asignado
                 </label>
                 
-                {/* Search input for clients */}
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 text-slate-400" size={14} />
-                  <input
-                    type="text"
-                    placeholder="Buscar cliente por nombre/apellido..."
-                    value={clientSearchTerm}
-                    onChange={(e) => setClientSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-slate-50/50 focus:ring-2 focus:ring-blue-500"
-                  />
-                  {clientSearchTerm && (
-                    <button
-                      onClick={() => setClientSearchTerm('')}
-                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-
-                <select 
-                  required
+                <SearchableClientSelect 
+                  clients={sortedClients} 
                   value={selectedClientId} 
-                  onChange={e => setSelectedClientId(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="">-- Seleccionar Cliente --</option>
-                  {sortedAndFilteredClients.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName} ({getClientLabel(c)})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedClientId} 
+                  placeholder="-- Seleccionar Cliente --"
+                />
                 
                 {activeClient && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -953,7 +1119,7 @@ export const NewOrder: React.FC = () => {
               </div>
 
               {/* Cart Items list */}
-              <div className="flex-1 border rounded-lg p-3 bg-slate-50/40 space-y-2 overflow-y-auto no-scrollbar min-h-[160px]">
+              <div className="flex-1 border border-slate-100 rounded-xl p-3 bg-slate-50/40 space-y-2.5 overflow-y-auto no-scrollbar min-h-[180px]">
                 {cartItems.length === 0 && (
                   <div className="text-center py-10 text-slate-400 flex flex-col items-center justify-center h-full">
                     <ShoppingCart size={32} className="opacity-30 mb-2" />
@@ -961,27 +1127,95 @@ export const NewOrder: React.FC = () => {
                   </div>
                 )}
                 
-                {cartItems.map(item => (
-                  <div key={item.productId} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-sm gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-800 text-xs truncate">{item.name}</p>
-                      <p className="text-[10px] text-slate-500 font-medium">
-                        ${item.unitPrice.toLocaleString('es-AR')} c/u 
-                        {item.appliedWholesale && <span className="text-purple-600 font-bold ml-1">(May)</span>}
-                      </p>
+                {cartItems.map(item => {
+                  const product = products.find(p => p.id === item.productId);
+                  const imageUrl = product?.mainImage;
+                  const itemSubtotal = item.unitPrice * (item.quantity === '' ? 0 : Number(item.quantity));
+
+                  return (
+                    <div 
+                      key={item.productId} 
+                      className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 hover:border-slate-200/80 shadow-sm transition-all duration-200 group"
+                    >
+                      {/* Product Thumbnail */}
+                      <div className="w-11 h-11 rounded-lg overflow-hidden border border-slate-100 flex-shrink-0 bg-slate-50 flex items-center justify-center relative shadow-inner">
+                        {imageUrl ? (
+                          <img 
+                            src={imageUrl} 
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                            alt={item.name}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-slate-400">
+                            <ShoppingBag size={18} className="opacity-60" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Product details */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-800 text-xs leading-tight truncate group-hover:text-blue-600 transition-colors" title={item.name}>
+                          {item.name}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-slate-500 font-semibold">
+                            ${item.unitPrice.toLocaleString('es-AR')}
+                          </span>
+                          {item.appliedWholesale && (
+                            <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.2 rounded">
+                              May
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quantity Controls & Subtotal */}
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {/* Premium Quantity controls */}
+                        <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 shadow-sm overflow-hidden h-7">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.productId, item.quantity === '' ? 0 : Number(item.quantity) - 1)}
+                            className="w-7 h-full flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-r border-slate-200 transition-colors active:bg-slate-200"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          
+                          <NumericInput
+                            value={item.quantity}
+                            onChange={val => updateQuantity(item.productId, val)}
+                            className="w-9 h-full border-0 bg-white text-center text-xs font-bold text-slate-800 focus:ring-0 focus:outline-none"
+                          />
+                          
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.productId, item.quantity === '' ? 1 : Number(item.quantity) + 1)}
+                            className="w-7 h-full flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-l border-slate-200 transition-colors active:bg-slate-200"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+
+                        {/* Line Subtotal */}
+                        <div className="text-right min-w-[70px]">
+                          <span className="font-extrabold text-slate-800 text-xs tracking-tight">
+                            ${itemSubtotal.toLocaleString('es-AR')}
+                          </span>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button 
+                          type="button"
+                          onClick={() => updateQuantity(item.productId, 0)} 
+                          className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors duration-200"
+                          aria-label={`Eliminar ${item.name}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <NumericInput 
-                        value={item.quantity}
-                        onChange={val => updateQuantity(item.productId, val)}
-                        className="w-12 p-1 border rounded text-center text-xs font-semibold"
-                      />
-                      <button onClick={() => updateQuantity(item.productId, 0)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Observation Fields */}

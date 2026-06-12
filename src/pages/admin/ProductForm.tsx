@@ -22,6 +22,276 @@ import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
 import { TimeHoursMinutesInput } from '../../components/TimeHoursMinutesInput';
 import { formatWeightGrams } from '../../utils/weightGrams';
 
+// Searchable Category Select Component
+const SearchableCategorySelect: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  categories: { id: string; label: string }[];
+  placeholder?: string;
+  required?: boolean;
+}> = ({
+  value,
+  onChange,
+  categories,
+  placeholder = 'Buscar categoría...',
+  required = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const selectedCat = categories.find(c => c.id === value);
+  const displayValue = selectedCat ? selectedCat.label : '';
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return categories;
+    return categories.filter(c => c.label.toLowerCase().includes(term));
+  }, [categories, search]);
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const clickOutside = () => setIsOpen(false);
+    document.addEventListener('click', clickOutside);
+    return () => document.removeEventListener('click', clickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+      <input
+        type="text"
+        placeholder={placeholder}
+        required={required && !value}
+        value={isOpen ? search : displayValue}
+        onChange={e => setSearch(e.target.value)}
+        onFocus={handleFocus}
+        className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 bg-white pr-8 text-ellipsis truncate text-sm"
+      />
+      <div className="absolute right-2.5 top-3.5 text-slate-400 pointer-events-none">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 text-xs">
+          {filtered.length === 0 ? (
+            <p className="text-slate-400 p-2.5 text-center">No se encontraron categorías</p>
+          ) : (
+            filtered.map(c => {
+              const isSelected = c.id === value;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(c.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors ${
+                    isSelected 
+                      ? 'bg-blue-600 text-white font-semibold' 
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Searchable Supply Select Component
+const SearchableSupplySelect: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  supplies: Supply[];
+  placeholder?: string;
+}> = ({
+  value,
+  onChange,
+  supplies,
+  placeholder = 'Buscar insumo...'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const selectedSupply = supplies.find(s => s.id === value);
+  const displayValue = selectedSupply ? selectedSupply.name : '';
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return supplies;
+    return supplies.filter(s => 
+      s.name.toLowerCase().includes(term) ||
+      (s.category && s.category.toLowerCase().includes(term))
+    );
+  }, [supplies, search]);
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const clickOutside = () => setIsOpen(false);
+    document.addEventListener('click', clickOutside);
+    return () => document.removeEventListener('click', clickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={isOpen ? search : displayValue}
+        onChange={e => setSearch(e.target.value)}
+        onFocus={handleFocus}
+        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white pr-8 text-ellipsis truncate"
+      />
+      <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 text-[11px]">
+          {filtered.length === 0 ? (
+            <p className="text-slate-400 p-2.5 text-center">No se encontraron insumos</p>
+          ) : (
+            filtered.map(s => {
+              const isSelected = s.id === value;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(s.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors flex flex-col ${
+                    isSelected 
+                      ? 'bg-blue-600 text-white font-semibold' 
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="font-bold">{s.name}</span>
+                  <span className={`text-[9px] ${isSelected ? 'text-white/85' : 'text-slate-400 font-medium'}`}>
+                    Categoría: {s.category || 'Sin categoría'} · Stock: {s.currentStock || 0} {s.unitOfMeasure || 'u.'}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Searchable Filament Select Component
+const SearchableFilamentSelect: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  filaments: Filament[];
+  placeholder?: string;
+}> = ({
+  value,
+  onChange,
+  filaments,
+  placeholder = 'Buscar filamento...'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const selectedFilament = filaments.find(f => f.id === value);
+  const displayValue = selectedFilament 
+    ? `${selectedFilament.brand} · ${selectedFilament.material} · ${selectedFilament.color}`
+    : '';
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return filaments;
+    return filaments.filter(f => 
+      f.brand.toLowerCase().includes(term) ||
+      f.material.toLowerCase().includes(term) ||
+      f.color.toLowerCase().includes(term)
+    );
+  }, [filaments, search]);
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const clickOutside = () => setIsOpen(false);
+    document.addEventListener('click', clickOutside);
+    return () => document.removeEventListener('click', clickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={isOpen ? search : displayValue}
+        onChange={e => setSearch(e.target.value)}
+        onFocus={handleFocus}
+        className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white pr-8 text-ellipsis truncate"
+      />
+      <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1 text-[11px]">
+          {filtered.length === 0 ? (
+            <p className="text-slate-400 p-2.5 text-center">No se encontraron filamentos</p>
+          ) : (
+            filtered.map(f => {
+              const isSelected = f.id === value;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(f.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors flex flex-col ${
+                    isSelected 
+                      ? 'bg-blue-600 text-white font-semibold' 
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="font-bold">{f.brand} · {f.color}</span>
+                  <span className={`text-[9px] ${isSelected ? 'text-white/85' : 'text-slate-400 font-medium'}`}>
+                    {f.material} · Disp: {f.availableWeightGrams}g
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface ImageEntry {
   url: string;
   file?: File;
@@ -169,6 +439,16 @@ export const ProductForm: React.FC = () => {
       ),
     [formData.filamentLines]
   );
+
+  // Automatically sync product weight with total filament weight when filaments are assigned
+  useEffect(() => {
+    if (formData.type === '3d' && (formData.filamentLines?.length ?? 0) > 0) {
+      setFormData((prev: any) => {
+        if (prev.weightGrams === totalFilamentGrams) return prev;
+        return { ...prev, weightGrams: totalFilamentGrams };
+      });
+    }
+  }, [totalFilamentGrams, formData.type, formData.filamentLines?.length]);
 
   useEffect(() => {
     if (formData.type === '3d') {
@@ -388,24 +668,18 @@ export const ProductForm: React.FC = () => {
               </div>
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
-                <select
+                <SearchableCategorySelect
                   required
-                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 text-sm"
+                  categories={flatCategories}
                   value={formData.categoryId || ''}
-                  onChange={e => {
-                    const catId = e.target.value;
+                  onChange={catId => {
                     setFormData({
                       ...formData,
                       categoryId: catId,
                       category: resolveCategoryLabel(catId),
                     });
                   }}
-                >
-                  <option value="">Seleccionar Categoría</option>
-                  {flatCategories.map(c => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
 
@@ -450,6 +724,7 @@ export const ProductForm: React.FC = () => {
                   required
                   valueGrams={formData.weightGrams}
                   onChangeGrams={val => setFormData({ ...formData, weightGrams: val })}
+                  disabled={(formData.filamentLines?.length ?? 0) > 0}
                   className="[&_label]:block [&_label]:text-sm [&_label]:font-medium [&_label]:text-slate-700 [&_label]:mb-1 [&_label]:normal-case"
                 />
                 <TimeHoursMinutesInput
@@ -473,7 +748,7 @@ export const ProductForm: React.FC = () => {
                     <label className="text-sm font-medium text-slate-700">Filamentos asociados</label>
                     <button
                       type="button"
-                      className="btn-secondary !py-1 !px-2 text-xs flex items-center gap-1"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
                       onClick={() => setFormData({
                         ...formData,
                         filamentLines: [...(formData.filamentLines || []), { supplyId: '', grams: 0 }],
@@ -488,20 +763,15 @@ export const ProductForm: React.FC = () => {
                   {formData.filamentLines?.map((line: FilamentLine, idx: number) => (
                     <div key={idx} className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <select
-                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                        <SearchableFilamentSelect
                           value={line.supplyId}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const next = [...formData.filamentLines];
-                            next[idx] = { ...next[idx], supplyId: e.target.value };
+                            next[idx] = { ...next[idx], supplyId: val };
                             setFormData({ ...formData, filamentLines: next });
                           }}
-                        >
-                          <option value="">Seleccionar filamento...</option>
-                          {filaments.map((f) => (
-                            <option key={f.id} value={f.id}>{f.brand} · {f.material} · {f.color}</option>
-                          ))}
-                        </select>
+                          filaments={filaments}
+                        />
                       </div>
                       <WeightKgGramsInput
                         compact
@@ -538,7 +808,7 @@ export const ProductForm: React.FC = () => {
                     <label className="text-sm font-medium text-slate-700">Insumos asociados</label>
                     <button
                       type="button"
-                      className="btn-secondary !py-1 !px-2 text-xs flex items-center gap-1"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
                       onClick={() => setFormData({
                         ...formData,
                         supplyIds: [...(formData.supplyIds || []), { supplyId: '', quantity: 1 }],
@@ -553,20 +823,15 @@ export const ProductForm: React.FC = () => {
                   {formData.supplyIds?.map((line: SupplyLine, idx: number) => (
                     <div key={idx} className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <select
-                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
+                        <SearchableSupplySelect
                           value={line.supplyId}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const next = [...formData.supplyIds];
-                            next[idx] = { ...next[idx], supplyId: e.target.value };
+                            next[idx] = { ...next[idx], supplyId: val };
                             setFormData({ ...formData, supplyIds: next });
                           }}
-                        >
-                          <option value="">Seleccionar insumo...</option>
-                          {supplies.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
+                          supplies={supplies}
+                        />
                       </div>
                       <div className="w-20">
                         <NumericInput

@@ -893,10 +893,21 @@ export const ClientsManager: React.FC = () => {
                                     </span>
                                   </p>
                                   <p>
-                                    <span className="text-slate-400">Total adeudado:</span>{' '}
-                                    <span className={`font-bold ${(client.totalOwed ?? 0) > 0 ? 'text-red-600' : 'text-slate-600'}`}>
-                                      ${(client.totalOwed ?? 0).toLocaleString('es-AR')}
-                                    </span>
+                                    {(client.totalOwed ?? 0) < 0 ? (
+                                      <>
+                                        <span className="text-slate-400">Saldo a favor:</span>{' '}
+                                        <span className="font-bold text-emerald-600">
+                                          ${Math.abs(client.totalOwed ?? 0).toLocaleString('es-AR')}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="text-slate-400">Total adeudado:</span>{' '}
+                                        <span className={`font-bold ${(client.totalOwed ?? 0) > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                                          ${(client.totalOwed ?? 0).toLocaleString('es-AR')}
+                                        </span>
+                                      </>
+                                    )}
                                   </p>
                                   <p>
                                     <span className="text-slate-400">Registrado:</span>{' '}
@@ -1017,13 +1028,21 @@ export const ClientsManager: React.FC = () => {
                         <div className={`border rounded-lg p-2 ${
                           (client.totalOwed ?? 0) > 0 
                             ? 'bg-red-50/50 border-red-100/50' 
-                            : 'bg-slate-50/50 border-slate-100/50'
+                            : (client.totalOwed ?? 0) < 0
+                              ? 'bg-emerald-50/50 border-emerald-100/50'
+                              : 'bg-slate-50/50 border-slate-100/50'
                         }`}>
-                          <span className="text-[9px] text-slate-400 block uppercase font-bold">Total adeudado</span>
+                          <span className="text-[9px] text-slate-400 block uppercase font-bold">
+                            {(client.totalOwed ?? 0) < 0 ? 'Saldo a favor' : 'Total adeudado'}
+                          </span>
                           <span className={`font-bold text-sm ${
-                            (client.totalOwed ?? 0) > 0 ? 'text-red-600' : 'text-slate-600'
+                            (client.totalOwed ?? 0) > 0 
+                              ? 'text-red-600' 
+                              : (client.totalOwed ?? 0) < 0
+                                ? 'text-emerald-600'
+                                : 'text-slate-600'
                           }`}>
-                            ${(client.totalOwed ?? 0).toLocaleString('es-AR')}
+                            ${Math.abs(client.totalOwed ?? 0).toLocaleString('es-AR')}
                           </span>
                         </div>
                       </div>

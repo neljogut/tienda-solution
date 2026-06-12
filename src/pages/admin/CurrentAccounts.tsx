@@ -99,12 +99,12 @@ export const CurrentAccounts: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchParams, clients, setSearchParams]);
 
-  // Filter clients with active debt (>0 totalOwed) matching search term
+  // Filter clients with active balance (non-zero totalOwed) matching search term
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
       const nameMatch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
-      const hasDebt = (c.totalOwed || 0) > 0;
-      return hasDebt && nameMatch;
+      const hasBalance = (c.totalOwed || 0) !== 0;
+      return hasBalance && nameMatch;
     });
   }, [clients, searchTerm]);
 
@@ -122,7 +122,7 @@ export const CurrentAccounts: React.FC = () => {
   // Open modal
   const openPaymentModal = (client: Client, declarationId?: string) => {
     setSelectedClient(client);
-    setPaymentAmount(client.totalOwed || 0);
+    setPaymentAmount(client.totalOwed !== undefined && client.totalOwed > 0 ? client.totalOwed : 0);
     setPaymentMethod('cash');
     setObservations('');
     setLinkedDeclarationId(declarationId || null);
@@ -135,7 +135,7 @@ export const CurrentAccounts: React.FC = () => {
       return;
     }
     setSelectedClient(client);
-    setPaymentAmount(Math.min(declaration.amount, client.totalOwed || declaration.amount));
+    setPaymentAmount(declaration.amount);
     setPaymentMethod(declaration.method === 'transfer' ? 'transfer' : 'mercadopago');
     setObservations(
       declaration.type === 'order_transfer' && declaration.orderNumber
@@ -180,9 +180,6 @@ export const CurrentAccounts: React.FC = () => {
     e.preventDefault();
     const amt = paymentAmount === '' ? 0 : Number(paymentAmount);
     if (!selectedClient || amt <= 0) return;
-    if (amt > (selectedClient.totalOwed || 0)) {
-      return alert("El monto ingresado supera el saldo adeudado del cliente.");
-    }
 
     setSaving(true);
 
@@ -209,9 +206,9 @@ export const CurrentAccounts: React.FC = () => {
         });
       }
 
-      // 2. Update Client totalOwed
+      // 2. Update Client totalOwed (allowing negative values for credit balance)
       const clientRef = doc(db, 'clients', selectedClient.id);
-      const newOwed = Math.max(0, (selectedClient.totalOwed || 0) - amt);
+      const newOwed = (selectedClient.totalOwed || 0) - amt;
       batch.update(clientRef, { totalOwed: newOwed });
 
       // Commit DB changes
@@ -413,8 +410,21 @@ export const CurrentAccounts: React.FC = () => {
                   </div>
                   
                   <div className="mb-3 sm:mb-4">
-                    <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider font-semibold">Total adeudado:</p>
-                    <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-0.5">${client.totalOwed?.toLocaleString('es-AR')}</p>
+                    {client.totalOwed !== undefined && client.totalOwed < 0 ? (
+                      <>
+                        <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider font-semibold">Saldo a favor:</p>
+                        <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-0.5">
+                          ${Math.abs(client.totalOwed).toLocaleString('es-AR')}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider font-semibold">Total adeudado:</p>
+                        <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-0.5">
+                          ${(client.totalOwed || 0).toLocaleString('es-AR')}
+                        </p>
+                      </>
+                    )}
                   </div>
                   
                   {/* Expandable Order List */}
@@ -477,10 +487,17 @@ export const CurrentAccounts: React.FC = () => {
 
             {/* Body */}
             <div className="p-5 space-y-4">
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3.5 flex justify-between items-center">
-                <span className="text-xs font-semibold text-amber-800">Saldo Adeudado Actual:</span>
-                <span className="font-extrabold text-amber-600 text-lg">${selectedClient.totalOwed?.toLocaleString('es-AR')}</span>
-              </div>
+              {selectedClient.totalOwed !== undefined && selectedClient.totalOwed < 0 ? (
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 flex justify-between items-center">
+                  <span className="text-xs font-semibold text-emerald-800">Saldo a Favor Actual:</span>
+                  <span className="font-extrabold text-emerald-600 text-lg">${Math.abs(selectedClient.totalOwed).toLocaleString('es-AR')}</span>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3.5 flex justify-between items-center">
+                  <span className="text-xs font-semibold text-amber-800">Saldo Adeudado Actual:</span>
+                  <span className="font-extrabold text-amber-600 text-lg">${(selectedClient.totalOwed || 0).toLocaleString('es-AR')}</span>
+                </div>
+              )}
 
               <div>
                 <label className="input-label">Monto a Abonar ($) <span className="text-red-500">*</span></label>
@@ -493,6 +510,19 @@ export const CurrentAccounts: React.FC = () => {
                   placeholder="0.00"
                 />
               </div>
+
+              {paymentAmount !== '' && Number(paymentAmount) > (selectedClient.totalOwed || 0) && (
+                <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3.5 rounded-xl">
+                  <div className="flex items-start gap-2 font-medium">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                    <span>
+                      El monto supera el saldo adeudado actual (${(selectedClient.totalOwed || 0).toLocaleString('es-AR')}).
+                      El excedente (${(Number(paymentAmount) - (selectedClient.totalOwed || 0)).toLocaleString('es-AR')})
+                      quedará como saldo a favor (crédito) del cliente.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -553,7 +583,7 @@ export const CurrentAccounts: React.FC = () => {
               </button>
               <button 
                 type="submit" 
-                disabled={saving || paymentAmount === '' || Number(paymentAmount) <= 0 || Number(paymentAmount) > (selectedClient.totalOwed || 0)}
+                disabled={saving || paymentAmount === '' || Number(paymentAmount) <= 0}
                 className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving && <Loader2 className="animate-spin" size={16} />}

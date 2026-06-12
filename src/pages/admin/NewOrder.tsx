@@ -693,11 +693,6 @@ export const NewOrder: React.FC = () => {
       return alert(`La seña mínima requerida para este pedido es de $${minDepositRequired.toLocaleString('es-AR')} (${requiredDepositPercent}%).`);
     }
 
-    // Cash session check if there's a payment
-    if (paidAmountAmt > 0 && !activeSession) {
-      return alert("La caja diaria está cerrada. Abre la caja en la sección de Caja para poder registrar pagos, o establece la seña en $0.");
-    }
-
     setLoading(true);
     
     try {
@@ -1436,9 +1431,9 @@ export const NewOrder: React.FC = () => {
                 
                 {/* Cash Session Status warning */}
                 {paidAmountAmt > 0 && !activeSession && (
-                  <div className="bg-red-50 text-red-700 border border-red-100 rounded-lg p-2 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold">
-                    <AlertCircle size={13} className="flex-shrink-0" />
-                    <span>La caja diaria está cerrada. No se registrará el pago.</span>
+                  <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-lg p-2 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold animate-fadeIn">
+                    <AlertCircle size={13} className="flex-shrink-0 text-amber-600" />
+                    <span>La caja diaria está cerrada. El pago se aplicará al pedido pero no quedará registrado en los movimientos de caja diaria.</span>
                   </div>
                 )}
 

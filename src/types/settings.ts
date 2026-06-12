@@ -11,6 +11,7 @@ export interface PricingSettings3D {
   wholesaleDiscountPercentKeychain: number;
   wholesaleThresholdGramsNormal: number;
   wholesaleThresholdGramsKeychain: number;
+  employeeCommissionPercent?: number;
 }
 
 export interface PricingSettingsResale {

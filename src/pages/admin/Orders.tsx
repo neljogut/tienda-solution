@@ -102,7 +102,7 @@ export const Orders: React.FC = () => {
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { hasPermission } = useAuth();
+  const { hasPermission, userData } = useAuth();
 
   // Sorting state
   const [sortBy, setSortBy] = useState<'orderNumber' | 'customerName' | 'date' | 'orderStatus' | 'paymentStatus' | 'totalAmount'>('date');
@@ -637,8 +637,15 @@ export const Orders: React.FC = () => {
                             </td>
                             
                             {/* Customer */}
-                            <td className="p-4 font-semibold text-slate-700">
-                              {order.customerName}
+                            <td className="p-4 font-semibold text-slate-700 text-sm">
+                              <div className="flex flex-col">
+                                <span>{order.customerName}</span>
+                                {userData?.role === 'owner' && order.commissionEmployeeName && (
+                                  <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 mt-0.5 self-start font-normal">
+                                    Colaborador: {order.commissionEmployeeName}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             
                             {/* Date */}
@@ -688,32 +695,34 @@ export const Orders: React.FC = () => {
                                     )}
                                   </button>
                                 )}
+                                {hasPermission('generateClientInvoices') && (
+                                  <button
+                                    onClick={() => generateClientPDF(order, business)}
+                                    disabled={order.orderStatus === 'draft'}
+                                    className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
+                                    title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Comprobante Cliente"}
+                                  >
+                                    <FileDown size={16} />
+                                  </button>
+                                )}
                                 <button
-                                   onClick={() => generateClientPDF(order, business)}
-                                   disabled={order.orderStatus === 'draft'}
-                                   className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
-                                   title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Comprobante Cliente"}
-                                 >
-                                   <FileDown size={16} />
-                                 </button>
-                                 <button
-                                   onClick={() => generateInternalPDF(order, business)}
-                                   disabled={order.orderStatus === 'draft'}
-                                   className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
-                                   title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
-                                 >
-                                   <FileText size={16} />
-                                 </button>
+                                  onClick={() => generateInternalPDF(order, business)}
+                                  disabled={order.orderStatus === 'draft'}
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
+                                  title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
+                                >
+                                  <FileText size={16} />
+                                </button>
                                 {canEditOrder && (
                                   <button
-                                     onClick={() => {
-                                       setDeletingOrder(order);
-                                       setRestoreStock(order.orderStatus !== 'draft');
-                                       setRestoreFilament(order.orderStatus !== 'draft');
-                                       setRestoreSupplies(order.orderStatus !== 'draft');
-                                     }}
-                                     className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                                     title="Eliminar Pedido"
+                                    onClick={() => {
+                                      setDeletingOrder(order);
+                                      setRestoreStock(order.orderStatus !== 'draft');
+                                      setRestoreFilament(order.orderStatus !== 'draft');
+                                      setRestoreSupplies(order.orderStatus !== 'draft');
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                    title="Eliminar Pedido"
                                   >
                                     <Trash2 size={16} />
                                   </button>
@@ -828,8 +837,13 @@ export const Orders: React.FC = () => {
                       </div>
 
                       {/* Row 2: Customer Name */}
-                      <div>
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-slate-700 text-sm">{order.customerName}</h3>
+                        {userData?.role === 'owner' && order.commissionEmployeeName && (
+                          <span className="text-[9px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 leading-none">
+                            {order.commissionEmployeeName}
+                          </span>
+                        )}
                       </div>
 
                       {/* Row 3: Badges */}
@@ -881,14 +895,16 @@ export const Orders: React.FC = () => {
                               )}
                             </button>
                           )}
-                          <button
-                            onClick={() => generateClientPDF(order, business)}
-                            disabled={order.orderStatus === 'draft'}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Comprobante Cliente"}
-                          >
-                            <FileDown size={14} />
-                          </button>
+                          {hasPermission('generateClientInvoices') && (
+                            <button
+                              onClick={() => generateClientPDF(order, business)}
+                              disabled={order.orderStatus === 'draft'}
+                              className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Comprobante Cliente"}
+                            >
+                              <FileDown size={14} />
+                            </button>
+                          )}
                           <button
                             onClick={() => generateInternalPDF(order, business)}
                             disabled={order.orderStatus === 'draft'}

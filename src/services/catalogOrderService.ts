@@ -60,6 +60,28 @@ export async function createCatalogOrderClient(
 
   const resolvedCustomerId = await resolveCustomerId(currentUser, userData);
 
+  let employeeId: string | undefined = undefined;
+  let employeeName: string | undefined = undefined;
+  let clientData: any = null;
+
+  if (resolvedCustomerId) {
+    const clientSnap = await getDoc(doc(db, 'clients', resolvedCustomerId));
+    if (clientSnap.exists()) {
+      clientData = clientSnap.data();
+      employeeId = clientData.employeeId;
+      employeeName = clientData.employeeName;
+    }
+  }
+
+  const pricing3dSnap = await getDoc(doc(db, 'settings', 'pricing3d'));
+  const commissionPercent = pricing3dSnap.exists()
+    ? (pricing3dSnap.data().employeeCommissionPercent ?? 10)
+    : 10;
+
+  const totalProfit = totalAmount - totalCost;
+  const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+  const commissionPaidStatus = employeeId ? 'pending' : undefined;
+
   const newOrder = {
     orderNumber,
     customerId: resolvedCustomerId,
@@ -76,7 +98,14 @@ export async function createCatalogOrderClient(
     exchangeRateUsdUsed: exchangeRate,
     exchangeRateDate: new Date().toISOString(),
     totalCost,
-    totalProfit: totalAmount - totalCost,
+    totalProfit,
+    ...(employeeId ? {
+      commissionEmployeeId: employeeId,
+      commissionEmployeeName: employeeName || 'Colaborador',
+      commissionPercent,
+      commissionAmount,
+      commissionPaidStatus,
+    } : {}),
   };
 
   const orderRef = await addDoc(collection(db, 'orders'), newOrder);
@@ -84,16 +113,12 @@ export async function createCatalogOrderClient(
 
   const batch = writeBatch(db);
 
-  if (resolvedCustomerId) {
+  if (resolvedCustomerId && clientData) {
     const clientRef = doc(db, 'clients', resolvedCustomerId);
-    const clientSnap = await getDoc(clientRef);
-    if (clientSnap.exists()) {
-      const clientData = clientSnap.data();
-      batch.update(clientRef, {
-        totalPurchased: (clientData.totalPurchased || 0) + totalAmount,
-        totalOwed: (clientData.totalOwed || 0) + totalAmount,
-      });
-    }
+    batch.update(clientRef, {
+      totalPurchased: (clientData.totalPurchased || 0) + totalAmount,
+      totalOwed: (clientData.totalOwed || 0) + totalAmount,
+    });
   }
 
   const saleLines: Array<Record<string, unknown>> = [];

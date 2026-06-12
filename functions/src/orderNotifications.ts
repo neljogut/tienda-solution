@@ -67,6 +67,11 @@ export const notifyStaffOnNewOrder = onDocumentCreated(
     const orderId = snap.id;
     const staffUids = await getStaffRecipientUids();
 
+    const commissionEmployeeId = order.commissionEmployeeId as string | undefined;
+    if (commissionEmployeeId && !staffUids.includes(commissionEmployeeId)) {
+      staffUids.push(commissionEmployeeId);
+    }
+
     if (staffUids.length === 0) {
       console.log("notifyStaffOnNewOrder: no hay staff para notificar.");
       return;

@@ -12,7 +12,8 @@ export const default3D: PricingSettings3D = {
   "wholesaleDiscountPercentNormal": 15,
   "wholesaleDiscountPercentKeychain": 10,
   "wholesaleThresholdGramsNormal": 1000,
-  "wholesaleThresholdGramsKeychain": 600
+  "wholesaleThresholdGramsKeychain": 600,
+  "employeeCommissionPercent": 10
 };
 
 export const defaultResale: PricingSettingsResale = {

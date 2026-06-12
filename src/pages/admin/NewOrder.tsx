@@ -709,6 +709,13 @@ export const NewOrder: React.FC = () => {
 
       const sanitizedItems = cartItems.map(item => ({ ...item, quantity: Number(item.quantity) }));
 
+      const totalProfit = totalAmount - totalCost;
+      const employeeId = activeClient?.employeeId;
+      const employeeName = activeClient?.employeeName;
+      const commissionPercent = pricing3dSettings?.employeeCommissionPercent ?? 10;
+      const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+      const commissionPaidStatus = employeeId ? 'pending' : undefined;
+
       const orderData: Omit<Order, 'id'> = {
         orderNumber,
         customerId: selectedClientId,
@@ -725,7 +732,14 @@ export const NewOrder: React.FC = () => {
         exchangeRateUsdUsed: exchangeRate,
         exchangeRateDate: new Date().toISOString(),
         totalCost,
-        totalProfit: totalAmount - totalCost
+        totalProfit,
+        ...(employeeId ? {
+          commissionEmployeeId: employeeId,
+          commissionEmployeeName: employeeName || 'Colaborador',
+          commissionPercent,
+          commissionAmount,
+          commissionPaidStatus
+        } : {})
       };
 
       // 2. Add Order Document
@@ -908,6 +922,13 @@ export const NewOrder: React.FC = () => {
       const exchangeRateSnap = await getDoc(doc(db, 'settings', 'exchangeRate'));
       const currentExchangeRate = exchangeRateSnap.exists() ? (exchangeRateSnap.data() as ExchangeRateData).currentUsdToArs : exchangeRate;
 
+      const totalProfit = totalAmount - totalCost;
+      const employeeId = activeClient?.employeeId;
+      const employeeName = activeClient?.employeeName;
+      const commissionPercent = pricing3dSettings?.employeeCommissionPercent ?? 10;
+      const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+      const commissionPaidStatus = employeeId ? 'pending' : undefined;
+
       const draftData = {
         orderNumber: 0, // will be assigned when finalized
         customerId: selectedClientId,
@@ -924,8 +945,15 @@ export const NewOrder: React.FC = () => {
         exchangeRateUsdUsed: currentExchangeRate,
         exchangeRateDate: new Date().toISOString(),
         totalCost,
-        totalProfit: totalAmount - totalCost,
+        totalProfit,
         sharedAt: new Date().toISOString(),
+        ...(employeeId ? {
+          commissionEmployeeId: employeeId,
+          commissionEmployeeName: employeeName || 'Colaborador',
+          commissionPercent,
+          commissionAmount,
+          commissionPaidStatus
+        } : {})
       };
 
       const draftRef = await addDoc(collection(db, 'orders'), draftData);

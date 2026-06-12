@@ -442,6 +442,7 @@ export const Employees: React.FC = () => {
     { key: 'viewInternalPDFs', label: 'Ver PDFs Internos de Control', group: 'Archivos PDF' },
     { key: 'downloadInternalPDFs', label: 'Descargar PDFs Internos de Costos', group: 'Archivos PDF' },
     { key: 'downloadBalancePDFs', label: 'Descargar PDFs de Balance General', group: 'Archivos PDF' },
+    { key: 'generateClientInvoices', label: 'Emitir/Descargar Comprobantes de Cliente', group: 'Archivos PDF' },
     { key: 'viewPriceSettings', label: 'Ver/Editar Parámetros de Precios', group: 'Configuración' }
   ];
 

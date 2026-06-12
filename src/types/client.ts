@@ -28,6 +28,8 @@ export interface Client {
   // Computed / denormalized
   totalPurchased?: number;
   totalOwed?: number;
+  employeeId?: string;
+  employeeName?: string;
 }
 
 /**

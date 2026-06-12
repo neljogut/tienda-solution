@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { migrateClient, getClientLabel } from '../../types/client';
 import type { Client } from '../../types/client';
+import { useAuth } from '../../context/AuthContext';
+import type { UserData } from '../../types/user';
 import {
   Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin,
   Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert
@@ -24,6 +26,8 @@ const emptyForm = () => ({
   isWholesale: false,
   isTrusted: false,
   observations: '',
+  employeeId: '',
+  employeeName: '',
 });
 
 function getClientBadges(client: Pick<Client, 'isWholesale' | 'isTrusted'>) {
@@ -71,6 +75,22 @@ export const ClientsManager: React.FC = () => {
   const [selectedOrphanTargets, setSelectedOrphanTargets] = useState<Record<string, string>>({});
   const [linkOrphanLoading, setLinkOrphanLoading] = useState(false);
   const [dismissedPairs, setDismissedPairs] = useState<string[]>([]);
+
+  const { userData } = useAuth();
+  const [employees, setEmployees] = useState<UserData[]>([]);
+
+  useEffect(() => {
+    if (userData?.role !== 'owner') return;
+    const q = query(collection(db, 'users'), where('role', '==', 'employee'));
+    const unsubscribeEmployees = onSnapshot(q, (snapshot) => {
+      const list: UserData[] = [];
+      snapshot.forEach((d) => {
+        list.push({ uid: d.id, ...d.data() } as UserData);
+      });
+      setEmployees(list);
+    });
+    return () => unsubscribeEmployees();
+  }, [userData]);
 
   /* ── real-time listener ── */
   useEffect(() => {
@@ -243,6 +263,8 @@ export const ClientsManager: React.FC = () => {
       isWholesale: client.isWholesale ?? false,
       isTrusted: client.isTrusted ?? false,
       observations: client.observations || '',
+      employeeId: client.employeeId || '',
+      employeeName: client.employeeName || '',
     });
     setModalOpen(true);
   };
@@ -278,6 +300,13 @@ export const ClientsManager: React.FC = () => {
         observations: form.observations?.trim() || '',
       };
 
+      if (userData?.role === 'owner') {
+        data.employeeId = form.employeeId;
+        data.employeeName = form.employeeId
+          ? (employees.find(emp => emp.uid === form.employeeId)?.displayName || 'Empleado')
+          : '';
+      }
+
       if (editingClient) {
         await updateDoc(doc(db, 'clients', editingClient.id), data);
         
@@ -298,12 +327,22 @@ export const ClientsManager: React.FC = () => {
           console.error("Error updating order customer names:", e);
         }
       } else {
-        await addDoc(collection(db, 'clients'), {
+        const newClientData: Record<string, any> = {
           ...data,
           createdAt: new Date().toISOString(),
           totalPurchased: 0,
           totalOwed: 0,
-        });
+        };
+        if (userData?.role === 'employee') {
+          newClientData.employeeId = userData.uid;
+          newClientData.employeeName = userData.displayName || userData.email || 'Empleado';
+        } else if (userData?.role === 'owner') {
+          newClientData.employeeId = form.employeeId;
+          newClientData.employeeName = form.employeeId
+            ? (employees.find(emp => emp.uid === form.employeeId)?.displayName || 'Empleado')
+            : '';
+        }
+        await addDoc(collection(db, 'clients'), newClientData);
       }
       closeModal();
     } catch (err) {
@@ -725,9 +764,16 @@ export const ClientsManager: React.FC = () => {
                               <p className="font-semibold text-slate-800">
                                 {client.lastName}, {client.firstName}
                               </p>
-                              {client.cuit && (
-                                <p className="text-xs text-slate-400">CUIT: {client.cuit}</p>
-                              )}
+                              <div className="flex flex-col gap-0.5 mt-0.5">
+                                {client.cuit && (
+                                  <p className="text-xs text-slate-400">CUIT: {client.cuit}</p>
+                                )}
+                                {client.employeeName && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 w-max">
+                                    Colaborador: {client.employeeName}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -961,9 +1007,16 @@ export const ClientsManager: React.FC = () => {
                       <p className="font-semibold text-slate-800 text-sm">
                         {client.lastName}, {client.firstName}
                       </p>
-                      {client.cuit && (
-                        <p className="text-[10px] text-slate-400">CUIT: {client.cuit}</p>
-                      )}
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        {client.cuit && (
+                          <p className="text-[10px] text-slate-400">CUIT: {client.cuit}</p>
+                        )}
+                        {client.employeeName && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 w-max">
+                            Colaborador: {client.employeeName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1261,32 +1314,34 @@ export const ClientsManager: React.FC = () => {
                 <label className="input-label">Clasificación del Cliente</label>
                 <div className="flex flex-col sm:flex-row gap-3">
                   {/* Wholesale toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, isWholesale: !form.isWholesale })}
-                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
-                      form.isWholesale
-                        ? 'border-purple-500 bg-purple-50 shadow-md shadow-purple-500/10'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                      form.isWholesale ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      <Crown size={20} />
-                    </div>
-                    <div className="text-left">
-                      <p className={`font-semibold text-sm ${form.isWholesale ? 'text-purple-700' : 'text-slate-700'}`}>
-                        Mayorista
-                      </p>
-                      <p className="text-xs text-slate-400">Accede a precios mayoristas</p>
-                    </div>
-                    <div className={`ml-auto w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      form.isWholesale ? 'bg-purple-500 border-purple-500 text-white' : 'border-slate-300'
-                    }`}>
-                      {form.isWholesale && <span className="text-xs font-bold">✓</span>}
-                    </div>
-                  </button>
+                  {userData?.role !== 'employee' && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, isWholesale: !form.isWholesale })}
+                      className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                        form.isWholesale
+                          ? 'border-purple-500 bg-purple-50 shadow-md shadow-purple-500/10'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                        form.isWholesale ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        <Crown size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className={`font-semibold text-sm ${form.isWholesale ? 'text-purple-700' : 'text-slate-700'}`}>
+                          Mayorista
+                        </p>
+                        <p className="text-xs text-slate-400">Accede a precios mayoristas</p>
+                      </div>
+                      <div className={`ml-auto w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                        form.isWholesale ? 'bg-purple-500 border-purple-500 text-white' : 'border-slate-300'
+                      }`}>
+                        {form.isWholesale && <span className="text-xs font-bold">✓</span>}
+                      </div>
+                    </button>
+                  )}
 
                   {/* Trusted toggle */}
                   <button
@@ -1320,6 +1375,33 @@ export const ClientsManager: React.FC = () => {
                   Resultado: <span className="font-semibold text-slate-600">{getClientLabel(form)}</span>
                 </p>
               </div>
+
+              {/* Collaborator Assignment (only for Owner) */}
+              {userData?.role === 'owner' && (
+                <div className="space-y-1">
+                  <label className="input-label">Asignar Colaborador (Comisiones)</label>
+                  <select
+                    name="employeeId"
+                    className="input text-sm bg-white"
+                    value={form.employeeId}
+                    onChange={e => {
+                      const selectedEmp = employees.find(emp => emp.uid === e.target.value);
+                      setForm({
+                        ...form,
+                        employeeId: e.target.value,
+                        employeeName: selectedEmp ? (selectedEmp.displayName || selectedEmp.email || 'Empleado') : ''
+                      });
+                    }}
+                  >
+                    <option value="">Ninguno / Mío (Owner)</option>
+                    {employees.map(emp => (
+                      <option key={emp.uid} value={emp.uid}>
+                        {emp.displayName || emp.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Observations */}
               <div>

@@ -56,4 +56,11 @@ export interface Order {
 
   // Shared draft order
   sharedAt?: string; // ISO date when the draft was shared by owner
+
+  // Commission tracking
+  commissionEmployeeId?: string;
+  commissionEmployeeName?: string;
+  commissionPercent?: number;
+  commissionAmount?: number;
+  commissionPaidStatus?: 'pending' | 'paid';
 }

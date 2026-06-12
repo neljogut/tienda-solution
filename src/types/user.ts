@@ -29,6 +29,7 @@ export interface UserPermissions {
   downloadInternalPDFs?: boolean;
   downloadBalancePDFs?: boolean;
   viewManualPrices?: boolean;
+  generateClientInvoices?: boolean;
 }
 
 export interface UserData {

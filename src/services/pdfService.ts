@@ -752,6 +752,49 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
   docPdf.text(`- ${formatCurrency(totalCostoDesgaste + totalCostoLuz + totalCostoMargenError)}`, 193, y + 4.5, { align: 'right' });
   docPdf.setTextColor(greyDark);
 
+  // 6. COMISIÓN Y NETO PROPIETARIO
+  if (order.commissionEmployeeId && order.commissionAmount !== undefined) {
+    const commission = order.commissionAmount;
+    const netOwnerProfit = ganancia - commission;
+
+    // Check Page height remaining
+    if (y > 220) {
+      docPdf.addPage();
+      y = 15;
+    }
+
+    y += 12;
+    sectionHeader('COMISIÓN Y MARGEN NETO PROPIETARIO', y);
+    y += 6;
+    docPdf.setFillColor('#f3e8ff'); // purple100
+    docPdf.rect(15, y, 180, 6, 'F');
+    docPdf.rect(15, y, 180, 6, 'S');
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.text('Concepto', 17, y + 4.5);
+    docPdf.text('Detalle', 75, y + 4.5);
+    docPdf.text('Importe', 193, y + 4.5, { align: 'right' });
+
+    docPdf.setFont('helvetica', 'normal');
+    // Row: Comisión Colaborador
+    y += 6;
+    docPdf.rect(15, y, 180, 6, 'S');
+    docPdf.text('Comisión Colaborador', 17, y + 4.5);
+    docPdf.text(`${order.commissionEmployeeName || 'Empleado'} (${order.commissionPercent ?? 10}%)`, 75, y + 4.5);
+    docPdf.setTextColor('#991b1b');
+    docPdf.text(`- ${formatCurrency(commission)}`, 193, y + 4.5, { align: 'right' });
+    docPdf.setTextColor(greyDark);
+
+    // Row: Margen Neto Propietario
+    y += 6;
+    docPdf.rect(15, y, 180, 6, 'S');
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.text('Margen Neto Propietario', 17, y + 4.5);
+    docPdf.text('Ganancia neta libre de comisiones', 75, y + 4.5);
+    docPdf.setTextColor(netOwnerProfit >= 0 ? '#14532d' : '#7f1d1d');
+    docPdf.text(`${formatCurrency(netOwnerProfit)}`, 193, y + 4.5, { align: 'right' });
+    docPdf.setTextColor(greyDark);
+  }
+
   // Centered footer
   docPdf.setFont('helvetica', 'normal');
   docPdf.setFontSize(8);

@@ -32,6 +32,8 @@ import { MyAccountBalance } from './pages/client/MyAccountBalance';
 import { Checkout } from './pages/client/Checkout';
 import { PaymentResult } from './pages/client/PaymentResult';
 import { SharedOrder } from './pages/SharedOrder';
+import { MyBalance } from './pages/client/MyBalance';
+import { Liquidations } from './pages/admin/Liquidations';
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -204,6 +206,16 @@ function App() {
             <Route path="employees" element={
               <ProtectedRoute requiredRole="owner">
                 <Employees />
+              </ProtectedRoute>
+            } />
+            <Route path="employee/balance" element={
+              <ProtectedRoute requiredRole="employee">
+                <MyBalance />
+              </ProtectedRoute>
+            } />
+            <Route path="admin/liquidations" element={
+              <ProtectedRoute requiredRole="owner">
+                <Liquidations />
               </ProtectedRoute>
             } />
             

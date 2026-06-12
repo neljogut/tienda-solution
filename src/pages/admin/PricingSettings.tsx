@@ -589,6 +589,30 @@ export const PricingSettings: React.FC = () => {
         </div>
       </section>
 
+      {/* ─── 4c. Collaborator Commission ─────────────────────────────────── */}
+      <section className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow-sm overflow-hidden animate-fadeIn">
+        <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-slate-200 flex items-center gap-3">
+          <Percent size={22} className="text-purple-600" />
+          <h2 className="text-lg font-bold text-slate-800">Comisiones de Colaboradores</h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <FieldCard
+              label="Porcentaje de Comisión sobre la Ganancia Real"
+              icon={<Percent size={16} />}
+              value={settings3D.employeeCommissionPercent ?? 10}
+              onChange={(v) => update3D('employeeCommissionPercent', v === '' ? 0 : Number(v))}
+              suffix="%"
+            />
+            <div className="flex items-center gap-3 p-4 bg-purple-50/50 rounded-xl border border-purple-100">
+              <span className="text-xs font-semibold text-slate-600 leading-relaxed">
+                Esta comisión se calcula sobre la ganancia real de cada pedido (monto del pedido menos el costo total del mismo) para los clientes asignados al colaborador. El pago se efectiviza únicamente cuando el pedido se encuentra completamente pagado.
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── 5. Live Preview Calculator ──────────────────────────────────── */}
       <section className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 bg-gradient-to-r from-cyan-50 to-sky-50 border-b border-slate-200 flex items-center gap-3">

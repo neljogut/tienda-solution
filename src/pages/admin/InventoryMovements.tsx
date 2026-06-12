@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { collection, query, getDocs, orderBy, onSnapshot, doc, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -9,7 +9,7 @@ import { formatWeightGrams } from '../../utils/weightGrams';
 import {
   ArrowLeftRight, Search, Filter, Eye, X,
   ArrowUpRight, ArrowDownRight, Edit3, User, Clock, AlertCircle, ShoppingBag,
-  Package, Droplet, Receipt, Loader2, Trash2, Edit,
+  Package, Droplet, Receipt, Loader2, Trash2, Edit, Palette, Check, ChevronDown,
 } from 'lucide-react';
 
 type ItemInfo = { name: string; image?: string; type: string; unit: 'g' | 'u.' };
@@ -65,6 +65,234 @@ function groupLinesByItem(lines: InventoryMovementLine[]): InventoryMovementLine
 
   return keys.map((k) => grouped[k]);
 }
+
+// Helper to get color preview styles for filaments
+function getFilamentColorStyle(colorName: string): React.CSSProperties {
+  const name = colorName.toLowerCase().trim();
+  
+  if (name.includes('arcoiris') || name.includes('rainbow') || name.includes('arcoris') || name.includes('multicolor')) {
+    return { background: 'linear-gradient(135deg, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6)' };
+  }
+  if (name.includes('oro') || name.includes('dorado') || name.includes('gold')) {
+    return { background: 'linear-gradient(135deg, #f5c453, #c58d20)' };
+  }
+  if (name.includes('plata') || name.includes('plateado') || name.includes('silver')) {
+    return { background: 'linear-gradient(135deg, #e2e8f0, #94a3b8)' };
+  }
+  if (name.includes('cobre') || name.includes('copper')) {
+    return { background: 'linear-gradient(135deg, #f97316, #b45309)' };
+  }
+  if (name.includes('bronce') || name.includes('bronze')) {
+    return { background: 'linear-gradient(135deg, #ca8a04, #854d0e)' };
+  }
+  if (name.includes('transparente') || name.includes('clear')) {
+    return { 
+      background: 'repeating-linear-gradient(45deg, #e2e8f0, #e2e8f0 4px, #ffffff 4px, #ffffff 8px)',
+      border: '1px solid #cbd5e1'
+    };
+  }
+
+  const colorMap: Record<string, string> = {
+    negro: '#1e293b',
+    black: '#1e293b',
+    blanco: '#f8fafc',
+    white: '#f8fafc',
+    rojo: '#ef4444',
+    red: '#ef4444',
+    azul: '#3b82f6',
+    blue: '#3b82f6',
+    verde: '#10b981',
+    green: '#10b981',
+    amarillo: '#f59e0b',
+    yellow: '#f59e0b',
+    gris: '#64748b',
+    gray: '#64748b',
+    naranja: '#f97316',
+    orange: '#f97316',
+    rosa: '#ec4899',
+    pink: '#ec4899',
+    violeta: '#8b5cf6',
+    purpura: '#8b5cf6',
+    purple: '#8b5cf6',
+    fucsia: '#d946ef',
+    celeste: '#60a5fa',
+    turquesa: '#14b8a6',
+    teal: '#14b8a6'
+  };
+
+  for (const [key, hex] of Object.entries(colorMap)) {
+    if (name.includes(key)) {
+      const border = hex === '#f8fafc' ? '1px solid #cbd5e1' : 'none';
+      return { backgroundColor: hex, border };
+    }
+  }
+
+  return { background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' };
+}
+
+// Searchable Filament Select Component for Inventory Movements
+const SearchableFilamentSelect: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  filaments: Filament[];
+  placeholder?: string;
+}> = ({
+  value,
+  onChange,
+  filaments,
+  placeholder = 'Buscar filamento...'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const selectedFilament = filaments.find(f => f.id === value);
+  const displayValue = selectedFilament 
+    ? `${selectedFilament.brand} · ${selectedFilament.material} · ${selectedFilament.color}`
+    : '';
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return filaments;
+    return filaments.filter(f => 
+      f.brand.toLowerCase().includes(term) ||
+      f.material.toLowerCase().includes(term) ||
+      f.color.toLowerCase().includes(term)
+    );
+  }, [filaments, search]);
+
+  const updateCoords = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  };
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+    updateCoords();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    // Update coordinates on window resize
+    window.addEventListener('resize', updateCoords);
+    
+    const clickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        // Check if the click is inside the portal dropdown list
+        const portalDropdown = document.getElementById('portal-filament-dropdown');
+        if (portalDropdown && portalDropdown.contains(e.target as Node)) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener('click', clickOutside);
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      document.removeEventListener('click', clickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-2.5 top-2.5 text-slate-400">
+          <Palette size={14} />
+        </div>
+        <div className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none">
+          <ChevronDown size={14} />
+        </div>
+      </div>
+
+      {isOpen && coords && createPortal(
+        <div 
+          id="portal-filament-dropdown"
+          className="fixed bg-white border border-slate-200/80 rounded-xl shadow-2xl z-[999] py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin max-h-48 overflow-y-auto"
+          style={{
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            bottom: `${window.innerHeight - coords.top + 4}px`,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {filtered.length === 0 ? (
+            <div className="text-slate-400 py-4 text-center flex flex-col items-center gap-1">
+              <Palette size={16} className="opacity-40" />
+              <span>No se encontraron filamentos</span>
+            </div>
+          ) : (
+            filtered.map(f => {
+              const isSelected = f.id === value;
+              const colorStyle = getFilamentColorStyle(f.color);
+              
+              let stockBadgeClass = 'badge-green';
+              if (f.availableWeightGrams < 50) {
+                stockBadgeClass = 'badge-red';
+              } else if (f.availableWeightGrams < 200) {
+                stockBadgeClass = 'badge-yellow';
+              }
+
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(f.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
+                    isSelected 
+                      ? 'bg-blue-50 text-blue-700' 
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div 
+                      className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-sm border border-black/10" 
+                      style={colorStyle}
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-slate-800 truncate">{f.brand} · {f.color}</span>
+                      <span className={`text-[10px] truncate ${isSelected ? 'text-blue-500 font-medium' : 'text-slate-400'}`}>
+                        {f.material}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`badge ${stockBadgeClass} text-[9px] px-1.5 py-0.5`}>
+                      {f.availableWeightGrams}g
+                    </span>
+                    {isSelected && <Check size={12} className="text-blue-600" />}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const InventoryMovements: React.FC = () => {
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
@@ -491,19 +719,21 @@ export const InventoryMovements: React.FC = () => {
 
           {/* Body */}
           {isEditingLines ? (
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Ajustar Consumos de Filamento
-              </p>
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="px-5 pt-4 pb-2 shrink-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Ajustar Consumos de Filamento
+                </p>
+              </div>
               
-              <div className="space-y-3">
+              <div className="flex-1 overflow-y-auto px-5 py-2 space-y-3 min-h-0">
                 {editingLines.length === 0 ? (
                   <p className="text-xs text-slate-505 py-2 text-slate-400">No hay filamentos cargados en este movimiento.</p>
                 ) : (
                   editingLines.map((line, idx) => (
                     <div key={line.itemId} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-805 text-xs truncate text-slate-800" title={line.name}>{line.name}</p>
+                        <p className="font-bold text-slate-850 text-xs truncate text-slate-800" title={line.name}>{line.name}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <input
@@ -536,12 +766,13 @@ export const InventoryMovements: React.FC = () => {
                 )}
               </div>
               
-              <div className="pt-2 border-t border-slate-100">
+              <div className="px-5 py-4 border-t border-slate-100 shrink-0">
                 <div className="flex gap-2 items-center">
-                  <select
+                  <SearchableFilamentSelect
                     value=""
-                    onChange={(e) => {
-                      const filId = e.target.value;
+                    placeholder="-- Agregar Filamento del Inventario --"
+                    filaments={allFilaments.filter((f) => !editingLines.some((el) => el.itemId === f.id))}
+                    onChange={(filId) => {
                       if (!filId) return;
                       const filamentObj = allFilaments.find((f) => f.id === filId);
                       if (filamentObj) {
@@ -549,17 +780,7 @@ export const InventoryMovements: React.FC = () => {
                         setEditingLines((prev) => [...prev, { itemId: filId, name, grams: 100 }]);
                       }
                     }}
-                    className="flex-1 border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    <option value="">-- Agregar Filamento del Inventario --</option>
-                    {allFilaments
-                      .filter((f) => !editingLines.some((el) => el.itemId === f.id))
-                      .map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.brand} {f.color} ({f.material})
-                        </option>
-                      ))}
-                  </select>
+                  />
                 </div>
               </div>
             </div>

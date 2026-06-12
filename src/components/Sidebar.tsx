@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     {
       title: 'General',
       items: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', requiredRole: 'owner' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'viewDashboard' },
         { label: 'Catálogo', icon: ShoppingBag, path: '/catalog' },
         { label: 'Mi Balance', icon: DollarSign, path: '/employee/balance', requiredRole: 'employee' },
       ]
@@ -65,14 +65,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       items: [
         { label: 'Pedidos', icon: Receipt, path: '/orders', permission: 'viewOrders' },
         { label: 'Clientes', icon: Users, path: '/clients', permission: 'viewClients' },
-        { label: 'Cuentas Ctes.', icon: CreditCard, path: '/accounts', permission: 'viewCash' },
+        { label: 'Cuentas Ctes.', icon: CreditCard, path: '/accounts', permission: 'viewAccounts' },
       ]
     },
     {
       title: 'Productos',
       items: [
         { label: 'Productos', icon: Package, path: '/admin/products', permission: 'viewCatalog' },
-        { label: 'Categorías', icon: Tag, path: '/categories' },
+        { label: 'Categorías', icon: Tag, path: '/categories', permission: 'viewCategories' },
         { label: 'Inventario', icon: Warehouse, path: '/inventory', permission: 'viewInventory' },
         { label: 'Movimientos', icon: ArrowLeftRight, path: '/inventory-movements', permission: 'viewInventoryMovements' },
       ]
@@ -81,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       title: 'Finanzas',
       items: [
         { label: 'Caja Diaria', icon: DollarSign, path: '/cash', permission: 'viewCash' },
-        { label: 'Historial de Cajas', icon: History, path: '/cash-history', permission: 'viewCash' },
+        { label: 'Historial de Cajas', icon: History, path: '/cash-history', permission: 'viewCashHistory' },
         { label: 'Balance', icon: BarChart3, path: '/balance', permission: 'viewBalance' },
         { label: 'Liquidaciones', icon: ArrowLeftRight, path: '/admin/liquidations', requiredRole: 'owner' },
       ]

@@ -408,6 +408,9 @@ export const Employees: React.FC = () => {
   };
 
   const permissionsList: { key: keyof UserPermissions; label: string; group: string }[] = [
+    // General
+    { key: 'viewDashboard', label: 'Ver Dashboard de Administración', group: 'General' },
+
     // Pedidos
     { key: 'viewOrders', label: 'Ver Listado de Pedidos', group: 'Pedidos' },
     { key: 'createOrders', label: 'Crear Pedidos', group: 'Pedidos' },
@@ -425,6 +428,7 @@ export const Employees: React.FC = () => {
     { key: 'createProducts', label: 'Crear Productos', group: 'Productos' },
     { key: 'editProducts', label: 'Editar Productos', group: 'Productos' },
     { key: 'viewManualPrices', label: 'Ver Identificativos de Precio Manual', group: 'Productos' },
+    { key: 'viewCategories', label: 'Ver/Administrar Categorías', group: 'Productos' },
 
     // Inventario
     { key: 'viewInventory', label: 'Ver Insumos / Inventario', group: 'Inventario' },
@@ -437,6 +441,7 @@ export const Employees: React.FC = () => {
     { key: 'closeCash', label: 'Cerrar Caja Diaria / Arqueos', group: 'Finanzas' },
     { key: 'viewCashHistory', label: 'Ver Historial de Cajas Cerradas', group: 'Finanzas' },
     { key: 'viewBalance', label: 'Ver Reporte de Balance Financiero', group: 'Finanzas' },
+    { key: 'viewAccounts', label: 'Ver Cuentas Corrientes', group: 'Finanzas' },
 
     // Descargas PDF
     { key: 'viewInternalPDFs', label: 'Ver PDFs Internos de Control', group: 'Archivos PDF' },

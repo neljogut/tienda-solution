@@ -272,7 +272,10 @@ export const NewOrder: React.FC = () => {
     });
 
     // 2. Live clients listener
-    const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
+    const qClients = userData?.role === 'employee'
+      ? query(collection(db, 'clients'), where('employeeId', '==', userData.uid))
+      : query(collection(db, 'clients'));
+    const unsubClients = onSnapshot(qClients, (snap) => {
       setClients(snap.docs.map(d => migrateClient({ id: d.id, ...d.data() }) as Client));
     });
 
@@ -299,11 +302,9 @@ export const NewOrder: React.FC = () => {
     // 5. Live active cash session listener
     const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
     const unsubSession = onSnapshot(qSession, (snap) => {
-      if (!snap.empty) {
-        setActiveSession({ id: snap.docs[0].id, ...snap.docs[0].data() } as CashSession);
-      } else {
-        setActiveSession(null);
-      }
+      const openSessions = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
+      const mySession = openSessions.find(s => s.openedBy === userData?.uid) || null;
+      setActiveSession(mySession);
     });
 
     return () => {

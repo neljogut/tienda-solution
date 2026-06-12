@@ -3,8 +3,10 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { CashSession, CashMovement } from '../../types/cash';
 import { History, Calendar, User, ChevronDown, ChevronUp, Clock, AlertTriangle, CheckCircle, Loader2, PlusCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const CashHistory: React.FC = () => {
+  const { userData } = useAuth();
   const [sessions, setSessions] = useState<CashSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -19,7 +21,10 @@ export const CashHistory: React.FC = () => {
           where('status', '==', 'closed')
         );
         const snap = await getDocs(q);
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
+        let list = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
+        if (userData?.role === 'employee') {
+          list = list.filter(s => s.openedBy === userData.uid);
+        }
         list.sort((a, b) => new Date(b.closedAt || '').getTime() - new Date(a.closedAt || '').getTime());
         setSessions(list);
       } catch (err) {

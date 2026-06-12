@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { createPortal } from 'react-dom';
 import { db } from '../../firebase';
 import type { CashSession, CashMovement, PaymentMethod } from '../../types/cash';
@@ -30,30 +30,44 @@ export const Cash: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!userData) return;
+
     // 1. Escuchar la caja abierta actualmente
-    const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'), limit(1));
+    const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
+    
+    let unsubMovs: (() => void) | null = null;
+
     const unsubSession = onSnapshot(qSession, (snap) => {
-      if (!snap.empty) {
-        const session = { id: snap.docs[0].id, ...snap.docs[0].data() } as CashSession;
-        setActiveSession(session);
-        
+      const openSessions = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
+      const session = openSessions.find(s => s.openedBy === userData.uid) || null;
+      
+      setActiveSession(session);
+      
+      if (unsubMovs) {
+        unsubMovs();
+        unsubMovs = null;
+      }
+
+      if (session) {
         // 2. Cargar movimientos de esa caja (sorted in-memory to prevent composite index requirement)
         const qMovs = query(collection(db, 'cash_movements'), where('sessionId', '==', session.id));
-        const unsubMovs = onSnapshot(qMovs, (snapMovs) => {
+        unsubMovs = onSnapshot(qMovs, (snapMovs) => {
           const list = snapMovs.docs.map(d => ({ id: d.id, ...d.data() } as CashMovement));
           list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setMovements(list);
         });
         setLoading(false);
-        return () => unsubMovs();
       } else {
-        setActiveSession(null);
         setMovements([]);
         setLoading(false);
       }
     });
-    return () => unsubSession();
-  }, []);
+
+    return () => {
+      unsubSession();
+      if (unsubMovs) unsubMovs();
+    };
+  }, [userData]);
 
   const showToast = (msg: string) => {
     setToast(msg);

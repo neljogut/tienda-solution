@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, doc, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { migrateClient, getClientLabel } from '../../types/client';
 import type { Client } from '../../types/client';
@@ -94,17 +94,25 @@ export const ClientsManager: React.FC = () => {
 
   /* ── real-time listener ── */
   useEffect(() => {
-    const q = query(collection(db, 'clients'), orderBy('lastName', 'asc'));
+    const q = userData?.role === 'employee'
+      ? query(collection(db, 'clients'), where('employeeId', '==', userData.uid))
+      : query(collection(db, 'clients'));
+      
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Client[] = [];
       snapshot.forEach((d) => {
         const migrated = migrateClient({ id: d.id, ...d.data() });
         list.push(migrated as Client);
       });
+      list.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
       setClients(list);
     });
 
-    const unsubscribeOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+    const qOrders = userData?.role === 'employee'
+      ? query(collection(db, 'orders'), where('commissionEmployeeId', '==', userData.uid))
+      : query(collection(db, 'orders'));
+
+    const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
       const list: any[] = [];
       snapshot.forEach((d) => {
         list.push({ id: d.id, ...d.data() });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, onSnapshot, query, orderBy, doc, getDoc, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc, writeBatch, addDoc, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Order, OrderStatus, PaymentStatus } from '../../types/order';
 import type { BusinessSettings } from '../../types/settings';
@@ -189,7 +189,9 @@ export const Orders: React.FC = () => {
     fetchBusiness();
 
     // Stream Orders
-    const q = query(collection(db, 'orders'), orderBy('date', 'desc'));
+    const q = userData?.role === 'employee'
+      ? query(collection(db, 'orders'), where('commissionEmployeeId', '==', userData.uid))
+      : query(collection(db, 'orders'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ords: Order[] = [];
       snapshot.forEach((doc) => {

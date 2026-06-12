@@ -124,7 +124,7 @@ function App() {
             
             {/* Owner / Employee protected routes */}
             <Route path="dashboard" element={
-              <ProtectedRoute requiredRole="owner">
+              <ProtectedRoute requiredPermission="viewDashboard">
                 <Dashboard />
               </ProtectedRoute>
             } />
@@ -169,17 +169,17 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="cash-history" element={
-              <ProtectedRoute requiredPermission="viewCash">
+              <ProtectedRoute requiredPermission="viewCashHistory">
                 <CashHistory />
               </ProtectedRoute>
             } />
             <Route path="accounts" element={
-              <ProtectedRoute requiredPermission="viewCash">
+              <ProtectedRoute requiredPermission="viewAccounts">
                 <CurrentAccounts />
               </ProtectedRoute>
             } />
             <Route path="balance" element={
-              <ProtectedRoute requiredRole="owner">
+              <ProtectedRoute requiredPermission="viewBalance">
                 <Balance />
               </ProtectedRoute>
             } />
@@ -189,7 +189,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="categories" element={
-              <ProtectedRoute requiredPermission="viewCatalog">
+              <ProtectedRoute requiredPermission="viewCategories">
                 <Categories />
               </ProtectedRoute>
             } />

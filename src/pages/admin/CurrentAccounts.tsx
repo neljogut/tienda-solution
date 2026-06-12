@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { collection, query, where, onSnapshot, getDocs, updateDoc, doc, addDoc, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, updateDoc, doc, addDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Client } from '../../types/client';
 import { migrateClient } from '../../types/client';
@@ -39,29 +39,43 @@ export const CurrentAccounts: React.FC = () => {
 
   const { userData } = useAuth();
 
+  const visibleDeclarations = useMemo(() => {
+    if (userData?.role !== 'employee') return pendingDeclarations;
+    const clientIds = new Set(clients.map(c => c.id));
+    return pendingDeclarations.filter(d => clientIds.has(d.customerId));
+  }, [pendingDeclarations, clients, userData]);
+
   // Load clients, orders, active cash session in real-time
   useEffect(() => {
     // 1. Listen to clients with debt
-    const qClients = query(collection(db, 'clients'), orderBy('lastName', 'asc'));
+    const qClients = userData?.role === 'employee'
+      ? query(collection(db, 'clients'), where('employeeId', '==', userData.uid))
+      : query(collection(db, 'clients'));
     const unsubClients = onSnapshot(qClients, (snap) => {
-      setClients(snap.docs.map(d => migrateClient({ id: d.id, ...d.data() }) as Client));
+      const list = snap.docs.map(d => migrateClient({ id: d.id, ...d.data() }) as Client);
+      list.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+      setClients(list);
       setLoading(false);
     });
 
     // 2. Listen to all pending/partial orders to show detail
-    const qOrders = query(collection(db, 'orders'), where('paymentStatus', 'in', ['unpaid', 'partial']));
+    const qOrders = userData?.role === 'employee'
+      ? query(collection(db, 'orders'), where('commissionEmployeeId', '==', userData.uid))
+      : query(collection(db, 'orders'), where('paymentStatus', 'in', ['unpaid', 'partial']));
     const unsubOrders = onSnapshot(qOrders, (snap) => {
-      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
+      let list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
+      if (userData?.role === 'employee') {
+        list = list.filter(o => o.paymentStatus === 'unpaid' || o.paymentStatus === 'partial');
+      }
+      setOrders(list);
     });
 
     // 3. Listen to open cash session
     const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
     const unsubSession = onSnapshot(qSession, (snap) => {
-      if (!snap.empty) {
-        setActiveSession({ id: snap.docs[0].id, ...snap.docs[0].data() } as CashSession);
-      } else {
-        setActiveSession(null);
-      }
+      const openSessions = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
+      const mySession = openSessions.find(s => s.openedBy === userData?.uid) || null;
+      setActiveSession(mySession);
     });
 
     // 4. Pagos declarados por clientes, pendientes de confirmación
@@ -297,19 +311,19 @@ export const CurrentAccounts: React.FC = () => {
       </div>
 
       {/* Pagos declarados pendientes */}
-      {pendingDeclarations.length > 0 && (
+      {visibleDeclarations.length > 0 && (
         <div className="card border border-amber-200/80 bg-amber-50/40 p-4 sm:p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Clock size={18} className="text-amber-600" />
             <h2 className="font-bold text-slate-800 text-sm sm:text-base">
-              Pagos declarados — pendientes de confirmación ({pendingDeclarations.length})
+              Pagos declarados — pendientes de confirmación ({visibleDeclarations.length})
             </h2>
           </div>
           <p className="text-xs text-slate-500">
             El cliente informó una transferencia desde Mi cuenta o checkout. Revisá WhatsApp y registrá el pago cuando confirmes el comprobante.
           </p>
           <div className="space-y-2">
-            {pendingDeclarations.map((decl) => (
+            {visibleDeclarations.map((decl) => (
               <div
                 key={decl.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-amber-100 rounded-xl p-3 sm:p-4"

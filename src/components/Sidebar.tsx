@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     {
       title: 'General',
       items: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', requiredRole: 'owner' },
         { label: 'Catálogo', icon: ShoppingBag, path: '/catalog' },
       ]
     },

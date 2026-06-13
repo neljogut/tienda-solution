@@ -48,6 +48,7 @@ export interface BusinessSettings {
   instagram?: string;
   tiktok?: string;
   whatsapp?: string;
+  categorySortMode?: 'manual' | 'alphabetical';
 }
 
 export interface BankTransferSettings {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { doc, getDoc, setDoc, addDoc, collection, getDocs, query } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, getDocs, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Product, FilamentLine, SupplyLine } from '../../types/product';
 import type { Filament, Supply } from '../../types/inventory';
@@ -100,7 +100,7 @@ interface CategoryNode {
   children: CategoryNode[];
 }
 
-function buildCategoryTree(cats: Category[]): CategoryNode[] {
+function buildCategoryTree(cats: Category[], sortMode: 'manual' | 'alphabetical' = 'manual'): CategoryNode[] {
   const nodeMap = new Map<string, CategoryNode>();
   const roots: CategoryNode[] = [];
 
@@ -121,6 +121,20 @@ function buildCategoryTree(cats: Category[]): CategoryNode[] {
       roots.push(node);
     }
   });
+
+  const sortFn = (a: CategoryNode, b: CategoryNode) => {
+    if (sortMode === 'alphabetical') {
+      return a.category.name.localeCompare(b.category.name, undefined, { sensitivity: 'base' });
+    } else {
+      return (a.category.order ?? 0) - (b.category.order ?? 0);
+    }
+  };
+
+  nodeMap.forEach(node => {
+    node.children.sort(sortFn);
+  });
+
+  roots.sort(sortFn);
 
   return roots;
 }
@@ -260,12 +274,14 @@ const SearchableCategorySelect: React.FC<{
   categories: Category[];
   placeholder?: string;
   required?: boolean;
+  categorySortMode?: 'manual' | 'alphabetical';
 }> = ({
   value,
   onChange,
   categories,
   placeholder = 'Buscar categoría...',
-  required = false
+  required = false,
+  categorySortMode = 'manual'
 }) => {
   const { userData } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -321,7 +337,7 @@ const SearchableCategorySelect: React.FC<{
   }, [value, categories]);
 
   const categoriesWithPaths = useMemo(() => {
-    return categories.map(cat => {
+    const mapped = categories.map(cat => {
       const path = getCategoryPath(cat.id);
       const fullPathLabel = path.map((c: Category) => c.name).join(' › ');
       return {
@@ -330,6 +346,8 @@ const SearchableCategorySelect: React.FC<{
         fullPathLabel
       };
     });
+    mapped.sort((a, b) => a.fullPathLabel.localeCompare(b.fullPathLabel, undefined, { sensitivity: 'base' }));
+    return mapped;
   }, [categories, getCategoryPath]);
 
   const filtered = useMemo(() => {
@@ -338,7 +356,7 @@ const SearchableCategorySelect: React.FC<{
     return categoriesWithPaths.filter((c: Category & { path: Category[]; fullPathLabel: string }) => c.fullPathLabel.toLowerCase().includes(term));
   }, [categoriesWithPaths, search]);
 
-  const tree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const tree = useMemo(() => buildCategoryTree(categories, categorySortMode), [categories, categorySortMode]);
 
   const updateCoords = () => {
     if (containerRef.current) {
@@ -933,6 +951,7 @@ export const ProductForm: React.FC = () => {
   const [mainImageUrl, setMainImageUrl] = useState<string>('');
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categorySortMode, setCategorySortMode] = useState<'manual' | 'alphabetical'>('manual');
   const [filaments, setFilaments] = useState<Filament[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [settings3d, setSettings3d] = useState<PricingSettings3D | null>(null);
@@ -968,15 +987,33 @@ export const ProductForm: React.FC = () => {
   });
 
   useEffect(() => {
+    const q = query(collection(db, 'categories'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const cats: Category[] = [];
+      snapshot.forEach((d) => {
+        cats.push({ id: d.id, ...d.data() } as Category);
+      });
+      setCategories(cats);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const loadInitialData = async () => {
       try {
         // Fetch categories, inventory, and products (for group autocomplete)
-        const [catSnap, invSnap, prodSnapAll] = await Promise.all([
-          getDocs(query(collection(db, 'categories'))),
+        const [invSnap, prodSnapAll, businessSnap] = await Promise.all([
           getDocs(query(collection(db, 'inventory'))),
           getDocs(collection(db, 'products')),
+          getDoc(doc(db, 'settings', 'business')),
         ]);
-        setCategories(catSnap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
+
+        if (businessSnap.exists()) {
+          const bizData = businessSnap.data();
+          if (bizData && bizData.categorySortMode) {
+            setCategorySortMode(bizData.categorySortMode);
+          }
+        }
 
         const groups = new Set<string>();
         prodSnapAll.docs.forEach(d => {
@@ -1308,6 +1345,7 @@ export const ProductForm: React.FC = () => {
                 <SearchableCategorySelect
                   required
                   categories={categories}
+                  categorySortMode={categorySortMode}
                   value={formData.categoryId || ''}
                   onChange={catId => {
                     setFormData({

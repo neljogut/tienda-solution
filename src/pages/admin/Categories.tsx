@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   writeBatch,
+  setDoc,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Category } from '../../types/category';
@@ -19,7 +20,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  ChevronRight,
   ChevronDown,
   FolderOpen,
   Folder,
@@ -27,21 +27,28 @@ import {
   ArrowDown,
   X,
   Save,
+  FolderPlus,
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-/** Build a map of parentId → sorted children */
-function buildChildrenMap(categories: Category[]): Map<string | null, Category[]> {
+/** Build a map of parentId → sorted children, sorted manually or alphabetically */
+function buildChildrenMap(categories: Category[], sortMode: 'manual' | 'alphabetical' = 'manual'): Map<string | null, Category[]> {
   const map = new Map<string | null, Category[]>();
   for (const cat of categories) {
     const key = cat.parentId ?? null;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(cat);
   }
-  // sort each group by order
+  
   for (const [, children] of map) {
-    children.sort((a, b) => a.order - b.order);
+    children.sort((a, b) => {
+      if (sortMode === 'alphabetical') {
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      } else {
+        return (a.order ?? 0) - (b.order ?? 0);
+      }
+    });
   }
   return map;
 }
@@ -89,8 +96,10 @@ interface TreeNodeProps {
   onDelete: (cat: Category) => void;
   onMoveUp: (cat: Category) => void;
   onMoveDown: (cat: Category) => void;
+  onAddSub: (cat: Category) => void;
   siblingCount: number;
   siblingIndex: number;
+  categorySortMode: 'manual' | 'alphabetical';
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -105,8 +114,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAddSub,
   siblingCount,
   siblingIndex,
+  categorySortMode,
 }) => {
   const children = childrenMap.get(category.id) ?? [];
   const hasChildren = children.length > 0;
@@ -124,98 +135,105 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       {/* Category row */}
       <div
         className={`
-          group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-200
-          hover:bg-blue-50/60 cursor-default
-          ${isRoot ? 'bg-slate-50/50' : ''}
+          group flex items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all duration-200
+          hover:bg-slate-50 border-b border-slate-50 last:border-0 cursor-default
+          ${isRoot ? 'bg-slate-50/30 font-semibold text-slate-800' : 'text-slate-700'}
         `}
-        style={{ marginLeft: `calc(${depth} * var(--indent-step))` } as React.CSSProperties}
+        style={{ paddingLeft: `${Math.max(12, depth * 24)}px` }}
       >
-        {/* Expand / collapse toggle */}
-        <button
-          onClick={() => hasChildren && onToggleExpand(category.id)}
-          className={`p-1 rounded-lg transition-colors duration-150 ${
-            hasChildren
-              ? 'text-slate-400 hover:text-blue-600 hover:bg-blue-100/60'
-              : 'text-transparent cursor-default'
-          }`}
-          disabled={!hasChildren}
-        >
-          {hasChildren ? (
-            isExpanded ? (
-              <ChevronDown size={14} className="sm:w-4 sm:h-4" />
+        <div className="flex-1 flex items-center gap-2 min-w-0 py-0.5">
+          {/* Expand / collapse toggle */}
+          <span
+            onClick={(e) => { e.stopPropagation(); if (hasChildren) onToggleExpand(category.id); }}
+            className={`p-1 -ml-1 rounded transition-colors flex items-center justify-center flex-shrink-0 cursor-pointer ${
+              hasChildren
+                ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'
+                : 'text-transparent cursor-default'
+            }`}
+          >
+            {hasChildren ? (
+              <ChevronDown
+                size={12}
+                className={`transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`}
+              />
             ) : (
-              <ChevronRight size={14} className="sm:w-4 sm:h-4" />
-            )
-          ) : (
-            <ChevronRight size={14} className="sm:w-4 sm:h-4" />
-          )}
-        </button>
- 
-        {/* Folder icon */}
-        {hasChildren && isExpanded ? (
-          <FolderOpen size={16} className="text-blue-500 flex-shrink-0 sm:w-[18px] sm:h-[18px]" />
-        ) : hasChildren ? (
-          <Folder size={16} className="text-blue-400 flex-shrink-0 sm:w-[18px] sm:h-[18px]" />
-        ) : (
-          <Tag size={14} className="text-slate-400 flex-shrink-0 sm:w-4 sm:h-4" />
-        )}
- 
-        {/* Name */}
-        <span
-          className={`flex-1 truncate text-xs sm:text-sm ${
-            isRoot ? 'font-bold text-slate-900' : 'font-medium text-slate-700'
-          }`}
-        >
-          {category.name}
-        </span>
-
-        {/* Price Tiers badge */}
-        {category.priceTiers && category.priceTiers.length > 0 && (
-          <span className="badge badge-green text-[9px] sm:text-[10px] flex-shrink-0 mr-1" title={`${category.priceTiers.length} tramos de precios configurados`}>
-            Tramos: {category.priceTiers.length}
+              <span className="w-3" />
+            )}
           </span>
-        )}
- 
-        {/* Product count badge */}
-        <span
-          className={`badge ${
-            productCount > 0 ? 'badge-blue' : 'badge-gray'
-          } text-[9px] sm:text-[11px] tabular-nums`}
-        >
-          {productCount} <span className="hidden sm:inline">{productCount === 1 ? 'producto' : 'productos'}</span><span className="inline sm:hidden">p.</span>
-        </span>
+   
+          {/* Folder icon */}
+          <span className="text-amber-500 flex-shrink-0">
+            {hasChildren ? (
+              isExpanded ? <FolderOpen size={16} className="text-amber-500" /> : <Folder size={16} className="text-amber-500" />
+            ) : (
+              <Folder size={16} className="opacity-50 text-slate-400" />
+            )}
+          </span>
+   
+          {/* Name */}
+          <span className="text-xs sm:text-sm font-medium truncate text-slate-800 group-hover:text-slate-900">
+            {category.name}
+          </span>
+          
+          {/* Price Tiers badge */}
+          {category.priceTiers && category.priceTiers.length > 0 && (
+            <span className="badge badge-green text-[9px] sm:text-[10px] flex-shrink-0 ml-1.5 mr-0.5" title={`${category.priceTiers.length} tramos de precios configurados`}>
+              Tramos: {category.priceTiers.length}
+            </span>
+          )}
+   
+          {/* Product count badge */}
+          <span
+            className={`badge ${
+              productCount > 0 ? 'badge-blue' : 'badge-gray'
+            } text-[9px] sm:text-[10px] tabular-nums ml-1 flex-shrink-0`}
+          >
+            {productCount} <span className="hidden sm:inline">{productCount === 1 ? 'producto' : 'productos'}</span><span className="inline sm:hidden">p.</span>
+          </span>
+        </div>
  
         {/* Actions — visible on hover / always on mobile */}
-        <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
+        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0 ml-2 bg-slate-50 group-hover:bg-slate-50 p-0.5 rounded-lg border border-transparent group-hover:border-slate-100">
+          {categorySortMode === 'manual' && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveUp(category); }}
+                disabled={siblingIndex === 0}
+                className="p-1 hover:bg-slate-200 text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
+                title="Subir"
+              >
+                <ArrowUp size={12} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveDown(category); }}
+                disabled={siblingIndex === siblingCount - 1}
+                className="p-1 hover:bg-slate-200 text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
+                title="Bajar"
+              >
+                <ArrowDown size={12} />
+              </button>
+            </>
+          )}
           <button
-            onClick={() => onMoveUp(category)}
-            disabled={siblingIndex === 0}
-            className="btn-icon !p-1 sm:!p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Subir"
+            onClick={(e) => { e.stopPropagation(); onAddSub(category); }}
+            className="p-1 hover:bg-slate-200 text-slate-500 hover:text-blue-600 rounded transition-colors"
+            title="Agregar subcategoría"
           >
-            <ArrowUp size={12} className="sm:w-3.5 sm:h-3.5" />
+            <FolderPlus size={12} />
           </button>
           <button
-            onClick={() => onMoveDown(category)}
-            disabled={siblingIndex === siblingCount - 1}
-            className="btn-icon !p-1 sm:!p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Bajar"
-          >
-            <ArrowDown size={12} className="sm:w-3.5 sm:h-3.5" />
-          </button>
-          <button
-            onClick={() => onEdit(category)}
-            className="btn-icon !p-1 sm:!p-1.5 hover:!text-blue-600 hover:!bg-blue-50"
+            onClick={(e) => { e.stopPropagation(); onEdit(category); }}
+            className="p-1 hover:bg-slate-200 text-slate-500 hover:text-amber-600 rounded transition-colors"
             title="Editar"
           >
-            <Edit size={12} className="sm:w-3.5 sm:h-3.5" />
+            <Edit size={12} />
           </button>
           <button
-            onClick={() => onDelete(category)}
-            className="btn-icon !p-1 sm:!p-1.5 hover:!text-red-600 hover:!bg-red-50"
+            onClick={(e) => { e.stopPropagation(); onDelete(category); }}
+            className="p-1 hover:bg-slate-200 text-slate-500 hover:text-red-600 rounded transition-colors"
             title="Eliminar"
           >
-            <Trash2 size={12} className="sm:w-3.5 sm:h-3.5" />
+            <Trash2 size={12} />
           </button>
         </div>
       </div>
@@ -242,8 +260,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               onDelete={onDelete}
               onMoveUp={onMoveUp}
               onMoveDown={onMoveDown}
+              onAddSub={onAddSub}
               siblingCount={children.length}
               siblingIndex={idx}
+              categorySortMode={categorySortMode}
             />
           ))}
         </div>
@@ -257,6 +277,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 export const Categories: React.FC = () => {
   // ── State ──────────────────────────────────────────────────────────────────
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categorySortMode, setCategorySortMode] = useState<'manual' | 'alphabetical'>('manual');
   const [productCounts, setProductCounts] = useState<Map<string, number>>(new Map());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -279,6 +300,19 @@ export const Categories: React.FC = () => {
       });
       setCategories(cats);
       setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to Business settings for categorySortMode
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.categorySortMode) {
+          setCategorySortMode(data.categorySortMode);
+        }
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -315,8 +349,17 @@ export const Categories: React.FC = () => {
     return merged;
   }, [productCounts, idRemap]);
 
-  const childrenMap = useMemo(() => buildChildrenMap(canonicalCategories), [canonicalCategories]);
+  const childrenMap = useMemo(() => buildChildrenMap(canonicalCategories, categorySortMode), [canonicalCategories, categorySortMode]);
   const rootCategories = useMemo(() => childrenMap.get(null) ?? [], [childrenMap]);
+
+  const handleUpdateSortMode = async (mode: 'manual' | 'alphabetical') => {
+    setCategorySortMode(mode);
+    try {
+      await setDoc(doc(db, 'settings', 'business'), { categorySortMode: mode }, { merge: true });
+    } catch (err) {
+      console.error('Error actualizando modo de ordenamiento:', err);
+    }
+  };
 
   const flatOptions = useMemo(
     () => flattenForSelect(null, childrenMap, 0),
@@ -476,16 +519,32 @@ export const Categories: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <button onClick={expandAll} className="btn-ghost text-xs">
-          Expandir todo
-        </button>
-        <button onClick={collapseAll} className="btn-ghost text-xs">
-          Colapsar todo
-        </button>
-        <span className="ml-auto text-xs text-slate-400">
-          {categories.length} {categories.length === 1 ? 'categoría' : 'categorías'} en total
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-2">
+          <button onClick={expandAll} className="btn-ghost text-xs">
+            Expandir todo
+          </button>
+          <button onClick={collapseAll} className="btn-ghost text-xs">
+            Colapsar todo
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ordenamiento:</span>
+            <select
+              value={categorySortMode}
+              onChange={(e) => handleUpdateSortMode(e.target.value as 'manual' | 'alphabetical')}
+              className="text-xs font-semibold border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors"
+            >
+              <option value="manual">Manual (Subir / Bajar)</option>
+              <option value="alphabetical">Alfabético (A - Z)</option>
+            </select>
+          </div>
+          <span className="text-xs text-slate-400">
+            {categories.length} {categories.length === 1 ? 'categoría' : 'categorías'} en total
+          </span>
+        </div>
       </div>
 
       {/* Form modal */}
@@ -638,7 +697,7 @@ export const Categories: React.FC = () => {
       )}
 
       {/* Tree */}
-      <div className="card p-2">
+      <div className="card p-4">
         {loading ? (
           <div className="p-12 text-center text-slate-400 animate-pulse-soft">
             Cargando categorías…
@@ -673,8 +732,10 @@ export const Categories: React.FC = () => {
                 onDelete={handleDelete}
                 onMoveUp={(c) => swapOrder(c, 'up')}
                 onMoveDown={(c) => swapOrder(c, 'down')}
+                onAddSub={(c) => openAddForm(c.id)}
                 siblingCount={rootCategories.length}
                 siblingIndex={idx}
+                categorySortMode={categorySortMode}
               />
             ))}
           </div>

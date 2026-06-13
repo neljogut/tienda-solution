@@ -11,12 +11,12 @@ const STATIC_ASSETS = [
 ];
 
 firebase.initializeApp({
-  "apiKey": "AIzaSyDhSZUTwx7-TQ0cxrxsQO4_RYKdMo9ppC8",
-  "authDomain": "dualgi3de.firebaseapp.com",
-  "projectId": "dualgi3de",
-  "storageBucket": "dualgi3de.firebasestorage.app",
-  "messagingSenderId": "756959344919",
-  "appId": "1:756959344919:web:968cc4b3092191444d9f52"
+  "apiKey": "AIzaSyAvDeGu9jbA-A72evVUT2wP8a4MbOpwcII",
+  "authDomain": "solution-3d.firebaseapp.com",
+  "projectId": "solution-3d",
+  "storageBucket": "solution-3d.firebasestorage.app",
+  "messagingSenderId": "86569253623",
+  "appId": "1:86569253623:web:52e051771a39cf18b7f1f2"
 });
 const messaging = firebase.messaging();
 

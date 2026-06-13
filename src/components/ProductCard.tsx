@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon } from 'lucide-react';
 import { formatPrintTime } from '../utils/printTime';
 import { getProductImages } from '../utils/productImages';
+import { useAuth } from '../context/AuthContext';
 
 interface ProductCardProps {
   product: Product;
@@ -21,6 +22,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { addItem } = useCartStore();
+  const { userData } = useAuth();
+  const isOwner = userData?.role === 'owner';
   
   const priceToDisplay = getRetailPrice
     ? getRetailPrice(product)
@@ -303,14 +306,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Admin cost info */}
-        {isAdminView && (
+        {isAdminView && (isOwner || product.type === '3d') && (
           <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-500">
-            <div>Costo: ${costToDisplay.toLocaleString('es-AR')}</div>
-            <div className="text-right text-emerald-600 font-semibold">
-              Ganancia: ${((priceToDisplay || 0) - costToDisplay).toLocaleString('es-AR')}
-            </div>
+            {isOwner && (
+              <>
+                <div>Costo: ${costToDisplay.toLocaleString('es-AR')}</div>
+                <div className="text-right text-emerald-600 font-semibold">
+                  Ganancia: ${((priceToDisplay || 0) - costToDisplay).toLocaleString('es-AR')}
+                </div>
+              </>
+            )}
             {product.type === '3d' && (
-              <div className="col-span-2">Tiempo: {formatPrintTime(product.printTimeMinutes)}</div>
+              <div className="col-span-2 mt-0.5">Tiempo: {formatPrintTime(product.printTimeMinutes)}</div>
             )}
           </div>
         )}

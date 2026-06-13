@@ -23,6 +23,7 @@ export const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   
   const isAdminView = userData?.role === 'owner' || hasPermission('viewManualPrices');
+  const isOwner = userData?.role === 'owner';
   const { getRetailPrice } = usePricingData();
 
   useEffect(() => {
@@ -227,14 +228,18 @@ export const ProductDetail: React.FC = () => {
             <LockIcon /> Detalles Internos (Solo Administrador)
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-            <div>
-              <p className="text-slate-400 text-sm">Costo Calculado</p>
-              <p className="text-xl font-bold">${product.calculatedCost?.toLocaleString('es-AR')}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 text-sm">Ganancia Estimada</p>
-              <p className="text-xl font-bold text-emerald-400">${(price - (product.calculatedCost || 0)).toLocaleString('es-AR')}</p>
-            </div>
+            {isOwner && (
+              <>
+                <div>
+                  <p className="text-slate-400 text-sm">Costo Calculado</p>
+                  <p className="text-xl font-bold">${product.calculatedCost?.toLocaleString('es-AR')}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">Ganancia Estimada</p>
+                  <p className="text-xl font-bold text-emerald-400">${(price - (product.calculatedCost || 0)).toLocaleString('es-AR')}</p>
+                </div>
+              </>
+            )}
             <div>
               <p className="text-slate-400 text-sm">Precio Mayorista (Auto)</p>
               <p className="text-xl font-bold text-blue-400">${product.calculatedWholesalePrice?.toLocaleString('es-AR')}</p>

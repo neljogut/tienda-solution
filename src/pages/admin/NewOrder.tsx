@@ -15,6 +15,7 @@ import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard,
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice, recalculateAllProductsInFirestore, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
+import { useCartStore } from '../../store/cartStore';
 
 // Helper for client initials
 function getClientInitials(firstName: string, lastName: string): string {
@@ -312,6 +313,36 @@ export const NewOrder: React.FC = () => {
   
   // Daily Cash active session
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
+
+  // Transfer client cart items if they exist
+  const clientCart = useCartStore();
+  const [cartTransferred, setCartTransferred] = useState(false);
+
+  useEffect(() => {
+    if (products.length > 0 && clientCart.items.length > 0 && !cartTransferred) {
+      const newCartItems = clientCart.items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        const basePrice = item.basePrice || item.price;
+        return {
+          productId: item.productId,
+          name: item.name,
+          type: item.type,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          unitCost: product?.calculatedCost ?? 0,
+          appliedWholesale: item.price < basePrice,
+          weightGrams: item.weightGrams ?? 0,
+          isKeychain: item.isKeychain ?? false,
+          categoryId: item.categoryId ?? '',
+          priceTiers: item.priceTiers || []
+        };
+      });
+      setCartItems(newCartItems);
+      setCartTransferred(true);
+      clientCart.clearCart();
+      setDrawerOpen(true);
+    }
+  }, [products, clientCart, cartTransferred]);
 
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();

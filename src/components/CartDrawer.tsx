@@ -58,7 +58,7 @@ const QuantityInput: React.FC<QuantityInputProps> = ({ productId, quantity, maxS
 
 export const CartDrawer: React.FC = () => {
   const { isDrawerOpen, closeDrawer, items, getTotalPrice, removeItem, updateQuantity } = useCartStore();
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const [pricingSettings, setPricingSettings] = useState<any>(null);
 
@@ -84,7 +84,12 @@ export const CartDrawer: React.FC = () => {
     }
     if (items.length === 0) return;
     closeDrawer();
-    navigate('/checkout');
+    const isAdmin = userData?.role === 'owner' || userData?.role === 'employee';
+    if (isAdmin) {
+      navigate('/admin/orders/new');
+    } else {
+      navigate('/checkout');
+    }
   };
 
   return (

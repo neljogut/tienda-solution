@@ -150,7 +150,7 @@ export const CartDrawer: React.FC = () => {
 
   // Reset drawer state on close/open
   useEffect(() => {
-    if (!isDrawerOpen) {
+    if (!isDrawerOpen && !shareModalOpen) {
       setView('cart');
       setSelectedClientId('');
       setPaidAmount(0);
@@ -158,9 +158,9 @@ export const CartDrawer: React.FC = () => {
       setObservationsPublic('');
       setObservationsInternal('');
     }
-  }, [isDrawerOpen]);
+  }, [isDrawerOpen, shareModalOpen]);
 
-  if (!isDrawerOpen) return null;
+  if (!isDrawerOpen && !shareModalOpen) return null;
 
   const isAdmin = userData?.role === 'owner' || userData?.role === 'employee';
 
@@ -594,12 +594,14 @@ export const CartDrawer: React.FC = () => {
 
   return (
     <>
-      <div 
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 transition-opacity animate-fadeIn"
-        onClick={closeDrawer}
-      ></div>
-      
-      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col animate-slideInRight overflow-hidden">
+      {isDrawerOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 transition-opacity animate-fadeIn"
+            onClick={closeDrawer}
+          ></div>
+          
+          <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col animate-slideInRight overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50 relative z-10 flex-shrink-0">
@@ -1001,7 +1003,9 @@ export const CartDrawer: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Share Order Modal */}
       {shareModalOpen && (

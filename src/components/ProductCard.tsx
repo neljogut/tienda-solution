@@ -29,6 +29,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? getCost(product)
     : (product.calculatedCost ?? 0);
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  const wholesalePrice = useMemo(() => {
+    if (product.priceTiers && product.priceTiers.length > 0) {
+      return Math.min(...product.priceTiers.map(t => t.unitPrice));
+    }
+    return product.calculatedWholesalePrice || Math.ceil(priceToDisplay * 0.8);
+  }, [product.priceTiers, product.calculatedWholesalePrice, priceToDisplay]);
   const images = useMemo(() => getProductImages(product), [product]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -218,11 +224,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         
         <div className="flex items-center justify-between gap-2 mt-auto">
           <div>
-            <span className="text-base sm:text-xl font-bold text-slate-900">
-              ${priceToDisplay?.toLocaleString('es-AR') || '0'}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base sm:text-xl font-bold text-slate-900 leading-tight">
+                ${priceToDisplay?.toLocaleString('es-AR') || '0'}
+              </span>
+              {wholesalePrice < priceToDisplay && (
+                <span className="text-[9px] sm:text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded px-1.5 py-0.5 mt-1 w-fit leading-none">
+                  Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
+                </span>
+              )}
+            </div>
             {product.stock !== undefined && product.stock > 0 && (
-              <p className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5">{product.stock} disponibles</p>
+              <p className="text-[9px] sm:text-[11px] text-slate-400 mt-1">{product.stock} disponibles</p>
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 relative">

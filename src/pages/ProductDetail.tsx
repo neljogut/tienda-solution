@@ -68,6 +68,13 @@ export const ProductDetail: React.FC = () => {
   const price = getRetailPrice(product);
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
 
+  const wholesalePrice = React.useMemo(() => {
+    if (product.priceTiers && product.priceTiers.length > 0) {
+      return Math.min(...product.priceTiers.map(t => t.unitPrice));
+    }
+    return product.calculatedWholesalePrice || Math.ceil(price * 0.8);
+  }, [product.priceTiers, product.calculatedWholesalePrice, price]);
+
   const handleAddToCart = () => {
     if (isOutOfStock) return;
     addItem({
@@ -140,8 +147,15 @@ export const ProductDetail: React.FC = () => {
           
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">{product.name}</h1>
           
-          <div className="text-3xl font-extrabold text-slate-900 mb-6">
-            ${price.toLocaleString('es-AR')}
+          <div className="flex flex-col mb-6">
+            <span className="text-3xl font-extrabold text-slate-900 leading-tight">
+              ${price.toLocaleString('es-AR')}
+            </span>
+            {wholesalePrice < price && (
+              <span className="text-xs sm:text-sm font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded-lg px-2.5 py-1 mt-1.5 w-fit leading-none">
+                Precio Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
+              </span>
+            )}
           </div>
 
           <div className="prose prose-slate max-w-none mb-8">

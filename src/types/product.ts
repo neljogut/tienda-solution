@@ -30,6 +30,8 @@ export interface BaseProduct {
   // Price tiers (optional)
   priceTiers?: PriceTier[];
 
+  variantGroup?: string;
+
   createdAt?: string;
   updatedAt?: string;
 }

@@ -504,6 +504,7 @@ export const ProductForm: React.FC = () => {
     filamentLines: [] as FilamentLine[],
     supplyIds: [] as SupplyLine[],
     filamentIds: [] as string[],
+    variantGroup: '',
   });
 
   const [calculated, setCalculated] = useState({
@@ -549,7 +550,7 @@ export const ProductForm: React.FC = () => {
           const docSnap = await getDoc(doc(db, 'products', targetId));
           if (docSnap.exists()) {
             const data = docSnap.data() as Product;
-            const normalized = { ...data } as any;
+            const normalized = { variantGroup: '', ...data } as any;
             if (duplicateId) {
               normalized.name = `${data.name} (Copia)`;
               normalized.stock = 0;
@@ -772,6 +773,11 @@ export const ProductForm: React.FC = () => {
       }
 
       // Sanitize fields
+      if (productToSave.variantGroup) {
+        productToSave.variantGroup = productToSave.variantGroup.trim();
+      } else {
+        productToSave.variantGroup = '';
+      }
       if (productToSave.weightGrams === '') productToSave.weightGrams = 0;
       if (productToSave.printTimeMinutes === '') productToSave.printTimeMinutes = 0;
       if (productToSave.purchaseCost === '') productToSave.purchaseCost = 0;
@@ -850,13 +856,24 @@ export const ProductForm: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-              <input 
-                type="text" required
-                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
-                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                <input 
+                  type="text" required
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                  value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Grupo de Variantes (opcional)</label>
+                <input 
+                  type="text"
+                  placeholder="Ej: FILAR PLA"
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                  value={formData.variantGroup || ''} onChange={e => setFormData({...formData, variantGroup: e.target.value})}
+                />
+              </div>
             </div>
 
             <div>

@@ -348,7 +348,7 @@ export const NewOrder: React.FC = () => {
     const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
     if (resolvedTiers && resolvedTiers.length > 0) {
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
-      const scopeId = deepestTierScopeCategoryId(product.priceTiers, product.categoryId, categories);
+      const scopeId = deepestTierScopeCategoryId(product.priceTiers, product.categoryId, categories, product.variantGroup);
       const effectiveQty = (scopeId && scopeQtyMap) ? (scopeQtyMap.get(scopeId) ?? quantity) : quantity;
       return getTierPrice(effectiveQty, basePrice, resolvedTiers);
     }
@@ -395,6 +395,7 @@ export const NewOrder: React.FC = () => {
         return {
           priceTiers: product?.priceTiers,
           categoryId: product?.categoryId,
+          variantGroup: product?.variantGroup,
           quantity: item.quantity,
         };
       }),

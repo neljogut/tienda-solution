@@ -91,7 +91,8 @@ export const ProductDetail: React.FC = () => {
       isKeychain: (product as any).isKeychain,
       imageUrl: product.mainImage,
       quantity: quantity,
-      maxStock: product.stock !== undefined ? product.stock : 999
+      maxStock: product.stock !== undefined ? product.stock : 999,
+      variantGroup: product.variantGroup
     });
   };
   

@@ -5,10 +5,11 @@ import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, collection, query, where, addDoc, writeBatch, getDoc, getCountFromServer } from 'firebase/firestore';
-import { roundPriceUp10 } from '../services/pricingService';
+import { roundPriceUp10, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
 import { SearchableClientSelect } from './SearchableClientSelect';
 import { NumericInput } from './NumericInput';
 import type { Client } from '../types/client';
+import type { Category } from '../types/category';
 
 interface QuantityInputProps {
   productId: string;
@@ -86,6 +87,7 @@ export const CartDrawer: React.FC = () => {
   const [depositSettings, setDepositSettings] = useState<any>(null);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const discountPercentNormal = pricingSettings?.wholesaleDiscountPercentNormal ?? 15;
   const discountPercentKeychain = pricingSettings?.wholesaleDiscountPercentKeychain ?? 10;
@@ -139,12 +141,22 @@ export const CartDrawer: React.FC = () => {
       setActiveSession(mySession);
     });
 
+    // 6. Categories listener
+    const unsubCategories = onSnapshot(collection(db, 'categories'), (snap) => {
+      const cats: Category[] = [];
+      snap.forEach((d) => {
+        cats.push({ id: d.id, ...d.data() } as Category);
+      });
+      setCategories(cats);
+    });
+
     return () => {
       unsubPricing();
       unsubDeposit();
       unsubRate();
       unsubClients();
       unsubSession();
+      unsubCategories();
     };
   }, [isDrawerOpen, userData]);
 
@@ -592,6 +604,16 @@ export const CartDrawer: React.FC = () => {
   const has3DNormal = items.some(i => i.type === '3d' && !i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
   const has3DKeychain = items.some(i => i.type === '3d' && i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
 
+  const scopeQtyMap = aggregatedQtyByScope(
+    items.map(i => ({
+      priceTiers: i.priceTiers,
+      categoryId: i.categoryId,
+      variantGroup: i.variantGroup,
+      quantity: i.quantity,
+    })),
+    categories
+  );
+
   return (
     <>
       {isDrawerOpen && (
@@ -738,10 +760,13 @@ export const CartDrawer: React.FC = () => {
                           {/* Price tier next discount hint */}
                           {item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0 && (() => {
                             const sortedTiers = [...item.resolvedPriceTiers].sort((a, b) => a.minQty - b.minQty);
-                            const nextTier = sortedTiers.find(t => t.minQty > item.quantity);
-                            const currentTier = sortedTiers.find(t => item.quantity >= t.minQty && item.quantity <= t.maxQty);
+                            const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
+                            const effectiveQty = scopeId ? (scopeQtyMap.get(scopeId) ?? item.quantity) : item.quantity;
+                            
+                            const nextTier = sortedTiers.find(t => t.minQty > effectiveQty);
+                            const currentTier = sortedTiers.find(t => effectiveQty >= t.minQty && effectiveQty <= t.maxQty);
                             const lastTier = sortedTiers[sortedTiers.length - 1];
-                            const activeTier = currentTier || (item.quantity > lastTier?.maxQty ? lastTier : null);
+                            const activeTier = currentTier || (effectiveQty > lastTier?.maxQty ? lastTier : null);
 
                             return (
                               <div className="mt-1 space-y-0.5">
@@ -752,7 +777,7 @@ export const CartDrawer: React.FC = () => {
                                 )}
                                 {nextTier ? (
                                   <p className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 inline-block font-medium">
-                                    Llevá {nextTier.minQty - item.quantity} más para pagar ${(nextTier.unitPrice || 0).toLocaleString('es-AR')} c/u
+                                    Llevá {nextTier.minQty - effectiveQty} más para pagar ${(nextTier.unitPrice || 0).toLocaleString('es-AR')} c/u
                                   </p>
                                 ) : (
                                   <p className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 inline-block font-medium">

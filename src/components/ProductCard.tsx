@@ -73,7 +73,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       category: product.category,
       isKeychain: (product as any).isKeychain,
       imageUrl: product.mainImage,
-      maxStock: product.stock !== undefined ? product.stock : 999
+      maxStock: product.stock !== undefined ? product.stock : 999,
+      variantGroup: product.variantGroup
     });
   };
 

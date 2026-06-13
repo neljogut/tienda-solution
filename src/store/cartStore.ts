@@ -25,6 +25,7 @@ export interface CartItem {
   categoryId?: string;
   category?: string;
   isKeychain?: boolean;
+  variantGroup?: string;
 }
 
 interface CartState {
@@ -55,12 +56,13 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
     return { ...item, resolvedPriceTiers };
   });
 
-  // 2. Build aggregated quantity map by tier scope (category-level aggregation)
-  // Items sharing the same scope category pool their quantities for tier evaluation
+  // 2. Build aggregated quantity map by tier scope (category or variant group level aggregation)
+  // Items sharing the same scope pool their quantities for tier evaluation
   const scopeQtyMap = aggregatedQtyByScope(
     itemsWithResolved.map(i => ({
       priceTiers: i.priceTiers,
       categoryId: i.categoryId,
+      variantGroup: i.variantGroup,
       quantity: i.quantity,
     })),
     allCategories
@@ -97,7 +99,7 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
   return itemsWithResolved.map(item => {
     // Priority 1: Price Tiers (using aggregated scope quantity)
     if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
-      const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, allCategories);
+      const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, allCategories, item.variantGroup);
       const effectiveQty = scopeId ? (scopeQtyMap.get(scopeId) ?? item.quantity) : item.quantity;
       const price = getTierPrice(effectiveQty, item.basePrice, item.resolvedPriceTiers);
       return { ...item, price };
@@ -145,7 +147,8 @@ export const useCartStore = create<CartState>()(
                   categoryId: i.categoryId || newItem.categoryId,
                   isKeychain: i.isKeychain !== undefined ? i.isKeychain : newItem.isKeychain,
                   weightGrams: i.weightGrams || newItem.weightGrams,
-                  priceTiers: i.priceTiers || newItem.priceTiers
+                  priceTiers: i.priceTiers || newItem.priceTiers,
+                  variantGroup: i.variantGroup || newItem.variantGroup
                 }
               : i
           );
@@ -163,6 +166,7 @@ export const useCartStore = create<CartState>()(
             categoryId: newItem.categoryId,
             category: newItem.category,
             isKeychain: newItem.isKeychain,
+            variantGroup: newItem.variantGroup,
             basePrice,
             price: basePrice,
             quantity: addQty 

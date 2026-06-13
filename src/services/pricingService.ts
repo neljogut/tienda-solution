@@ -236,15 +236,20 @@ export function resolveInheritedPriceTiers(
 
 /**
  * Finds the deepest category in the hierarchy (own or ancestor) that has priceTiers defined.
- * This category acts as the "scope" for quantity aggregation across products.
- * If the product itself has priceTiers, returns its own categoryId.
+ * This category acts as the "scope" for quantity aggregation across products. If the product itself has priceTiers, returns its own categoryId.
  * Returns null if no tier scope is found.
+ * If variantGroup is specified, returns a group-specific scope instead of category scope.
  */
 export function deepestTierScopeCategoryId(
   priceTiers: PriceTier[] | undefined,
   categoryId: string | undefined,
-  categories: Category[]
+  categories: Category[],
+  variantGroup?: string
 ): string | null {
+  if (variantGroup && variantGroup.trim()) {
+    return `group::${variantGroup.trim().toLowerCase()}`;
+  }
+
   if (!categoryId || !categories || categories.length === 0) return null;
 
   // If the product has its own tiers, its category is the scope
@@ -272,13 +277,13 @@ export function deepestTierScopeCategoryId(
 }
 
 /**
- * Aggregates quantities by tier scope (categoryId that owns the priceTiers).
+ * Aggregates quantities by tier scope (categoryId that owns the priceTiers, or variantGroup).
  * Only items that have tiers (direct or inherited) are counted.
  * Used to determine the effective quantity for tier pricing across multiple products
- * in the same category.
+ * in the same category or variant group.
  */
 export function aggregatedQtyByScope(
-  items: Array<{ priceTiers?: PriceTier[]; categoryId?: string; quantity: number | '' }>,
+  items: Array<{ priceTiers?: PriceTier[]; categoryId?: string; variantGroup?: string; quantity: number | '' }>,
   categories: Category[]
 ): Map<string, number> {
   const scopeMap = new Map<string, number>();
@@ -290,7 +295,7 @@ export function aggregatedQtyByScope(
     const resolvedTiers = resolveInheritedPriceTiers(item.priceTiers, item.categoryId, categories);
     if (!resolvedTiers || resolvedTiers.length === 0) continue; // no tiers → skip
 
-    const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories);
+    const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
     if (!scopeId) continue;
 
     scopeMap.set(scopeId, (scopeMap.get(scopeId) ?? 0) + qty);

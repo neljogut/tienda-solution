@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { roundPriceUp10 } from '../services/pricingService';
 interface QuantityInputProps {
   productId: string;
   quantity: number;
@@ -73,6 +74,9 @@ export const CartDrawer: React.FC = () => {
 
   if (!isDrawerOpen) return null;
 
+  const discountPercentNormal = pricingSettings?.wholesaleDiscountPercentNormal ?? 15;
+  const discountPercentKeychain = pricingSettings?.wholesaleDiscountPercentKeychain ?? 10;
+
   const handleCheckout = () => {
     if (!currentUser) {
       alert('Debes iniciar sesión para comprar.');
@@ -127,9 +131,6 @@ export const CartDrawer: React.FC = () => {
 
             const thresholdNormal = pricingSettings?.wholesaleThresholdGramsNormal ?? 1000;
             const thresholdKeychain = pricingSettings?.wholesaleThresholdGramsKeychain ?? 600;
-            
-            const discountPercentNormal = pricingSettings?.wholesaleDiscountPercentNormal ?? 15;
-            const discountPercentKeychain = pricingSettings?.wholesaleDiscountPercentKeychain ?? 10;
 
             const has3DNormal = items.some(i => i.type === '3d' && !i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
             const has3DKeychain = items.some(i => i.type === '3d' && i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
@@ -202,11 +203,35 @@ export const CartDrawer: React.FC = () => {
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <h4 className="font-semibold text-slate-800 line-clamp-1">{item.name}</h4>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
                       <p className="text-sm font-medium text-blue-600">${(item.price || 0).toLocaleString('es-AR')}</p>
                       {item.price < item.basePrice && (
                         <p className="text-xs text-slate-400 line-through">${(item.basePrice || 0).toLocaleString('es-AR')}</p>
                       )}
+                      {(() => {
+                        const is3D = item.type === '3d';
+                        const hasTiers = item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0;
+                        if (!is3D || hasTiers) return null;
+
+                        const isKeychain = item.isKeychain === true;
+                        const discountPercent = isKeychain ? discountPercentKeychain : discountPercentNormal;
+                        const wholesalePrice = roundPriceUp10(item.basePrice * (1 - discountPercent / 100));
+
+                        if (item.price < item.basePrice) {
+                          return (
+                            <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.5 rounded">
+                              May
+                            </span>
+                          );
+                        } else if (wholesalePrice < item.basePrice) {
+                          return (
+                            <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-bold px-1.5 py-0.5 rounded animate-fadeIn">
+                              Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     {/* Price tier next discount hint */}

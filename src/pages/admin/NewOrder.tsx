@@ -1039,6 +1039,109 @@ export const NewOrder: React.FC = () => {
 
     return (
       <>
+        {/* Wholesale Weight Progress Bar (At the top, always visible) */}
+        {(() => {
+          if (cartItems.length === 0) return null;
+
+          // If client is wholesale, show automated wholesale status message
+          if (activeClient?.isWholesale) {
+            return (
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 text-xs font-semibold text-purple-700 flex items-center gap-2 animate-fadeIn mb-3">
+                <Sparkles size={14} className="text-purple-600 animate-pulse flex-shrink-0" />
+                <span>Tarifa Mayorista activa automáticamente por el cliente.</span>
+              </div>
+            );
+          }
+
+          // Calculate weights for progress
+          let weightNormal = 0;
+          let weightKeychain = 0;
+          cartItems.forEach(item => {
+            const product = products.find(p => p.id === item.productId);
+            if (!product) return;
+            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+            const hasTiers = resolvedTiers && resolvedTiers.length > 0;
+            // If it has price tiers, it does not count towards threshold weights
+            if (hasTiers) return;
+            
+            if (product.type === '3d') {
+              const w = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
+              if ((product as any).isKeychain) {
+                weightKeychain += w;
+              } else {
+                weightNormal += w;
+              }
+            }
+          });
+
+          const thresholdNormal = pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000;
+          const thresholdKeychain = pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600;
+          
+          const discountPercentNormal = pricing3dSettings?.wholesaleDiscountPercentNormal ?? 15;
+          const discountPercentKeychain = pricing3dSettings?.wholesaleDiscountPercentKeychain ?? 10;
+
+          const has3DNormal = cartItems.some(i => {
+            const product = products.find(p => p.id === i.productId);
+            if (!product) return false;
+            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+            return product.type === '3d' && !(product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
+          });
+          const has3DKeychain = cartItems.some(i => {
+            const product = products.find(p => p.id === i.productId);
+            if (!product) return false;
+            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+            return product.type === '3d' && (product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
+          });
+
+          if (!has3DNormal && !has3DKeychain) return null;
+
+          return (
+            <div className="bg-[#f8fafc] border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm animate-fadeIn mb-3">
+              <h4 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">DESCUENTOS POR PESO (IMPRESIÓN 3D)</h4>
+              
+              {has3DNormal && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-700">
+                    <span>3D Normal: {weightNormal}g / {thresholdNormal}g</span>
+                    <span className="font-bold text-blue-600">-{discountPercentNormal}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${weightNormal >= thresholdNormal ? 'bg-emerald-500' : 'bg-[#2563eb]'}`}
+                      style={{ width: `${Math.min(100, (weightNormal / thresholdNormal) * 100)}%` }}
+                    ></div>
+                  </div>
+                  {weightNormal >= thresholdNormal ? (
+                    <p className="text-[10px] font-bold text-emerald-600">¡Precio mayorista ACTIVADO para 3D normal!</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 font-medium">Agregá {thresholdNormal - weightNormal}g más para activar descuento del {discountPercentNormal}%</p>
+                  )}
+                </div>
+              )}
+
+              {has3DKeychain && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-700">
+                    <span>Llaveros 3D: {weightKeychain}g / {thresholdKeychain}g</span>
+                    <span className="font-bold text-blue-600">-{discountPercentKeychain}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${weightKeychain >= thresholdKeychain ? 'bg-emerald-500' : 'bg-[#2563eb]'}`}
+                      style={{ width: `${Math.min(100, (weightKeychain / thresholdKeychain) * 100)}%` }}
+                    ></div>
+                  </div>
+                  {weightKeychain >= thresholdKeychain ? (
+                    <p className="text-[10px] font-bold text-emerald-600">¡Precio mayorista ACTIVADO para Llaveros!</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 font-medium">Agregá {thresholdKeychain - weightKeychain}g más para activar descuento del {discountPercentKeychain}%</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Cart Items list */}
         <div className="space-y-3">
           {cartItems.length === 0 ? (
@@ -1054,6 +1157,7 @@ export const NewOrder: React.FC = () => {
               const resolvedPriceTiers = product ? resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories) : [];
               const basePrice = product ? (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice) : item.unitPrice;
               const itemQty = item.quantity === '' ? 0 : Number(item.quantity);
+              const wholesalePrice = product?.calculatedWholesalePrice || Math.ceil(basePrice * 0.8);
 
               return (
                 <div 
@@ -1079,7 +1183,7 @@ export const NewOrder: React.FC = () => {
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{item.name}</h4>
-                      <div className="flex items-baseline gap-2 mt-0.5">
+                      <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
                         <p className="text-sm font-bold text-blue-600">
                           ${item.unitPrice.toLocaleString('es-AR')}
                         </p>
@@ -1091,6 +1195,11 @@ export const NewOrder: React.FC = () => {
                         {item.appliedWholesale && (
                           <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.5 rounded">
                             May
+                          </span>
+                        )}
+                        {!item.appliedWholesale && wholesalePrice < basePrice && (
+                          <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-bold px-1.5 py-0.5 rounded animate-fadeIn">
+                            Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
                           </span>
                         )}
                       </div>
@@ -1223,95 +1332,6 @@ export const NewOrder: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Wholesale Weight Progress Bar */}
-            {(() => {
-              // Calculate weights for progress
-              let weightNormal = 0;
-              let weightKeychain = 0;
-              cartItems.forEach(item => {
-                const product = products.find(p => p.id === item.productId);
-                if (!product) return;
-                const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
-                const hasTiers = resolvedTiers && resolvedTiers.length > 0;
-                if (hasTiers) return;
-                
-                if (product.type === '3d') {
-                  const w = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
-                  if ((product as any).isKeychain) {
-                    weightKeychain += w;
-                  } else {
-                    weightNormal += w;
-                  }
-                }
-              });
-
-              const thresholdNormal = pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000;
-              const thresholdKeychain = pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600;
-              const discountPercentNormal = pricing3dSettings?.wholesaleDiscountPercentNormal ?? 15;
-              const discountPercentKeychain = pricing3dSettings?.wholesaleDiscountPercentKeychain ?? 10;
-
-              const has3DNormal = cartItems.some(i => {
-                const product = products.find(p => p.id === i.productId);
-                if (!product) return false;
-                const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
-                return product.type === '3d' && !(product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
-              });
-              const has3DKeychain = cartItems.some(i => {
-                const product = products.find(p => p.id === i.productId);
-                if (!product) return false;
-                const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
-                return product.type === '3d' && (product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
-              });
-
-              if (!has3DNormal && !has3DKeychain) return null;
-
-              return (
-                <div className="bg-[#f8fafc] border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm animate-fadeIn">
-                  <h4 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">DESCUENTOS POR PESO (IMPRESIÓN 3D)</h4>
-                  
-                  {has3DNormal && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-slate-700">
-                        <span>3D Normal: {weightNormal}g / {thresholdNormal}g</span>
-                        <span className="font-bold text-blue-600">-{discountPercentNormal}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-500 ${weightNormal >= thresholdNormal ? 'bg-emerald-500' : 'bg-[#2563eb]'}`}
-                          style={{ width: `${Math.min(100, (weightNormal / thresholdNormal) * 100)}%` }}
-                        ></div>
-                      </div>
-                      {weightNormal >= thresholdNormal ? (
-                        <p className="text-[10px] font-bold text-emerald-600">¡Precio mayorista ACTIVADO para 3D normal!</p>
-                      ) : (
-                        <p className="text-[10px] text-slate-400 font-medium">Agregá {thresholdNormal - weightNormal}g más para activar descuento del {discountPercentNormal}%</p>
-                      )}
-                    </div>
-                  )}
-
-                  {has3DKeychain && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-slate-700">
-                        <span>Llaveros 3D: {weightKeychain}g / {thresholdKeychain}g</span>
-                        <span className="font-bold text-blue-600">-{discountPercentKeychain}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-500 ${weightKeychain >= thresholdKeychain ? 'bg-emerald-500' : 'bg-[#2563eb]'}`}
-                          style={{ width: `${Math.min(100, (weightKeychain / thresholdKeychain) * 100)}%` }}
-                        ></div>
-                      </div>
-                      {weightKeychain >= thresholdKeychain ? (
-                        <p className="text-[10px] font-bold text-emerald-600">¡Precio mayorista ACTIVADO para Llaveros!</p>
-                      ) : (
-                        <p className="text-[10px] text-slate-400 font-medium">Agregá {thresholdKeychain - weightKeychain}g más para activar descuento del {discountPercentKeychain}%</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
 
             {/* Calculations and Seña / Payment */}
             <div className="space-y-3 bg-[#f8fafc] border border-slate-100 rounded-2xl p-4 shadow-sm">
@@ -1517,20 +1537,6 @@ export const NewOrder: React.FC = () => {
             <p className="text-slate-500 text-sm">Registra una venta o seña de producto asignándola a un cliente.</p>
           </div>
         </div>
-        {/* Desktop: toggle drawer button when items exist */}
-        {cartItems.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(!drawerOpen)}
-            className="hidden lg:flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-600/15 transition-all"
-          >
-            <ShoppingCart size={16} />
-            <span>Tu Carrito ({cartItems.length})</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs font-bold">
-              ${totalAmount.toLocaleString('es-AR')}
-            </span>
-          </button>
-        )}
       </div>
 
       {/* Product Catalog — full width */}

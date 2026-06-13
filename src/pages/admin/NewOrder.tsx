@@ -216,6 +216,61 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
   );
 };
 
+interface DrawerQuantityInputProps {
+  productId: string;
+  quantity: number | '';
+  maxStock: number;
+  updateQuantity: (id: string, qty: number | '') => void;
+}
+
+const DrawerQuantityInput: React.FC<DrawerQuantityInputProps> = ({ productId, quantity, maxStock, updateQuantity }) => {
+  const [localVal, setLocalVal] = useState<string>(quantity === '' ? '' : quantity.toString());
+
+  useEffect(() => {
+    setLocalVal(quantity === '' ? '' : quantity.toString());
+  }, [quantity]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setLocalVal(text);
+
+    if (text === '') {
+      updateQuantity(productId, '');
+      return;
+    }
+
+    const parsed = parseInt(text, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      const clamped = Math.min(parsed, maxStock);
+      updateQuantity(productId, clamped);
+    }
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInt(localVal, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      updateQuantity(productId, 1);
+      setLocalVal("1");
+    } else {
+      const clamped = Math.min(parsed, maxStock);
+      updateQuantity(productId, clamped);
+      setLocalVal(clamped.toString());
+    }
+  };
+
+  return (
+    <input 
+      type="number"
+      min="1"
+      max={maxStock}
+      value={localVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className="w-10 text-center text-sm font-bold bg-transparent border-none focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-slate-800"
+    />
+  );
+};
+
 export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -242,7 +297,7 @@ export const NewOrder: React.FC = () => {
   const [observationsInternal, setObservationsInternal] = useState('');
   const [loading, setLoading] = useState(false);
   const [addToast, setAddToast] = useState<string | null>(null);
-  const cartSummaryRef = useRef<HTMLDivElement>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Share draft order state
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -586,8 +641,12 @@ export const NewOrder: React.FC = () => {
     window.setTimeout(() => setAddToast(null), 2200);
   }, []);
 
-  const scrollToCartSummary = useCallback(() => {
-    cartSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const openDrawer = useCallback(() => {
+    setDrawerOpen(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
   }, []);
 
   // Add item to cart
@@ -637,7 +696,7 @@ export const NewOrder: React.FC = () => {
     showAddToast(`${product.name} · cant. ${newQty}`);
 
     if (window.matchMedia('(max-width: 1023px)').matches) {
-      window.setTimeout(() => scrollToCartSummary(), 120);
+      setDrawerOpen(true);
     }
   };
 
@@ -674,7 +733,6 @@ export const NewOrder: React.FC = () => {
   const bypassDeposit = isTrustedClient && (depositSettings?.trustedClientBypassDeposit ?? true);
   
   const minDepositRequired = bypassDeposit ? 0 : Math.ceil(totalAmount * (requiredDepositPercent / 100));
-  const isDepositValid = paidAmountAmt >= minDepositRequired || bypassDeposit;
 
   // Handle Order Submit
   const handleCreateOrder = async () => {
@@ -960,6 +1018,7 @@ export const NewOrder: React.FC = () => {
       const draftRef = await addDoc(collection(db, 'orders'), draftData);
       const generatedUrl = `${window.location.origin}/shared-order/${draftRef.id}`;
       setShareUrl(generatedUrl);
+      setDrawerOpen(false);
       setShareModalOpen(true);
     } catch (err) {
       console.error(err);
@@ -969,11 +1028,419 @@ export const NewOrder: React.FC = () => {
     }
   };
 
+  // Drawer body content (progress bar & items list & checkout forms)
+  const renderDrawerBodyContent = () => {
+    const paidAmountAmt = paidAmount === '' ? 0 : Number(paidAmount);
+    const requiredDepositPercent = depositSettings?.requiredDepositPercent || 30;
+    const isTrustedClient = activeClient?.isTrusted ?? false;
+    const bypassDeposit = isTrustedClient && (depositSettings?.trustedClientBypassDeposit ?? true);
+    const minDepositRequired = bypassDeposit ? 0 : Math.ceil(totalAmount * (requiredDepositPercent / 100));
+    const isDepositValid = paidAmountAmt >= minDepositRequired || bypassDeposit;
+
+    return (
+      <>
+        {/* Cart Items list */}
+        <div className="space-y-3">
+          {cartItems.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center h-full">
+              <ShoppingCart size={40} className="opacity-20 mb-3" />
+              <p className="text-sm font-medium">El pedido está vacío</p>
+              <p className="text-xs mt-1">Agregá productos desde el catálogo</p>
+            </div>
+          ) : (
+            cartItems.map(item => {
+              const product = products.find(p => p.id === item.productId);
+              const imageUrl = product?.mainImage;
+              const resolvedPriceTiers = product ? resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories) : [];
+              const basePrice = product ? (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice) : item.unitPrice;
+              const itemQty = item.quantity === '' ? 0 : Number(item.quantity);
+
+              return (
+                <div 
+                  key={item.productId} 
+                  className="flex gap-4 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm transition-all duration-200"
+                >
+                  {/* Product Thumbnail */}
+                  <div className="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                    {imageUrl ? (
+                      <img 
+                        src={imageUrl} 
+                        className="w-full h-full object-cover" 
+                        alt={item.name}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-slate-400">
+                        <ShoppingBag size={24} className="opacity-60" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product details & controls */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{item.name}</h4>
+                      <div className="flex items-baseline gap-2 mt-0.5">
+                        <p className="text-sm font-bold text-blue-600">
+                          ${item.unitPrice.toLocaleString('es-AR')}
+                        </p>
+                        {basePrice > item.unitPrice && (
+                          <p className="text-xs text-slate-400 line-through">
+                            ${basePrice.toLocaleString('es-AR')}
+                          </p>
+                        )}
+                        {item.appliedWholesale && (
+                          <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.5 rounded">
+                            May
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Price tier next discount hint */}
+                      {resolvedPriceTiers && resolvedPriceTiers.length > 0 && (() => {
+                        const sortedTiers = [...resolvedPriceTiers].sort((a, b) => a.minQty - b.minQty);
+                        const nextTier = sortedTiers.find(t => t.minQty > itemQty);
+                        const currentTier = sortedTiers.find(t => itemQty >= t.minQty && itemQty <= t.maxQty);
+                        const lastTier = sortedTiers[sortedTiers.length - 1];
+                        const activeTier = currentTier || (itemQty > lastTier?.maxQty ? lastTier : null);
+
+                        return (
+                          <div className="mt-1 space-y-0.5 animate-fadeIn">
+                            {activeTier && activeTier.unitPrice < basePrice && (
+                              <div className="text-[10px] text-emerald-600 font-bold">
+                                ¡Descuento por tramo activo!
+                              </div>
+                            )}
+                            {nextTier ? (
+                              <p className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 inline-block font-medium">
+                                Llevá {nextTier.minQty - itemQty} más para pagar ${(nextTier.unitPrice || 0).toLocaleString('es-AR')} c/u
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 inline-block font-medium">
+                                ¡Alcanzaste el descuento máximo por tramos!
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      {/* Quantity controls */}
+                      <div className="flex items-center gap-2 bg-[#f8fafc] border border-slate-200/60 rounded-xl px-2.5 py-1 h-9">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.productId, itemQty - 1)}
+                          className="p-1 text-slate-500 hover:bg-slate-200/50 rounded-lg transition-colors flex items-center justify-center font-bold"
+                          disabled={itemQty <= 1}
+                          style={{ minWidth: '1.5rem' }}
+                        >
+                          <Minus size={12} className="stroke-[3]" />
+                        </button>
+                        
+                        <DrawerQuantityInput 
+                          productId={item.productId}
+                          quantity={item.quantity}
+                          maxStock={product?.stock || 999}
+                          updateQuantity={updateQuantity}
+                        />
+                        
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.productId, itemQty + 1)}
+                          className="p-1 text-slate-500 hover:bg-slate-200/50 rounded-lg transition-colors flex items-center justify-center font-bold"
+                          disabled={product ? itemQty >= product.stock : false}
+                          style={{ minWidth: '1.5rem' }}
+                        >
+                          <Plus size={12} className="stroke-[3]" />
+                        </button>
+                      </div>
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.productId, 0)} 
+                        className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                        aria-label={`Eliminar ${item.name}`}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {cartItems.length > 0 && (
+          <div className="space-y-4 pt-4 border-t border-slate-100 mt-4 animate-fadeIn">
+            {/* Resumen del Pedido Header */}
+            <div className="flex justify-between items-center text-slate-800 font-bold text-sm">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="text-blue-600" size={16} />
+                <span>Resumen del Pedido</span>
+              </div>
+              <span className="text-xs text-slate-400 font-medium">
+                {cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'}
+              </span>
+            </div>
+
+            {/* CLIENTE ASIGNADO */}
+            <div className="space-y-1">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <User size={12} className="text-slate-400" />
+                Cliente Asignado
+              </label>
+              
+              <SearchableClientSelect 
+                clients={sortedClients} 
+                value={selectedClientId} 
+                onChange={setSelectedClientId} 
+                placeholder="-- Seleccionar Cliente --"
+              />
+              
+              {activeClient && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {activeClient.isWholesale ? (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+                      Tarifa Mayorista
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200">
+                      Tarifa Minorista
+                    </span>
+                  )}
+                  {activeClient.isTrusted && (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200">
+                      De Confianza
+                    </span>
+                  )}
+                  {isTrustedClient && (
+                    <span className="text-[10px] text-amber-600 flex items-center gap-0.5 font-semibold">
+                      <Sparkles size={11} /> Seña no requerida
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Wholesale Weight Progress Bar */}
+            {(() => {
+              // Calculate weights for progress
+              let weightNormal = 0;
+              let weightKeychain = 0;
+              cartItems.forEach(item => {
+                const product = products.find(p => p.id === item.productId);
+                if (!product) return;
+                const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+                const hasTiers = resolvedTiers && resolvedTiers.length > 0;
+                if (hasTiers) return;
+                
+                if (product.type === '3d') {
+                  const w = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
+                  if ((product as any).isKeychain) {
+                    weightKeychain += w;
+                  } else {
+                    weightNormal += w;
+                  }
+                }
+              });
+
+              const thresholdNormal = pricing3dSettings?.wholesaleThresholdGramsNormal ?? 1000;
+              const thresholdKeychain = pricing3dSettings?.wholesaleThresholdGramsKeychain ?? 600;
+              const discountPercentNormal = pricing3dSettings?.wholesaleDiscountPercentNormal ?? 15;
+              const discountPercentKeychain = pricing3dSettings?.wholesaleDiscountPercentKeychain ?? 10;
+
+              const has3DNormal = cartItems.some(i => {
+                const product = products.find(p => p.id === i.productId);
+                if (!product) return false;
+                const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+                return product.type === '3d' && !(product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
+              });
+              const has3DKeychain = cartItems.some(i => {
+                const product = products.find(p => p.id === i.productId);
+                if (!product) return false;
+                const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+                return product.type === '3d' && (product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
+              });
+
+              if (!has3DNormal && !has3DKeychain) return null;
+
+              return (
+                <div className="bg-[#f8fafc] border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm animate-fadeIn">
+                  <h4 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">DESCUENTOS POR PESO (IMPRESIÓN 3D)</h4>
+                  
+                  {has3DNormal && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs font-semibold text-slate-700">
+                        <span>3D Normal: {weightNormal}g / {thresholdNormal}g</span>
+                        <span className="font-bold text-blue-600">-{discountPercentNormal}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${weightNormal >= thresholdNormal ? 'bg-emerald-500' : 'bg-[#2563eb]'}`}
+                          style={{ width: `${Math.min(100, (weightNormal / thresholdNormal) * 100)}%` }}
+                        ></div>
+                      </div>
+                      {weightNormal >= thresholdNormal ? (
+                        <p className="text-[10px] font-bold text-emerald-600">¡Precio mayorista ACTIVADO para 3D normal!</p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 font-medium">Agregá {thresholdNormal - weightNormal}g más para activar descuento del {discountPercentNormal}%</p>
+                      )}
+                    </div>
+                  )}
+
+                  {has3DKeychain && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs font-semibold text-slate-700">
+                        <span>Llaveros 3D: {weightKeychain}g / {thresholdKeychain}g</span>
+                        <span className="font-bold text-blue-600">-{discountPercentKeychain}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${weightKeychain >= thresholdKeychain ? 'bg-emerald-500' : 'bg-[#2563eb]'}`}
+                          style={{ width: `${Math.min(100, (weightKeychain / thresholdKeychain) * 100)}%` }}
+                        ></div>
+                      </div>
+                      {weightKeychain >= thresholdKeychain ? (
+                        <p className="text-[10px] font-bold text-emerald-600">¡Precio mayorista ACTIVADO para Llaveros!</p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 font-medium">Agregá {thresholdKeychain - weightKeychain}g más para activar descuento del {discountPercentKeychain}%</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Calculations and Seña / Payment */}
+            <div className="space-y-3 bg-[#f8fafc] border border-slate-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Subtotal pedido:</span>
+                <span className="font-bold text-slate-800 text-sm">${totalAmount.toLocaleString('es-AR')}</span>
+              </div>
+              
+              {/* Paid Amount */}
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium flex items-center gap-1">
+                  Monto Abonado (Seña):
+                  {!isDepositValid && (
+                    <span className="text-red-500" title={`Mínimo requerido $${minDepositRequired}`}>
+                      <AlertCircle size={14} className="stroke-[2.5] text-red-500" />
+                    </span>
+                  )}
+                </span>
+                <div className="flex items-center gap-2">
+                  <NumericInput 
+                    value={paidAmount} 
+                    onChange={val => setPaidAmount(val)}
+                    className="w-24 p-1.5 border border-slate-200 rounded-lg text-right font-bold text-sm bg-white"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              {/* Minimum Deposit Note */}
+              {minDepositRequired > 0 && !bypassDeposit && (
+                <div className="text-[10px] text-blue-600 flex items-center gap-1.5 mt-0.5 bg-blue-50/50 p-2 rounded-lg border border-blue-100/30">
+                  <Info size={12} className="text-blue-500 flex-shrink-0" />
+                  <span>Seña mínima: <strong className="text-blue-700">${minDepositRequired.toLocaleString('es-AR')}</strong> ({requiredDepositPercent}%)</span>
+                </div>
+              )}
+
+              {/* Payment Method Selector if paidAmount > 0 */}
+              {paidAmountAmt > 0 && (
+                <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-200/50">
+                  <span className="text-slate-500 font-medium flex items-center gap-1">
+                    <CreditCard size={12} className="text-slate-400" /> Método de pago:
+                  </span>
+                  <select
+                    value={paymentMethod}
+                    onChange={e => setPaymentMethod(e.target.value as any)}
+                    className="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white font-semibold"
+                  >
+                    <option value="cash">Efectivo</option>
+                    <option value="transfer">Transferencia</option>
+                    <option value="mercadopago">MercadoPago</option>
+                    <option value="card">Tarjeta</option>
+                    <option value="other">Otro</option>
+                  </select>
+                </div>
+              )}
+              
+              {/* Cash Session Status warning */}
+              {paidAmountAmt > 0 && !activeSession && (
+                <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-2.5 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold animate-fadeIn">
+                  <AlertCircle size={14} className="flex-shrink-0 text-amber-600" />
+                  <span>La caja diaria está cerrada. El pago no se registrará en la caja diaria.</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-xs pt-2.5 border-t border-slate-200 font-bold">
+                <span className="text-slate-600">Saldo Pendiente:</span>
+                <span className={`text-sm ${pendingAmount > 0 ? 'text-[#f59e0b]' : 'text-emerald-600'}`}>
+                  ${pendingAmount.toLocaleString('es-AR')}
+                </span>
+              </div>
+            </div>
+
+            {/* Observation Fields */}
+            <div className="space-y-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Observaciones para el cliente</label>
+                <input 
+                  type="text" 
+                  value={observationsPublic} 
+                  onChange={e => setObservationsPublic(e.target.value)}
+                  placeholder="Ej. Entregar envuelto para regalo..."
+                  className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Observaciones internas (dueño)</label>
+                <input 
+                  type="text" 
+                  value={observationsInternal} 
+                  onChange={e => setObservationsInternal(e.target.value)}
+                  placeholder="Ej. Revisar calidad del filamento rojo..."
+                  className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={handleShareDraftOrder}
+                disabled={shareLoading || cartItems.length === 0 || !selectedClientId}
+                className="w-full py-3.5 text-sm flex items-center justify-center gap-2 border-2 border-slate-200 hover:border-slate-300 text-slate-600 hover:bg-slate-50 rounded-2xl font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-white"
+              >
+                <Share2 size={16} className="text-indigo-600" />
+                <span className="text-indigo-600">Compartir pedido (sin cobrar)</span>
+              </button>
+
+              <button 
+                type="button"
+                onClick={handleCreateOrder}
+                disabled={loading || cartItems.length === 0 || !selectedClientId || (!isDepositValid && !bypassDeposit)}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 text-sm flex items-center justify-center gap-2 rounded-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/15 transition-all"
+              >
+                {loading ? 'Creando...' : 'Confirmar y Crear Pedido'}
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+
       {/* Share Order Modal */}
       {shareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShareModalOpen(false)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setShareModalOpen(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
             className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-fadeIn"
@@ -1038,6 +1505,7 @@ export const NewOrder: React.FC = () => {
           </div>
         </div>
       )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1049,15 +1517,25 @@ export const NewOrder: React.FC = () => {
             <p className="text-slate-500 text-sm">Registra una venta o seña de producto asignándola a un cliente.</p>
           </div>
         </div>
+        {/* Desktop: toggle drawer button when items exist */}
+        {cartItems.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            className="hidden lg:flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-600/15 transition-all"
+          >
+            <ShoppingCart size={16} />
+            <span>Tu Carrito ({cartItems.length})</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs font-bold">
+              ${totalAmount.toLocaleString('es-AR')}
+            </span>
+          </button>
+        )}
       </div>
 
-      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${cartItems.length > 0 ? 'pb-24 lg:pb-0' : ''}`}>
-        {/* Left Side: Product catalog lookup */}
-        <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="card p-5 flex flex-col h-[min(55vh,520px)] lg:h-[72vh]">
-            <h3 className="font-bold text-slate-800 text-base mb-3 flex items-center gap-2">
-              <ShoppingCart size={18} className="text-blue-500" />
-            </h3>
+      {/* Product Catalog — full width */}
+      <div className="w-full">
+        <div className="card p-5 flex flex-col h-[calc(100vh-180px)]">
             <div className="flex gap-2 items-center mb-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 text-slate-400" size={16} />
@@ -1229,292 +1707,88 @@ export const NewOrder: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: Order configuration and items list */}
-        <div ref={cartSummaryRef} className="lg:col-span-5 flex flex-col space-y-4 scroll-mt-20">
-          <div className="card p-5 flex flex-col min-h-[min(60vh,560px)] lg:h-[72vh] justify-between">
-            <div className="space-y-4 flex flex-col overflow-y-auto no-scrollbar flex-1 pb-4">
-              <h3 className="font-bold text-slate-800 text-base border-b pb-2 flex items-center justify-between">
-                <span>Resumen del Pedido</span>
-                <span className="text-xs font-medium text-slate-400">Total ítems: {cartItems.length}</span>
-              </h3>
-
-              {/* Client Selector */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <User size={13} className="text-slate-400" />
-                  Cliente Asignado
-                </label>
-                
-                <SearchableClientSelect 
-                  clients={sortedClients} 
-                  value={selectedClientId} 
-                  onChange={setSelectedClientId} 
-                  placeholder="-- Seleccionar Cliente --"
-                />
-                
-                {activeClient && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {activeClient.isWholesale && (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
-                        Tarifa Mayorista
-                      </span>
-                    )}
-                    {!activeClient.isWholesale && (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200">
-                        Tarifa Minorista
-                      </span>
-                    )}
-                    {activeClient.isTrusted && (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200">
-                        De Confianza
-                      </span>
-                    )}
-                    {isTrustedClient && (
-                      <span className="text-[10px] text-amber-600 flex items-center gap-0.5 font-semibold">
-                        <Sparkles size={11} /> Seña no requerida
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Cart Items list */}
-              <div className="flex-1 border border-slate-100 rounded-xl p-3 bg-slate-50/40 space-y-2.5 overflow-y-auto no-scrollbar min-h-[180px]">
-                {cartItems.length === 0 && (
-                  <div className="text-center py-10 text-slate-400 flex flex-col items-center justify-center h-full">
-                    <ShoppingCart size={32} className="opacity-30 mb-2" />
-                    <p className="text-xs">El pedido está vacío.</p>
-                  </div>
-                )}
-                
-                {cartItems.map(item => {
-                  const product = products.find(p => p.id === item.productId);
-                  const imageUrl = product?.mainImage;
-                  const itemSubtotal = item.unitPrice * (item.quantity === '' ? 0 : Number(item.quantity));
-
-                  return (
-                    <div 
-                      key={item.productId} 
-                      className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 hover:border-slate-200/80 shadow-sm transition-all duration-200 group"
-                    >
-                      {/* Product Thumbnail */}
-                      <div className="w-11 h-11 rounded-lg overflow-hidden border border-slate-100 flex-shrink-0 bg-slate-50 flex items-center justify-center relative shadow-inner">
-                        {imageUrl ? (
-                          <img 
-                            src={imageUrl} 
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-                            alt={item.name}
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-slate-400">
-                            <ShoppingBag size={18} className="opacity-60" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Product details */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-800 text-xs leading-tight truncate group-hover:text-blue-600 transition-colors" title={item.name}>
-                          {item.name}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[10px] text-slate-500 font-semibold">
-                            ${item.unitPrice.toLocaleString('es-AR')}
-                          </span>
-                          {item.appliedWholesale && (
-                            <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.2 rounded">
-                              May
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Quantity Controls & Subtotal */}
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        {/* Premium Quantity controls */}
-                        <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 shadow-sm overflow-hidden h-7">
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.productId, item.quantity === '' ? 0 : Number(item.quantity) - 1)}
-                            className="w-7 h-full flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-r border-slate-200 transition-colors active:bg-slate-200"
-                          >
-                            <Minus size={12} />
-                          </button>
-                          
-                          <NumericInput
-                            value={item.quantity}
-                            onChange={val => updateQuantity(item.productId, val)}
-                            className="w-9 h-full border-0 bg-white text-center text-xs font-bold text-slate-800 focus:ring-0 focus:outline-none"
-                          />
-                          
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.productId, item.quantity === '' ? 1 : Number(item.quantity) + 1)}
-                            className="w-7 h-full flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-700 border-l border-slate-200 transition-colors active:bg-slate-200"
-                          >
-                            <Plus size={12} />
-                          </button>
-                        </div>
-
-                        {/* Line Subtotal */}
-                        <div className="text-right min-w-[70px]">
-                          <span className="font-extrabold text-slate-800 text-xs tracking-tight">
-                            ${itemSubtotal.toLocaleString('es-AR')}
-                          </span>
-                        </div>
-
-                        {/* Delete Button */}
-                        <button 
-                          type="button"
-                          onClick={() => updateQuantity(item.productId, 0)} 
-                          className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors duration-200"
-                          aria-label={`Eliminar ${item.name}`}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Observation Fields */}
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Observaciones para el cliente</label>
-                  <input 
-                    type="text" 
-                    value={observationsPublic} 
-                    onChange={e => setObservationsPublic(e.target.value)}
-                    placeholder="Ej. Entregar envuelto para regalo..."
-                    className="w-full border rounded-lg p-2 text-xs"
-                  />
+      {/* Slide-in drawer overlay for both Desktop and Mobile */}
+      {drawerOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] transition-opacity animate-fadeIn"
+            onClick={closeDrawer}
+          />
+          <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] flex flex-col animate-slideInRight">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+                  <ShoppingBag size={20} />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Observaciones internas (dueño)</label>
-                  <input 
-                    type="text" 
-                    value={observationsInternal} 
-                    onChange={e => setObservationsInternal(e.target.value)}
-                    placeholder="Ej. Revisar calidad del filamento rojo..."
-                    className="w-full border rounded-lg p-2 text-xs"
-                  />
-                </div>
+                <h2 className="text-xl font-extrabold text-slate-900">Tu Carrito</h2>
               </div>
+              <button 
+                onClick={closeDrawer}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                aria-label="Cerrar pedido"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Calculations and Actions Footer */}
-            <div className="space-y-3 pt-3 border-t border-slate-100">
-              <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Subtotal pedido:</span>
-                  <span className="font-bold text-slate-800 text-sm">${totalAmount.toLocaleString('es-AR')}</span>
-                </div>
-                
-                {/* Paid Amount */}
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium flex items-center gap-1">
-                    Monto Abonado (Seña):
-                    {!isDepositValid && (
-                      <span className="text-red-500" title={`Mínimo requerido $${minDepositRequired}`}>
-                        <AlertCircle size={12} />
-                      </span>
-                    )}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <NumericInput 
-                      value={paidAmount} 
-                      onChange={val => setPaidAmount(val)}
-                      className="w-24 p-1 border rounded text-right font-bold text-xs"
-                      placeholder="$0"
-                    />
-                  </div>
-                </div>
-                {/* Minimum Deposit Note */}
-                {minDepositRequired > 0 && !bypassDeposit && (
-                  <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 border-t border-slate-200/50 pt-1.5">
-                    <Info size={11} className="text-blue-500 flex-shrink-0" />
-                    <span>Seña mínima: <strong className="text-slate-700">${minDepositRequired.toLocaleString('es-AR')}</strong> ({requiredDepositPercent}%)</span>
-                  </div>
-                )}
-
-                {/* Payment Method Selector if paidAmount > 0 */}
-                {paidAmountAmt > 0 && (
-                  <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-200/50">
-                    <span className="text-slate-500 font-medium flex items-center gap-1">
-                      <CreditCard size={12} className="text-slate-400" /> Método de pago:
-                    </span>
-                    <select
-                      value={paymentMethod}
-                      onChange={e => setPaymentMethod(e.target.value as any)}
-                      className="border rounded px-1.5 py-0.5 text-xs bg-white font-semibold"
-                    >
-                      <option value="cash">Efectivo</option>
-                      <option value="transfer">Transferencia</option>
-                      <option value="mercadopago">MercadoPago</option>
-                      <option value="card">Tarjeta</option>
-                      <option value="other">Otro</option>
-                    </select>
-                  </div>
-                )}
-                
-                {/* Cash Session Status warning */}
-                {paidAmountAmt > 0 && !activeSession && (
-                  <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-lg p-2 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold animate-fadeIn">
-                    <AlertCircle size={13} className="flex-shrink-0 text-amber-600" />
-                    <span>La caja diaria está cerrada. El pago se aplicará al pedido pero no quedará registrado en los movimientos de caja diaria.</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200 font-bold">
-                  <span className="text-slate-600">Saldo Pendiente:</span>
-                  <span className={`text-sm ${pendingAmount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    ${pendingAmount.toLocaleString('es-AR')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Share draft order button */}
-              <button
-                onClick={handleShareDraftOrder}
-                disabled={shareLoading || cartItems.length === 0 || !selectedClientId}
-                className="w-full py-2.5 text-sm flex items-center justify-center gap-2 border-2 border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 rounded-lg font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Share2 size={16} />
-                {shareLoading ? 'Generando link...' : 'Compartir pedido (sin cobrar)'}
-              </button>
-
-              <button 
-                onClick={handleCreateOrder}
-                disabled={loading || cartItems.length === 0 || !selectedClientId || (!isDepositValid && !bypassDeposit)}
-                className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Creando pedido...' : 'Confirmar y Crear Pedido'}
-              </button>
+            {/* Drawer Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+              {renderDrawerBodyContent()}
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Toast al agregar producto */}
       {addToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-2xl animate-fadeIn max-w-[90vw] text-center">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-2xl animate-fadeIn max-w-[90vw] text-center">
           {addToast}
         </div>
       )}
 
-      {/* Barra móvil: acceso rápido al resumen del pedido */}
-      {cartItems.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden">
-          <button
-            type="button"
-            onClick={scrollToCartSummary}
-            className="w-full btn-primary py-3 text-sm flex items-center justify-center gap-2 shadow-xl"
-          >
-            <ShoppingCart size={18} />
-            Ver pedido ({cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'})
-          </button>
-        </div>
+      {/* Floating button/bar to open the cart (for both mobile and desktop) */}
+      {cartItems.length > 0 && !drawerOpen && (
+        <>
+          {/* Mobile view floating bar */}
+          <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden animate-fadeIn">
+            <button
+              type="button"
+              onClick={openDrawer}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-5 rounded-2xl flex items-center justify-between font-extrabold shadow-2xl border-2 border-white/20 active:scale-98 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <ShoppingCart size={20} className="animate-bounce" />
+                <div className="flex flex-col items-start leading-tight">
+                  <span className="text-[10px] text-blue-200 uppercase tracking-wider font-bold">Ver Mi Pedido</span>
+                  <span className="text-sm">Tu Carrito ({cartItems.length})</span>
+                </div>
+              </div>
+              <span className="bg-white/20 px-3 py-1 rounded-xl text-sm font-black">
+                ${totalAmount.toLocaleString('es-AR')}
+              </span>
+            </button>
+          </div>
+
+          {/* Desktop view floating button */}
+          <div className="fixed bottom-8 right-8 z-40 hidden lg:block animate-fadeIn">
+            <button
+              type="button"
+              onClick={openDrawer}
+              className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 duration-200 border-2 border-white/20"
+            >
+              <ShoppingCart size={24} className="animate-bounce" />
+              <div className="flex flex-col items-start leading-tight">
+                <span className="text-xs text-blue-200 font-bold uppercase tracking-wider">Ver Mi Pedido</span>
+                <span className="text-base">Tu Carrito ({cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'})</span>
+              </div>
+              <div className="h-8 w-px bg-white/20 mx-1" />
+              <span className="bg-white/20 px-3 py-1.5 rounded-xl text-base font-black">
+                ${totalAmount.toLocaleString('es-AR')}
+              </span>
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

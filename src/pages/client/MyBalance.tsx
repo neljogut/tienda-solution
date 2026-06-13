@@ -246,7 +246,6 @@ export const MyBalance: React.FC = () => {
                 <th className="p-4">Fecha</th>
                 <th className="p-4">Cliente</th>
                 <th className="p-4 text-right">Total Pedido</th>
-                <th className="p-4 text-right">Ganancia Real</th>
                 <th className="p-4 text-right">Porcentaje</th>
                 <th className="p-4 text-right">Tu Comisión</th>
                 <th className="p-4 text-center">Estado Comisión</th>
@@ -255,13 +254,12 @@ export const MyBalance: React.FC = () => {
             <tbody className="divide-y divide-slate-100 text-slate-700 text-xs font-semibold">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 font-normal">
+                  <td colSpan={7} className="p-8 text-center text-slate-400 font-normal">
                     No se encontraron registros de comisiones.
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((o) => {
-                  const profit = o.totalProfit ?? (o.totalAmount - (o.totalCost ?? 0));
                   return (
                     <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 font-bold text-slate-800">
@@ -275,9 +273,6 @@ export const MyBalance: React.FC = () => {
                       </td>
                       <td className="p-4 text-right">
                         {formatCurrency(o.totalAmount)}
-                      </td>
-                      <td className="p-4 text-right text-slate-500 font-normal">
-                        {formatCurrency(profit)}
                       </td>
                       <td className="p-4 text-right text-slate-400 font-normal">
                         {o.commissionPercent ?? 10}%
@@ -304,7 +299,6 @@ export const MyBalance: React.FC = () => {
             </div>
           ) : (
             filteredOrders.map((o) => {
-              const profit = o.totalProfit ?? (o.totalAmount - (o.totalCost ?? 0));
               return (
                 <div key={o.id} className="p-4 space-y-3">
                   <div className="flex justify-between items-center">
@@ -318,9 +312,8 @@ export const MyBalance: React.FC = () => {
 
                   <div className="space-y-1">
                     <div className="text-slate-800 font-bold text-sm">{o.customerName}</div>
-                    <div className="flex justify-between text-xs font-normal text-slate-500">
+                    <div className="text-xs font-normal text-slate-500">
                       <span>Total Pedido: {formatCurrency(o.totalAmount)}</span>
-                      <span>Ganancia Pedido: {formatCurrency(profit)}</span>
                     </div>
                   </div>
 

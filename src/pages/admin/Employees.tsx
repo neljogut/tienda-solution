@@ -6,8 +6,170 @@ import { DEFAULT_EMPLOYEE_PERMISSIONS } from '../../types/user';
 import type { UserData, UserPermissions } from '../../types/user';
 import { 
   UserCog, Shield, Users, Search, Edit2, CheckSquare, 
-  Square, X, ShieldAlert, Award, UserPlus
+  Square, X, ShieldAlert, Award, UserPlus, User, ChevronDown
 } from 'lucide-react';
+
+interface SearchableCandidateSelectProps {
+  candidates: any[];
+  value: string;
+  onChange: (candidate: any) => void;
+  placeholder?: string;
+}
+
+const SearchableCandidateSelect: React.FC<SearchableCandidateSelectProps> = ({
+  candidates,
+  value,
+  onChange,
+  placeholder = 'Buscar y seleccionar persona...'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  const selectedCandidate = candidates.find(c => c.id === value);
+  const displayValue = selectedCandidate 
+    ? selectedCandidate.label
+    : '';
+
+  const filtered = React.useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return candidates;
+    return candidates.filter(c => 
+      c.displayName.toLowerCase().includes(term) ||
+      (c.email && c.email.toLowerCase().includes(term))
+    );
+  }, [candidates, search]);
+
+  const updateCoords = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+    }
+  };
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+    updateCoords();
+  };
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('resize', updateCoords);
+    window.addEventListener('scroll', updateCoords, true);
+
+    const clickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        const portalDropdown = document.getElementById('portal-candidate-dropdown');
+        if (portalDropdown && portalDropdown.contains(e.target as Node)) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', clickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, true);
+      document.removeEventListener('mousedown', clickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-3 top-3 text-slate-400">
+          <User size={15} />
+        </div>
+        <div className="absolute right-3 top-3 text-slate-400 pointer-events-none">
+          <ChevronDown size={15} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && coords && createPortal(
+        <div 
+          id="portal-candidate-dropdown"
+          className="fixed bg-white border border-slate-200/80 rounded-xl shadow-2xl z-[999] py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin max-h-56 overflow-y-auto"
+          style={{
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            top: `${coords.top + coords.height + 4}px`,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {filtered.length === 0 ? (
+            <div className="text-slate-400 py-4 text-center flex flex-col items-center gap-1">
+              <User size={18} className="opacity-40" />
+              <span>No se encontraron personas</span>
+            </div>
+          ) : (
+            filtered.map(c => {
+              const isSelected = c.id === value;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(c);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition-colors flex items-center gap-3 ${
+                    isSelected ? 'bg-blue-50/50 text-blue-700 font-semibold' : 'text-slate-700'
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    c.type === 'registered_user' 
+                      ? 'bg-blue-500/10 text-blue-600' 
+                      : 'bg-emerald-500/10 text-emerald-600'
+                  }`}>
+                    {c.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-semibold">{c.displayName}</p>
+                    <p className="truncate text-[10px] text-slate-400 font-mono mt-0.5">{c.email || 'Sin correo'}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                    c.type === 'registered_user' 
+                      ? 'bg-blue-50 text-blue-700' 
+                      : 'bg-emerald-50 text-emerald-700'
+                  }`}>
+                    {c.type === 'registered_user' ? 'Usuario Web' : 'Manual'}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const Employees: React.FC = () => {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -28,7 +190,6 @@ export const Employees: React.FC = () => {
   const [selectedClientIdToLink, setSelectedClientIdToLink] = useState('');
   const [selectedUserIdToPromote, setSelectedUserIdToPromote] = useState('');
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
-  const [addSearchTerm, setAddSearchTerm] = useState('');
   const [addDni, setAddDni] = useState('');
   const [addLinkEmail, setAddLinkEmail] = useState('');
   const [addPassword, setAddPassword] = useState('');
@@ -262,7 +423,6 @@ export const Employees: React.FC = () => {
     setSelectedClientIdToLink('');
     setSelectedUserIdToPromote('');
     setSelectedCandidateId('');
-    setAddSearchTerm('');
     setAddLinkEmail('');
     setAddPassword('');
     setAddRole('employee');
@@ -870,69 +1030,35 @@ export const Employees: React.FC = () => {
             )}
 
             {/* Unified Search and Selector */}
-            <div className="space-y-5 text-xs">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Buscar Persona</label>
-                <input
-                  type="text"
-                  placeholder="Escribe el nombre o correo..."
-                  className="input w-full text-xs"
-                  value={addSearchTerm}
-                  onChange={(e) => setAddSearchTerm(e.target.value)}
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                  Buscar y Seleccionar Colaborador
+                </label>
+                <SearchableCandidateSelect
+                  candidates={candidates}
+                  value={selectedCandidateId}
+                  onChange={(cand) => {
+                    if (cand) {
+                      setSelectedCandidateId(cand.id);
+                      if (cand.type === 'registered_user') {
+                        setModalTab('promote');
+                        setSelectedUserIdToPromote(cand.userId);
+                        setSelectedClientIdToLink('');
+                      } else {
+                        setModalTab('link-client');
+                        setSelectedClientIdToLink(cand.clientId);
+                        setSelectedUserIdToPromote('');
+                      }
+                    } else {
+                      setSelectedCandidateId('');
+                      setSelectedClientIdToLink('');
+                      setSelectedUserIdToPromote('');
+                    }
+                    setAddLinkEmail('');
+                  }}
+                  placeholder="Escribe el nombre o correo del colaborador..."
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Seleccionar Persona</label>
-                {(() => {
-                  const matching = candidates.filter(c => 
-                    c.displayName.toLowerCase().includes(addSearchTerm.toLowerCase()) ||
-                    c.email.toLowerCase().includes(addSearchTerm.toLowerCase())
-                  );
-
-                  if (matching.length === 0) {
-                    return (
-                      <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg text-slate-400 text-center text-xs">
-                        {addSearchTerm ? 'No se encontraron personas que coincidan con la búsqueda.' : 'No hay candidatos disponibles para promover.'}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <select
-                      value={selectedCandidateId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedCandidateId(val);
-                        const cand = candidates.find(c => c.id === val);
-                        if (cand) {
-                          if (cand.type === 'registered_user') {
-                            setModalTab('promote');
-                            setSelectedUserIdToPromote(cand.userId);
-                            setSelectedClientIdToLink('');
-                          } else {
-                            setModalTab('link-client');
-                            setSelectedClientIdToLink(cand.clientId);
-                            setSelectedUserIdToPromote('');
-                          }
-                        } else {
-                          setSelectedClientIdToLink('');
-                          setSelectedUserIdToPromote('');
-                        }
-                        setAddLinkEmail('');
-                      }}
-                      className="input w-full text-xs"
-                      required
-                    >
-                      <option value="">-- Selecciona un candidato ({matching.length} disponibles) --</option>
-                      {matching.map(c => (
-                        <option key={`${c.type}-${c.id}`} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  );
-                })()}
               </div>
 
               {/* Conditional inputs depending on chosen manual client */}

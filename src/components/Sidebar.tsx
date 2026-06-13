@@ -66,6 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { label: 'Pedidos', icon: Receipt, path: '/orders', permission: 'viewOrders' },
         { label: 'Clientes', icon: Users, path: '/clients', permission: 'viewClients' },
         { label: 'Cuentas Ctes.', icon: CreditCard, path: '/accounts', permission: 'viewAccounts' },
+        { label: 'Liquidaciones', icon: ArrowLeftRight, path: '/admin/liquidations', requiredRole: 'owner' },
       ]
     },
     {
@@ -83,7 +84,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { label: 'Caja Diaria', icon: DollarSign, path: '/cash', permission: 'viewCash' },
         { label: 'Historial de Cajas', icon: History, path: '/cash-history', permission: 'viewCashHistory' },
         { label: 'Balance', icon: BarChart3, path: '/balance', permission: 'viewBalance' },
-        { label: 'Liquidaciones', icon: ArrowLeftRight, path: '/admin/liquidations', requiredRole: 'owner' },
       ]
     },
     {

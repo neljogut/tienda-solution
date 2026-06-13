@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, writeBatch, doc } from 'firebase/firestore';
 import type { UserData } from '../../types/user';
@@ -13,8 +14,160 @@ import {
   Square,
   TrendingUp,
   Award,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
+
+interface SearchableEmployeeSelectProps {
+  employees: UserData[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+const SearchableEmployeeSelect: React.FC<SearchableEmployeeSelectProps> = ({
+  employees,
+  value,
+  onChange,
+  placeholder = 'Buscar y seleccionar colaborador...'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  const selectedEmp = employees.find(e => e.uid === value);
+  const displayValue = selectedEmp 
+    ? `${selectedEmp.displayName || selectedEmp.email}`
+    : '';
+
+  const filtered = React.useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return employees;
+    return employees.filter(e => 
+      (e.displayName || '').toLowerCase().includes(term) ||
+      e.email.toLowerCase().includes(term)
+    );
+  }, [employees, search]);
+
+  const updateCoords = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      });
+    }
+  };
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setSearch('');
+    updateCoords();
+  };
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('resize', updateCoords);
+    window.addEventListener('scroll', updateCoords, true);
+
+    const clickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        const portalDropdown = document.getElementById('portal-employee-dropdown');
+        if (portalDropdown && portalDropdown.contains(e.target as Node)) {
+          return;
+        }
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', clickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, true);
+      document.removeEventListener('mousedown', clickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={isOpen ? search : displayValue}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
+        />
+        <div className="absolute left-3 top-3 text-slate-400">
+          <User size={15} />
+        </div>
+        <div className="absolute right-3 top-3 text-slate-400 pointer-events-none">
+          <ChevronDown size={15} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && coords && createPortal(
+        <div 
+          id="portal-employee-dropdown"
+          className="fixed bg-white border border-slate-200/80 rounded-xl shadow-2xl z-[999] py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin max-h-56 overflow-y-auto"
+          style={{
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            top: `${coords.top + coords.height + 4}px`,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {filtered.length === 0 ? (
+            <div className="text-slate-400 py-4 text-center flex flex-col items-center gap-1">
+              <User size={18} className="opacity-40" />
+              <span>No se encontraron colaboradores</span>
+            </div>
+          ) : (
+            filtered.map(e => {
+              const isSelected = e.uid === value;
+              return (
+                <button
+                  key={e.uid}
+                  type="button"
+                  onClick={() => {
+                    onChange(e.uid);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition-colors flex items-center gap-3 ${
+                    isSelected ? 'bg-indigo-50/50 text-indigo-700 font-semibold' : 'text-slate-700'
+                  }`}
+                >
+                  <div className="w-7 h-7 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                    {(e.displayName || e.email).slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-semibold">{e.displayName || 'Colaborador'}</p>
+                    <p className="truncate text-[10px] text-slate-400 font-mono mt-0.5">{e.email}</p>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const Liquidations: React.FC = () => {
   const [employees, setEmployees] = useState<UserData[]>([]);
@@ -27,6 +180,25 @@ export const Liquidations: React.FC = () => {
   // Selection state for liquidation
   const [selectedOrderIds, setSelectedOrderIds] = useState<Record<string, boolean>>({});
   const [liquidating, setLiquidating] = useState(false);
+  const [pendingTotals, setPendingTotals] = useState<Record<string, number>>({});
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'orders'), (snap) => {
+      const totals: Record<string, number> = {};
+      const counts: Record<string, number> = {};
+      snap.forEach((d) => {
+        const o = d.data() as Order;
+        if (o.commissionEmployeeId && o.commissionPaidStatus !== 'paid' && o.paymentStatus === 'paid') {
+          totals[o.commissionEmployeeId] = (totals[o.commissionEmployeeId] || 0) + (o.commissionAmount || 0);
+          counts[o.commissionEmployeeId] = (counts[o.commissionEmployeeId] || 0) + 1;
+        }
+      });
+      setPendingTotals(totals);
+      setPendingCounts(counts);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load collaborators list
   useEffect(() => {
@@ -197,6 +369,19 @@ export const Liquidations: React.FC = () => {
     }
   };
 
+  const handleLiquidateSingle = async (orderId: string, amount: number) => {
+    if (!window.confirm(`¿Liquidar esta comisión de ${formatCurrency(amount)}?`)) return;
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'orders', orderId), { commissionPaidStatus: 'paid' });
+      await batch.commit();
+      setSelectedOrderIds(prev => { const next = { ...prev }; delete next[orderId]; return next; });
+    } catch (err) {
+      console.error('Error liquidating single commission:', err);
+      alert('Hubo un error al liquidar la comisión.');
+    }
+  };
+
   const formatCurrency = (val: number) => {
     return `$${val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
@@ -231,40 +416,102 @@ export const Liquidations: React.FC = () => {
         <p className="text-slate-500 text-sm">Gestiona y efectiviza el pago de comisiones pendientes a tus colaboradores.</p>
       </div>
 
-      {/* Collaborator Selector */}
-      <div className="card p-6 flex flex-col md:flex-row md:items-center gap-4 bg-white border border-slate-200 shadow-sm rounded-2xl">
-        <div className="flex-1 space-y-1">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Seleccionar Colaborador</label>
-          <div className="relative">
-            <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <select
-              className="input pl-9 text-xs w-full bg-slate-50 hover:bg-slate-100 focus:bg-white transition-colors"
-              value={selectedEmpId}
-              onChange={(e) => setSelectedEmpId(e.target.value)}
-            >
-              <option value="">-- Selecciona un empleado para ver su balance --</option>
-              {employees.map((emp) => (
-                <option key={emp.uid} value={emp.uid}>
-                  {emp.displayName || emp.email}
-                </option>
-              ))}
-            </select>
+      {/* Collaborator Grid (Cards) */}
+      <div className="space-y-3">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+          Resumen de Liquidaciones por Colaborador
+        </label>
+        {employees.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 border border-slate-200 border-dashed rounded-2xl bg-white">
+            No se encontraron empleados registrados.
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {employees.map((emp) => {
+              const isSelected = emp.uid === selectedEmpId;
+              const pendingAmount = pendingTotals[emp.uid] || 0;
+              const pendingCount = pendingCounts[emp.uid] || 0;
+              const initials = (emp.displayName || emp.email).slice(0, 2).toUpperCase();
 
-        {activeEmployee && (
-          <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl px-4 py-3 flex items-center gap-3">
-            <Award className="text-indigo-600" size={24} />
-            <div>
-              <div className="text-xs font-bold text-indigo-900 leading-tight">
-                {activeEmployee.displayName || 'Colaborador'}
-              </div>
-              <div className="text-[10px] text-indigo-600 font-semibold mt-0.5">
-                {activeEmployee.email}
-              </div>
-            </div>
+              return (
+                <button
+                  key={emp.uid}
+                  type="button"
+                  onClick={() => setSelectedEmpId(emp.uid)}
+                  className={`flex items-center gap-3.5 p-4 rounded-2xl border-2 text-left transition-all duration-300 ${
+                    isSelected
+                      ? 'border-indigo-600 bg-indigo-50/40 shadow-lg shadow-indigo-600/5'
+                      : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-md'
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                    isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {initials}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-extrabold text-slate-800 text-sm truncate">
+                      {emp.displayName || 'Colaborador'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate font-semibold mt-0.5">
+                      {emp.email}
+                    </p>
+                  </div>
+
+                  {/* Badge status */}
+                  <div className="text-right flex-shrink-0">
+                    {pendingAmount > 0 ? (
+                      <span className="inline-flex flex-col items-end">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                          {formatCurrency(pendingAmount)}
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-semibold mt-1">
+                          {pendingCount} {pendingCount === 1 ? 'pedido' : 'pedidos'}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        Al día
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
+      </div>
+
+      {/* Search Dropdown Selector */}
+      <div className="card p-5 bg-white border border-slate-200 shadow-sm rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex-1 max-w-md">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Buscador de Colaboradores
+            </label>
+            <SearchableEmployeeSelect 
+              employees={employees} 
+              value={selectedEmpId} 
+              onChange={setSelectedEmpId} 
+            />
+          </div>
+          {activeEmployee && (
+            <div className="bg-indigo-50/40 border border-indigo-100 rounded-xl px-4 py-2.5 flex items-center gap-3 self-start sm:self-auto">
+              <Award className="text-indigo-600" size={20} />
+              <div>
+                <div className="text-xs font-bold text-indigo-900 leading-tight">
+                  {activeEmployee.displayName || 'Colaborador'}
+                </div>
+                <div className="text-[10px] text-indigo-500 font-semibold mt-0.5">
+                  {activeEmployee.email}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {!selectedEmpId ? (
@@ -407,13 +654,11 @@ export const Liquidations: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[10px] uppercase font-bold tracking-wider">
-                    {statusFilter === 'available' && (
-                      <th className="p-4 w-12 text-center">
-                        <button onClick={toggleSelectAll} className="text-slate-400 hover:text-indigo-600">
-                          {allSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
-                        </button>
-                      </th>
-                    )}
+                    <th className="p-4 w-12 text-center">
+                      <button onClick={toggleSelectAll} className="text-slate-400 hover:text-indigo-600">
+                        {allSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
+                      </button>
+                    </th>
                     <th className="p-4">Pedido</th>
                     <th className="p-4">Fecha</th>
                     <th className="p-4">Cliente</th>
@@ -421,12 +666,13 @@ export const Liquidations: React.FC = () => {
                     <th className="p-4 text-right">Ganancia Real</th>
                     <th className="p-4 text-right">Comisión</th>
                     <th className="p-4 text-center">Estado Comisión</th>
+                    <th className="p-4 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700 text-xs font-semibold">
                   {filteredOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={statusFilter === 'available' ? 8 : 7} className="p-8 text-center text-slate-400 font-normal">
+                      <td colSpan={9} className="p-8 text-center text-slate-400 font-normal">
                         No se encontraron registros de comisiones.
                       </td>
                     </tr>
@@ -437,17 +683,15 @@ export const Liquidations: React.FC = () => {
                       const isChecked = !!selectedOrderIds[o.id];
                       return (
                         <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
-                          {statusFilter === 'available' && (
-                            <td className="p-4 text-center">
-                              {isSelectable ? (
-                                <button onClick={() => toggleSelectOrder(o.id)} className="text-slate-400 hover:text-indigo-600">
-                                  {isChecked ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
-                                </button>
-                              ) : (
-                                <span className="text-slate-300">-</span>
-                              )}
-                            </td>
-                          )}
+                          <td className="p-4 text-center">
+                            {isSelectable ? (
+                              <button onClick={() => toggleSelectOrder(o.id)} className="text-slate-400 hover:text-indigo-600">
+                                {isChecked ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
+                              </button>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </td>
                           <td className="p-4 font-bold text-slate-800">
                             #{String(o.orderNumber).padStart(5, '0')}
                           </td>
@@ -472,6 +716,20 @@ export const Liquidations: React.FC = () => {
                           <td className="p-4 text-center">
                             {getCommissionBadge(o)}
                           </td>
+                          <td className="p-4 text-center">
+                            {isSelectable ? (
+                              <button
+                                onClick={() => handleLiquidateSingle(o.id, o.commissionAmount || 0)}
+                                className="px-3 py-1.5 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg transition-all shadow-sm shadow-emerald-600/10 whitespace-nowrap"
+                              >
+                                Liquidar
+                              </button>
+                            ) : o.commissionPaidStatus === 'paid' ? (
+                              <span className="text-[10px] text-emerald-500 font-semibold">✓ Pagado</span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })
@@ -495,7 +753,7 @@ export const Liquidations: React.FC = () => {
                     <div key={o.id} className="p-4 space-y-3">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                          {statusFilter === 'available' && isSelectable && (
+                          {isSelectable && (
                             <button onClick={() => toggleSelectOrder(o.id)} className="text-slate-400 hover:text-indigo-600 mr-1">
                               {isChecked ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
                             </button>
@@ -524,8 +782,16 @@ export const Liquidations: React.FC = () => {
                             {formatCurrency(o.commissionAmount || 0)}
                           </span>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-2">
                           {getCommissionBadge(o)}
+                          {isSelectable && (
+                            <button
+                              onClick={() => handleLiquidateSingle(o.id, o.commissionAmount || 0)}
+                              className="px-2.5 py-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm"
+                            >
+                              Liquidar
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../context/AuthContext';
 import type { Order } from '../../types/order';
 import type { Product } from '../../types/product';
 import type { PricingSettings3D, BusinessSettings } from '../../types/settings';
@@ -41,6 +42,7 @@ const defaultBusinessSettings: BusinessSettings = {
 };
 
 export const Balance: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [settings3d, setSettings3d] = useState<PricingSettings3D>(defaultSettings3D);
@@ -353,14 +355,16 @@ export const Balance: React.FC = () => {
           >
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button 
-            onClick={handleDownloadPDF} 
-            disabled={loading || orderCount === 0}
-            className="btn-primary flex items-center justify-center gap-2 flex-1 md:flex-initial"
-          >
-            <BarChart3 size={18} />
-            Descargar Reporte PDF
-          </button>
+          {hasPermission('downloadBalancePDFs') && (
+            <button 
+              onClick={handleDownloadPDF} 
+              disabled={loading || orderCount === 0}
+              className="btn-primary flex items-center justify-center gap-2 flex-1 md:flex-initial"
+            >
+              <BarChart3 size={18} />
+              Descargar Reporte PDF
+            </button>
+          )}
         </div>
       </div>
 

@@ -707,14 +707,16 @@ export const Orders: React.FC = () => {
                                     <FileDown size={16} />
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => generateInternalPDF(order, business)}
-                                  disabled={order.orderStatus === 'draft'}
-                                  className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
-                                  title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
-                                >
-                                  <FileText size={16} />
-                                </button>
+                                {hasPermission('downloadInternalPDFs') && (
+                                  <button
+                                    onClick={() => generateInternalPDF(order, business)}
+                                    disabled={order.orderStatus === 'draft'}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
+                                    title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
+                                  >
+                                    <FileText size={16} />
+                                  </button>
+                                )}
                                 {canEditOrder && (
                                   <button
                                     onClick={() => {
@@ -907,14 +909,16 @@ export const Orders: React.FC = () => {
                               <FileDown size={14} />
                             </button>
                           )}
-                          <button
-                            onClick={() => generateInternalPDF(order, business)}
-                            disabled={order.orderStatus === 'draft'}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
-                          >
-                            <FileText size={14} />
-                          </button>
+                          {hasPermission('downloadInternalPDFs') && (
+                            <button
+                              onClick={() => generateInternalPDF(order, business)}
+                              disabled={order.orderStatus === 'draft'}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-50 border border-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={order.orderStatus === 'draft' ? "No disponible para borradores" : "Balance Interno"}
+                            >
+                              <FileText size={14} />
+                            </button>
+                          )}
                           {canEditOrder && (
                             <button
                               onClick={() => {

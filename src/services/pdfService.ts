@@ -929,6 +929,25 @@ export const generateBalancePDF = (balance: any, periodLabel: string, business: 
     y
   );
 
+  // 3. RESUMEN DE RENTABILIDAD AJUSTADA Section
+  y += 6;
+  if (y > 220) {
+    docPdf.addPage();
+    y = 15;
+  }
+  sectionHeader('RESUMEN DE RENTABILIDAD AJUSTADA', y);
+  y += 6;
+  y = drawBalanceTable(
+    '#e0f2fe', // sky100
+    [
+      { concepto: 'Ingresos brutos totales del período', rubro: 'Ingresos', value: balance.totalRevenue || 0, kind: 'income' },
+      { concepto: 'Costos totales (Fabricación + Reventa)', rubro: 'Costos', value: balance.totalCost || 0, kind: 'expense' },
+      { concepto: 'Comisiones totales generadas a colaboradores', rubro: 'Comisiones', value: balance.totalCommissionsPeriod || 0, kind: 'expense' }
+    ],
+    { concepto: 'Ganancia neta real ajustada', rubro: 'Resultado', value: balance.adjustedNetProfit || 0 },
+    y
+  );
+
   // DETALLE DE PEDIDOS DEL PERÍODO Section
   y += 8;
   if (y > 220) {

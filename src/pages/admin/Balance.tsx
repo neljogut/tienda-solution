@@ -145,6 +145,7 @@ export const Balance: React.FC = () => {
   let totalPaid = 0;
   let totalPending = 0;
   let totalSignals = 0;
+  let totalCommissionsPeriod = 0;
 
   // 3D Specifics
   let revenue3D = 0;
@@ -184,6 +185,8 @@ export const Balance: React.FC = () => {
     if (order.paymentStatus === 'partial') {
       totalSignals += order.paidAmount;
     }
+
+    totalCommissionsPeriod += order.commissionAmount || 0;
 
     // Client aggregation
     if (!clientStats[order.customerId]) {
@@ -274,6 +277,7 @@ export const Balance: React.FC = () => {
   // Calculate Aggregated Metrics
   const orderCount = activeOrders.length;
   const ticketAverage = orderCount > 0 ? (totalRevenue / orderCount) : 0;
+  const adjustedNetProfit = totalProfit - totalCommissionsPeriod;
 
   // Sorting products
   const productsArray = Object.keys(productStats).map(id => ({ id, ...productStats[id] }));
@@ -300,6 +304,8 @@ export const Balance: React.FC = () => {
     totalPaid,
     totalPending,
     totalSignals,
+    totalCommissionsPeriod,
+    adjustedNetProfit,
     revenue3D,
     profit3D,
     paid3D,
@@ -460,10 +466,20 @@ export const Balance: React.FC = () => {
                 <DollarSign size={14} className="text-emerald-600" />
                 Ganancia Neta Real
               </p>
-              <p className="text-2xl font-black text-emerald-700">${totalProfit.toLocaleString('es-AR')}</p>
-              <p className="text-[10px] text-emerald-600 mt-2 flex items-center gap-1 font-semibold">
-                <Sparkles size={11} /> Margen promedio: {totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}%
-              </p>
+              <p className="text-2xl font-black text-emerald-700">${adjustedNetProfit.toLocaleString('es-AR')}</p>
+              <div className="text-[10px] text-emerald-600 mt-2 space-y-0.5 font-semibold">
+                <div className="flex justify-between">
+                  <span>Ganancia Bruta:</span>
+                  <span>${totalProfit.toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex justify-between border-t border-emerald-200/40 pt-0.5">
+                  <span>Comisiones:</span>
+                  <span>-${totalCommissionsPeriod.toLocaleString('es-AR')}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] pt-1 text-emerald-500 font-bold border-t border-emerald-200/40 mt-1">
+                  <Sparkles size={11} className="flex-shrink-0" /> Margen neto: {totalRevenue > 0 ? ((adjustedNetProfit / totalRevenue) * 100).toFixed(1) : 0}%
+                </div>
+              </div>
             </div>
 
             {/* KPI: Cuentas por Cobrar */}

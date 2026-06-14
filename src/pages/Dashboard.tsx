@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, doc } from 'firebase/firestore';
+import React, { useEffect, useState, useMemo } from 'react';
+import { collection, onSnapshot, doc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import type { Order } from '../types/order';
@@ -12,11 +12,15 @@ import {
 import { fetchDollarRate } from '../services/dollarService';
 import type { ExchangeRateData, PricingSettingsResale } from '../types/settings';
 import { unifyClientsAndOrders } from '../utils/unifyClients';
+import { useAuth } from '../context/AuthContext';
+import type { UserData } from '../types/user';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { userData } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [employees, setEmployees] = useState<UserData[]>([]);
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
   const [resaleSettings, setResaleSettings] = useState<PricingSettingsResale | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +68,19 @@ export const Dashboard: React.FC = () => {
       checkLoading();
     });
 
+    // Listen to employees if owner
+    let employeesUnsub = () => {};
+    if (userData?.role === 'owner') {
+      const q = query(collection(db, 'users'), where('role', '==', 'employee'));
+      employeesUnsub = onSnapshot(q, (snap) => {
+        const list: UserData[] = [];
+        snap.forEach((d) => {
+          list.push({ uid: d.id, ...d.data() } as UserData);
+        });
+        setEmployees(list);
+      });
+    }
+
     // Initial load timer (fallback)
     const t = setTimeout(() => { setLoading(false); checkLoading(); }, 3000);
 
@@ -72,31 +89,111 @@ export const Dashboard: React.FC = () => {
       ordersUnsub(); 
       prodsUnsub(); 
       resaleUnsub();
+      employeesUnsub();
       clearTimeout(t);
     };
-  }, []);
+  }, [userData]);
 
   // ─── Use LOCAL time for date filtering (not UTC) ───
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+  // ─── Filter orders by employee if not owner ───
+  const userOrders = useMemo(() => {
+    if (userData?.role === 'employee') {
+      return orders.filter(o => o.commissionEmployeeId === userData.uid);
+    }
+    return orders;
+  }, [orders, userData]);
+
   // ─── Exclude cancelled orders from financial calculations ───
-  const activeOrders = orders.filter(o => o.orderStatus !== 'cancelled');
+  const activeOrders = useMemo(() => {
+    return userOrders.filter(o => o.orderStatus !== 'cancelled');
+  }, [userOrders]);
 
-  const todayOrders = activeOrders.filter(o => o.date?.startsWith(today));
-  const monthOrders = activeOrders.filter(o => o.date?.startsWith(thisMonth));
+  const todayOrders = useMemo(() => {
+    return activeOrders.filter(o => o.date?.startsWith(today));
+  }, [activeOrders, today]);
 
-  const salesToday = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-  const salesMonth = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-  const totalPending = activeOrders.reduce((sum, o) => sum + (o.pendingAmount || 0), 0);
+  const monthOrders = useMemo(() => {
+    return activeOrders.filter(o => o.date?.startsWith(thisMonth));
+  }, [activeOrders, thisMonth]);
+
+  const salesToday = useMemo(() => todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0), [todayOrders]);
+  const salesMonth = useMemo(() => monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0), [monthOrders]);
+  const totalPending = useMemo(() => activeOrders.reduce((sum, o) => sum + (o.pendingAmount || 0), 0), [activeOrders]);
 
   // Order status counts (all orders, including cancelled for the status breakdown)
-  const pendingOrders = orders.filter(o => o.orderStatus === 'pending').length;
-  const processingOrders = orders.filter(o => o.orderStatus === 'processing').length;
-  const finishedOrders = orders.filter(o => o.orderStatus === 'finished').length;
-  const deliveredOrders = orders.filter(o => o.orderStatus === 'delivered').length;
-  const cancelledOrders = orders.filter(o => o.orderStatus === 'cancelled').length;
+  const pendingOrders = useMemo(() => userOrders.filter(o => o.orderStatus === 'pending').length, [userOrders]);
+  const processingOrders = useMemo(() => userOrders.filter(o => o.orderStatus === 'processing').length, [userOrders]);
+  const finishedOrders = useMemo(() => userOrders.filter(o => o.orderStatus === 'finished').length, [userOrders]);
+  const deliveredOrders = useMemo(() => userOrders.filter(o => o.orderStatus === 'delivered').length, [userOrders]);
+  const cancelledOrders = useMemo(() => userOrders.filter(o => o.orderStatus === 'cancelled').length, [userOrders]);
+
+  // Commission debt calculations (owner: total debt with employees, employee: their own pending commissions)
+  const { availableCommissions, waitingCommissions } = useMemo(() => {
+    let available = 0;
+    let waiting = 0;
+
+    orders.forEach(o => {
+      if (o.orderStatus === 'cancelled' || o.orderStatus === 'draft') return;
+      
+      const matchUser = userData?.role === 'owner' || o.commissionEmployeeId === userData?.uid;
+      
+      if (o.commissionEmployeeId && o.commissionPaidStatus !== 'paid' && matchUser) {
+        const amt = o.commissionAmount || 0;
+        if (o.paymentStatus === 'paid') {
+          available += amt;
+        } else {
+          waiting += amt;
+        }
+      }
+    });
+
+    return { availableCommissions: available, waitingCommissions: waiting };
+  }, [orders, userData]);
+
+  // Collaborators statistics (only for owner)
+  const collaboratorsStats = useMemo(() => {
+    if (userData?.role !== 'owner') return [];
+    
+    return employees.map(emp => {
+      let salesAmount = 0;
+      let salesCount = 0;
+      let availableComm = 0;
+      let waitingComm = 0;
+
+      orders.forEach(o => {
+        if (o.orderStatus === 'cancelled' || o.orderStatus === 'draft') return;
+        
+        if (o.commissionEmployeeId === emp.uid) {
+          if (o.date?.startsWith(thisMonth)) {
+            salesAmount += o.totalAmount || 0;
+            salesCount += 1;
+          }
+          
+          if (o.commissionPaidStatus !== 'paid') {
+            const amt = o.commissionAmount || 0;
+            if (o.paymentStatus === 'paid') {
+              availableComm += amt;
+            } else {
+              waitingComm += amt;
+            }
+          }
+        }
+      });
+
+      return {
+        uid: emp.uid,
+        name: emp.displayName || emp.email,
+        salesAmount,
+        salesCount,
+        availableComm,
+        waitingComm
+      };
+    });
+  }, [employees, orders, thisMonth, userData]);
 
   // Top products — keychains count as 1 per order line (sell in bulk), rest count by qty
   const productSalesMap = new Map<string, { name: string; qty: number; revenue: number }>();
@@ -162,11 +259,23 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard title="Ventas del Día" value={`$${salesToday.toLocaleString('es-AR')}`} icon={DollarSign} color="emerald" />
         <StatCard title="Ventas del Mes" value={`$${salesMonth.toLocaleString('es-AR')}`} icon={TrendingUp} color="blue" />
         <StatCard title="Pendiente de Cobro" value={`$${totalPending.toLocaleString('es-AR')}`} icon={Wallet} color="amber" />
         <StatCard title="Total Pedidos" value={activeOrders.length.toString()} icon={ShoppingCart} color="violet" />
+        <StatCard 
+          title={userData?.role === 'owner' ? "Comisiones A Pagar" : "Mis Comisiones Disponibles"} 
+          value={`$${availableCommissions.toLocaleString('es-AR')}`} 
+          icon={CheckCircle} 
+          color="sky" 
+        />
+        <StatCard 
+          title={userData?.role === 'owner' ? "Comisiones En Espera" : "Mis Comisiones en Espera"} 
+          value={`$${waitingCommissions.toLocaleString('es-AR')}`} 
+          icon={Clock} 
+          color="indigo" 
+        />
       </div>
 
       {/* Order Status Row */}
@@ -209,6 +318,48 @@ export const Dashboard: React.FC = () => {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Collaborators Performance (Owner only) */}
+      {userData?.role === 'owner' && collaboratorsStats.length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4 border-b pb-2">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Users size={18} className="text-blue-500" />
+              Rendimiento de Colaboradores
+            </h3>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Comisiones y Ventas (Mes)</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold">
+                  <th className="py-2.5">Colaborador</th>
+                  <th className="py-2.5 text-center">Pedidos (Mes)</th>
+                  <th className="py-2.5 text-right">Ventas (Mes)</th>
+                  <th className="py-2.5 text-right">Comisiones A Pagar (Cobrado)</th>
+                  <th className="py-2.5 text-right">Comisiones En Espera (A Cobrar)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {collaboratorsStats.map((stat) => (
+                  <tr key={stat.uid} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3 font-semibold text-slate-700 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-[9px]">
+                        {stat.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      {stat.name}
+                    </td>
+                    <td className="py-3 text-center font-medium text-slate-600">{stat.salesCount}</td>
+                    <td className="py-3 text-right font-bold text-slate-800">${stat.salesAmount.toLocaleString('es-AR')}</td>
+                    <td className="py-3 text-right font-bold text-emerald-600">${stat.availableComm.toLocaleString('es-AR')}</td>
+                    <td className="py-3 text-right font-bold text-amber-600">${stat.waitingComm.toLocaleString('es-AR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -320,6 +471,8 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: s
     blue: 'from-blue-500 to-indigo-600 shadow-blue-500/20',
     amber: 'from-amber-500 to-orange-500 shadow-amber-500/20',
     violet: 'from-violet-500 to-purple-600 shadow-violet-500/20',
+    sky: 'from-sky-500 to-blue-600 shadow-sky-500/20',
+    indigo: 'from-indigo-500 to-violet-600 shadow-indigo-500/20',
   };
   
   return (

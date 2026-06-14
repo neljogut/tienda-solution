@@ -26,6 +26,17 @@ export const ProductDetail: React.FC = () => {
   const isOwner = userData?.role === 'owner';
   const { getRetailPrice } = usePricingData();
 
+  const price = product ? getRetailPrice(product) : 0;
+  const isOutOfStock = product ? (product.stock !== undefined && product.stock <= 0) : false;
+
+  const wholesalePrice = React.useMemo(() => {
+    if (!product) return 0;
+    if (product.priceTiers && product.priceTiers.length > 0) {
+      return Math.min(...product.priceTiers.map(t => t.unitPrice));
+    }
+    return product.calculatedWholesalePrice || Math.ceil(price * 0.8);
+  }, [product, price]);
+
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) return;
@@ -65,16 +76,6 @@ export const ProductDetail: React.FC = () => {
       </div>
     );
   }
-
-  const price = getRetailPrice(product);
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
-
-  const wholesalePrice = React.useMemo(() => {
-    if (product.priceTiers && product.priceTiers.length > 0) {
-      return Math.min(...product.priceTiers.map(t => t.unitPrice));
-    }
-    return product.calculatedWholesalePrice || Math.ceil(price * 0.8);
-  }, [product.priceTiers, product.calculatedWholesalePrice, price]);
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;

@@ -163,6 +163,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   src={imgUrl}
                   alt={`${product.name} - ${idx}`}
                   onLoad={() => handleImageLoad(imgUrl)}
+                  ref={(el) => {
+                    if (el && el.complete && !loadedImages[imgUrl]) {
+                      setTimeout(() => {
+                        setLoadedImages((prev) => {
+                          if (prev[imgUrl]) return prev;
+                          return { ...prev, [imgUrl]: true };
+                        });
+                      }, 0);
+                    }
+                  }}
                   className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 ${
                     idx === activeIndex && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
                   }`}

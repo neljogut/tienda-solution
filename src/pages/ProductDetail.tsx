@@ -133,6 +133,16 @@ export const ProductDetail: React.FC = () => {
                     src={imgUrl}
                     alt={`${product.name} - ${idx}`}
                     onLoad={() => handleImageLoad(imgUrl)}
+                    ref={(el) => {
+                      if (el && el.complete && !loadedImages[imgUrl]) {
+                        setTimeout(() => {
+                          setLoadedImages((prev) => {
+                            if (prev[imgUrl]) return prev;
+                            return { ...prev, [imgUrl]: true };
+                          });
+                        }, 0);
+                      }
+                    }}
                     className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-in-out ${
                       selectedImage === imgUrl && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
                     }`}

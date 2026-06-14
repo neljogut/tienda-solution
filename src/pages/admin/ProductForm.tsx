@@ -434,6 +434,7 @@ const SearchableCategorySelect: React.FC<{
 
   const handleSaveCategoryDb = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!modalValue.trim()) return;
 
     setModalSaving(true);

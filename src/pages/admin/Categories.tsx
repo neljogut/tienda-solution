@@ -12,8 +12,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { Category } from '../../types/category';
-import type { PriceTier } from '../../types/product';
-import { NumericInput } from '../../components/NumericInput';
 import { dedupeCategories, countProductsInSubtree } from '../../utils/categories';
 import {
   Tag,
@@ -54,33 +52,7 @@ function buildChildrenMap(categories: Category[], sortMode: 'manual' | 'alphabet
 }
 
 /** Recursively collect all descendant IDs of a category */
-function getDescendantIds(
-  categoryId: string,
-  childrenMap: Map<string | null, Category[]>,
-): string[] {
-  const ids: string[] = [];
-  const children = childrenMap.get(categoryId) ?? [];
-  for (const child of children) {
-    ids.push(child.id);
-    ids.push(...getDescendantIds(child.id, childrenMap));
-  }
-  return ids;
-}
 
-/** Flatten categories into a list of { id, label } with indented names for <select> */
-function flattenForSelect(
-  parentId: string | null,
-  childrenMap: Map<string | null, Category[]>,
-  depth: number,
-): { id: string; label: string }[] {
-  const result: { id: string; label: string }[] = [];
-  const children = childrenMap.get(parentId) ?? [];
-  for (const cat of children) {
-    result.push({ id: cat.id, label: '─'.repeat(depth) + (depth > 0 ? ' ' : '') + cat.name });
-    result.push(...flattenForSelect(cat.id, childrenMap, depth + 1));
-  }
-  return result;
-}
 
 // ─── Tree Node Component ────────────────────────────────────────────────────────
 
@@ -135,7 +107,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       {/* Category row */}
       <div
         className={`
-          group flex items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all duration-200
+          group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-200
           hover:bg-slate-50 border-b border-slate-50 last:border-0 cursor-default
           ${isRoot ? 'bg-slate-50/30 font-semibold text-slate-800' : 'text-slate-700'}
         `}
@@ -174,13 +146,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <span className="text-xs sm:text-sm font-medium truncate text-slate-800 group-hover:text-slate-900">
             {category.name}
           </span>
-          
-          {/* Price Tiers badge */}
-          {category.priceTiers && category.priceTiers.length > 0 && (
-            <span className="badge badge-green text-[9px] sm:text-[10px] flex-shrink-0 ml-1.5 mr-0.5" title={`${category.priceTiers.length} tramos de precios configurados`}>
-              Tramos: {category.priceTiers.length}
-            </span>
-          )}
    
           {/* Product count badge */}
           <span
@@ -190,51 +155,51 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           >
             {productCount} <span className="hidden sm:inline">{productCount === 1 ? 'producto' : 'productos'}</span><span className="inline sm:hidden">p.</span>
           </span>
-        </div>
- 
-        {/* Actions — visible on hover / always on mobile */}
-        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0 ml-2 bg-slate-50 group-hover:bg-slate-50 p-0.5 rounded-lg border border-transparent group-hover:border-slate-100">
-          {categorySortMode === 'manual' && (
-            <>
-              <button
-                onClick={(e) => { e.stopPropagation(); onMoveUp(category); }}
-                disabled={siblingIndex === 0}
-                className="p-1 hover:bg-slate-200 text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
-                title="Subir"
-              >
-                <ArrowUp size={12} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onMoveDown(category); }}
-                disabled={siblingIndex === siblingCount - 1}
-                className="p-1 hover:bg-slate-200 text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
-                title="Bajar"
-              >
-                <ArrowDown size={12} />
-              </button>
-            </>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onAddSub(category); }}
-            className="p-1 hover:bg-slate-200 text-slate-500 hover:text-blue-600 rounded transition-colors"
-            title="Agregar subcategoría"
-          >
-            <FolderPlus size={12} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(category); }}
-            className="p-1 hover:bg-slate-200 text-slate-500 hover:text-amber-600 rounded transition-colors"
-            title="Editar"
-          >
-            <Edit size={12} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(category); }}
-            className="p-1 hover:bg-slate-200 text-slate-500 hover:text-red-600 rounded transition-colors"
-            title="Eliminar"
-          >
-            <Trash2 size={12} />
-          </button>
+
+          {/* Actions toolbar — positioned close to the badge, visible on hover / always on mobile */}
+          <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-150 flex-shrink-0 ml-3 bg-slate-100/60 p-0.5 rounded-lg border border-slate-200/40">
+            {categorySortMode === 'manual' && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMoveUp(category); }}
+                  disabled={siblingIndex === 0}
+                  className="p-1 hover:bg-white text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-md transition-colors flex items-center justify-center"
+                  title="Subir categoría"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMoveDown(category); }}
+                  disabled={siblingIndex === siblingCount - 1}
+                  className="p-1 hover:bg-white text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-md transition-colors flex items-center justify-center"
+                  title="Bajar categoría"
+                >
+                  <ArrowDown size={14} />
+                </button>
+              </>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddSub(category); }}
+              className="p-1 hover:bg-blue-50 text-blue-500 hover:text-blue-700 rounded-md transition-colors flex items-center justify-center"
+              title="Crear subcategoría"
+            >
+              <FolderPlus size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(category); }}
+              className="p-1 hover:bg-amber-50 text-amber-500 hover:text-amber-700 rounded-md transition-colors flex items-center justify-center"
+              title="Editar nombre"
+            >
+              <Edit size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(category); }}
+              className="p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-md transition-colors flex items-center justify-center"
+              title="Eliminar categoría"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
       </div>
  
@@ -287,7 +252,6 @@ export const Categories: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formName, setFormName] = useState('');
   const [formParentId, setFormParentId] = useState<string | null>(null);
-  const [formPriceTiers, setFormPriceTiers] = useState<PriceTier[]>([]);
   const [saving, setSaving] = useState(false);
 
   // ── Firestore listeners ────────────────────────────────────────────────────
@@ -361,20 +325,10 @@ export const Categories: React.FC = () => {
     }
   };
 
-  const flatOptions = useMemo(
-    () => flattenForSelect(null, childrenMap, 0),
-    [childrenMap],
-  );
-
-  // Filter out self + descendants when editing so you can't parent a node under itself
-  const availableParentOptions = useMemo(() => {
-    if (!editingCategory) return flatOptions;
-    const excluded = new Set([
-      editingCategory.id,
-      ...getDescendantIds(editingCategory.id, childrenMap),
-    ]);
-    return flatOptions.filter((o) => !excluded.has(o.id));
-  }, [flatOptions, editingCategory, childrenMap]);
+  const parentCategory = useMemo(() => {
+    if (!formParentId) return null;
+    return categories.find((c) => c.id === formParentId) ?? null;
+  }, [formParentId, categories]);
 
   // ── Expand / Collapse ──────────────────────────────────────────────────────
   const toggleExpand = useCallback((id: string) => {
@@ -399,7 +353,6 @@ export const Categories: React.FC = () => {
     setEditingCategory(null);
     setFormName('');
     setFormParentId(parentId);
-    setFormPriceTiers([]);
     setShowForm(true);
   };
 
@@ -407,7 +360,6 @@ export const Categories: React.FC = () => {
     setEditingCategory(cat);
     setFormName(cat.name);
     setFormParentId(cat.parentId);
-    setFormPriceTiers(cat.priceTiers || []);
     setShowForm(true);
   };
 
@@ -416,7 +368,6 @@ export const Categories: React.FC = () => {
     setEditingCategory(null);
     setFormName('');
     setFormParentId(null);
-    setFormPriceTiers([]);
   };
 
   const handleSave = async () => {
@@ -425,19 +376,11 @@ export const Categories: React.FC = () => {
 
     setSaving(true);
     try {
-      // Sanitize priceTiers
-      const priceTiersToSave = formPriceTiers.map((t) => ({
-        minQty: Number(t.minQty),
-        maxQty: Number(t.maxQty),
-        unitPrice: Number(t.unitPrice),
-      }));
-
       if (editingCategory) {
         // Update
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           name: trimmed,
           parentId: formParentId,
-          priceTiers: priceTiersToSave,
         });
       } else {
         // Compute next order within this parent
@@ -448,7 +391,6 @@ export const Categories: React.FC = () => {
           name: trimmed,
           parentId: formParentId,
           order: nextOrder,
-          priceTiers: priceTiersToSave,
           createdAt: new Date().toISOString(),
         });
       }
@@ -575,108 +517,16 @@ export const Categories: React.FC = () => {
                 />
               </div>
 
-              {/* Parent selector */}
-              <div>
-                <label className="input-label">Categoría padre</label>
-                <select
-                  value={formParentId ?? ''}
-                  onChange={(e) => setFormParentId(e.target.value || null)}
-                  className="input"
-                >
-                  <option value="">Ninguna (raíz)</option>
-                  {availableParentOptions.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Price Tiers (Tramos de precio) */}
-              <div className="border-t pt-4 space-y-3">
-                <h3 className="font-semibold text-sm text-slate-800 flex items-center justify-between">
-                  <span>Tramos de Precios heredables</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const lastTier = formPriceTiers[formPriceTiers.length - 1];
-                      const nextMin = lastTier ? lastTier.maxQty + 1 : 2;
-                      
-                      setFormPriceTiers([
-                        ...formPriceTiers,
-                        { minQty: nextMin, maxQty: nextMin + 9, unitPrice: 0 }
-                      ]);
-                    }}
-                    className="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1"
-                  >
-                    <Plus size={14} /> Agregar Tramo
-                  </button>
-                </h3>
-                
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {(!formPriceTiers || formPriceTiers.length === 0) && (
-                    <p className="text-xs text-slate-400 text-center py-2">
-                      Sin tramos configurados. Los productos heredarán de ancestros o usarán su propio precio base.
-                    </p>
-                  )}
-                  
-                  {formPriceTiers?.map((tier, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-lg border border-slate-200">
-                      <div className="flex-1 grid grid-cols-3 gap-1.5">
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">Min</label>
-                          <NumericInput
-                            required
-                            value={tier.minQty}
-                            onChange={(val) => {
-                              const newTiers = [...formPriceTiers];
-                              newTiers[index].minQty = val === '' ? 0 : val;
-                              setFormPriceTiers(newTiers);
-                            }}
-                            className="w-full border border-slate-300 rounded-md p-1 text-xs text-center"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">Max</label>
-                          <NumericInput
-                            required
-                            value={tier.maxQty}
-                            onChange={(val) => {
-                              const newTiers = [...formPriceTiers];
-                              newTiers[index].maxQty = val === '' ? 0 : val;
-                              setFormPriceTiers(newTiers);
-                            }}
-                            className="w-full border border-slate-300 rounded-md p-1 text-xs text-center"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">Precio Unit ($)</label>
-                          <NumericInput
-                            required
-                            value={tier.unitPrice}
-                            onChange={(val) => {
-                              const newTiers = [...formPriceTiers];
-                              newTiers[index].unitPrice = val === '' ? 0 : val;
-                              setFormPriceTiers(newTiers);
-                            }}
-                            className="w-full border border-slate-300 rounded-md p-1 text-xs text-right font-semibold text-emerald-600"
-                          />
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newTiers = formPriceTiers.filter((_, i) => i !== index);
-                          setFormPriceTiers(newTiers);
-                        }}
-                        className="text-red-500 hover:bg-red-50 p-1 rounded-lg self-end"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
+              {/* Parent category info (read-only) */}
+              {parentCategory && (
+                <div className="bg-slate-50 border border-slate-200/60 rounded-lg p-3 flex items-center gap-2 text-slate-600 text-sm">
+                  <Folder size={16} className="text-amber-500 flex-shrink-0" />
+                  <span>
+                    {editingCategory ? 'Categoría padre:' : 'Se creará como subcategoría de:'}{' '}
+                    <strong>{parentCategory.name}</strong>
+                  </span>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

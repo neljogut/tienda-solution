@@ -205,8 +205,8 @@ import type { VariantGroup } from '../types/variantGroup';
 /** Resolves the price tiers for a product, walking up the category hierarchy if needed. */
 export function resolveInheritedPriceTiers(
   priceTiers: PriceTier[] | undefined,
-  categoryId: string | undefined,
-  categories: Category[],
+  _categoryId: string | undefined,
+  _categories: Category[],
   variantGroup?: string,
   variantGroups?: VariantGroup[]
 ): PriceTier[] | undefined {
@@ -225,28 +225,6 @@ export function resolveInheritedPriceTiers(
     return priceTiers;
   }
 
-  // 3. Fallback to category / category ancestors
-  if (!categoryId || !categories || categories.length === 0) {
-    return undefined;
-  }
-
-  let currentId: string | null = categoryId;
-  const visited = new Set<string>();
-
-  while (currentId && !visited.has(currentId)) {
-    visited.add(currentId);
-    const category = categories.find(c => c.id === currentId);
-    if (!category) {
-      break;
-    }
-
-    if (category.priceTiers && category.priceTiers.length > 0) {
-      return category.priceTiers;
-    }
-
-    currentId = category.parentId;
-  }
-
   return undefined;
 }
 
@@ -260,34 +238,18 @@ export function resolveInheritedPriceTiers(
 export function deepestTierScopeCategoryId(
   priceTiers: PriceTier[] | undefined,
   categoryId: string | undefined,
-  categories: Category[],
+  _categories: Category[],
   variantGroup?: string
 ): string | null {
   if (variantGroup && variantGroup.trim()) {
     return `group::${variantGroup.trim().toLowerCase()}`;
   }
 
-  if (!categoryId || !categories || categories.length === 0) return null;
+  if (!categoryId) return null;
 
   // If the product has its own tiers, its category is the scope
   if (priceTiers && priceTiers.length > 0) {
     return categoryId;
-  }
-
-  // Walk up the category tree to find the deepest ancestor with tiers
-  let currentId: string | null = categoryId;
-  const visited = new Set<string>();
-
-  while (currentId && !visited.has(currentId)) {
-    visited.add(currentId);
-    const category = categories.find(c => c.id === currentId);
-    if (!category) break;
-
-    if (category.priceTiers && category.priceTiers.length > 0) {
-      return category.id;
-    }
-
-    currentId = category.parentId;
   }
 
   return null;

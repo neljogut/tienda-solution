@@ -200,16 +200,32 @@ export function getTierPrice(
   return basePrice;
 }
 
+import type { VariantGroup } from '../types/variantGroup';
+
 /** Resolves the price tiers for a product, walking up the category hierarchy if needed. */
 export function resolveInheritedPriceTiers(
   priceTiers: PriceTier[] | undefined,
   categoryId: string | undefined,
-  categories: Category[]
+  categories: Category[],
+  variantGroup?: string,
+  variantGroups?: VariantGroup[]
 ): PriceTier[] | undefined {
+  // 1. Check if it belongs to a variant group and that group has tiers
+  if (variantGroup && variantGroup.trim() && variantGroups && variantGroups.length > 0) {
+    const group = variantGroups.find(
+      g => g.id === variantGroup || g.name.toLowerCase() === variantGroup.trim().toLowerCase()
+    );
+    if (group && group.priceTiers && group.priceTiers.length > 0) {
+      return group.priceTiers;
+    }
+  }
+
+  // 2. Check if product has custom tiers
   if (priceTiers && priceTiers.length > 0) {
     return priceTiers;
   }
 
+  // 3. Fallback to category / category ancestors
   if (!categoryId || !categories || categories.length === 0) {
     return undefined;
   }
@@ -233,6 +249,7 @@ export function resolveInheritedPriceTiers(
 
   return undefined;
 }
+
 
 /**
  * Finds the deepest category in the hierarchy (own or ancestor) that has priceTiers defined.

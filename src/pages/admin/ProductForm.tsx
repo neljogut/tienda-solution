@@ -6,6 +6,8 @@ import { db } from '../../firebase';
 import type { Product, FilamentLine, SupplyLine } from '../../types/product';
 import type { Filament, Supply } from '../../types/inventory';
 import type { Category } from '../../types/category';
+import type { VariantGroup } from '../../types/variantGroup';
+import { SearchableVariantGroupSelect } from '../../components/SearchableVariantGroupSelect';
 import { useAuth } from '../../context/AuthContext';
 
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../../types/settings';
@@ -941,6 +943,7 @@ interface ImageEntry {
 }
 
 export const ProductForm: React.FC = () => {
+  const { userData } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -959,7 +962,7 @@ export const ProductForm: React.FC = () => {
   const [settings3d, setSettings3d] = useState<PricingSettings3D | null>(null);
   const [settingsResale, setSettingsResale] = useState<PricingSettingsResale | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
-  const [existingVariantGroups, setExistingVariantGroups] = useState<string[]>([]);
+  const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
 
   const [formData, setFormData] = useState<any>({
     type: '3d',
@@ -988,6 +991,45 @@ export const ProductForm: React.FC = () => {
     wholesale: 0,
   });
 
+  const [isCustomTiers, setIsCustomTiers] = useState(false);
+
+  const inheritedTiers = useMemo(() => {
+    // 1. Try to inherit from variantGroup
+    if (formData.variantGroup && variantGroups.length > 0) {
+      const group = variantGroups.find(
+        g => g.id === formData.variantGroup || g.name.toLowerCase() === formData.variantGroup?.trim().toLowerCase()
+      );
+      if (group && group.priceTiers && group.priceTiers.length > 0) {
+        return {
+          sourceType: 'group',
+          sourceName: group.name,
+          priceTiers: group.priceTiers
+        };
+      }
+    }
+
+    // 2. Try to inherit from category / ancestors
+    if (formData.categoryId && categories.length > 0) {
+      let currentId: string | null = formData.categoryId;
+      const visited = new Set<string>();
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId);
+        const category = categories.find(c => c.id === currentId);
+        if (!category) break;
+        if (category.priceTiers && category.priceTiers.length > 0) {
+          return {
+            sourceType: 'category',
+            sourceName: category.name,
+            priceTiers: category.priceTiers
+          };
+        }
+        currentId = category.parentId;
+      }
+    }
+
+    return null;
+  }, [formData.categoryId, formData.variantGroup, categories, variantGroups]);
+
   useEffect(() => {
     const q = query(collection(db, 'categories'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -1001,12 +1043,23 @@ export const ProductForm: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const q = query(collection(db, 'variantGroups'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const groups: VariantGroup[] = [];
+      snapshot.forEach((d) => {
+        groups.push({ id: d.id, ...d.data() } as VariantGroup);
+      });
+      setVariantGroups(groups);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Fetch categories, inventory, and products (for group autocomplete)
-        const [invSnap, prodSnapAll, businessSnap] = await Promise.all([
+        // Fetch inventory and business settings
+        const [invSnap, businessSnap] = await Promise.all([
           getDocs(query(collection(db, 'inventory'))),
-          getDocs(collection(db, 'products')),
           getDoc(doc(db, 'settings', 'business')),
         ]);
 
@@ -1016,15 +1069,6 @@ export const ProductForm: React.FC = () => {
             setCategorySortMode(bizData.categorySortMode);
           }
         }
-
-        const groups = new Set<string>();
-        prodSnapAll.docs.forEach(d => {
-          const val = d.data().variantGroup;
-          if (val && val.trim()) {
-            groups.add(val.trim());
-          }
-        });
-        setExistingVariantGroups(Array.from(groups).sort());
         const fils: Filament[] = [];
         const sups: Supply[] = [];
         invSnap.docs.forEach((d) => {
@@ -1071,6 +1115,7 @@ export const ProductForm: React.FC = () => {
               normalized.supplyIds = normalized.supplyIds ?? [];
             }
             setFormData(normalized);
+            setIsCustomTiers(!!data.priceTiers && data.priceTiers.length > 0);
             const existingImages = getProductImages(data).map((url) => ({ url }));
             setImages(existingImages);
             setMainImageUrl(data.mainImage || existingImages[0]?.url || '');
@@ -1331,18 +1376,12 @@ export const ProductForm: React.FC = () => {
               </div>
               <div className="sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Grupo de Tramos (opcional)</label>
-                <input 
-                  type="text"
-                  list="variant-groups"
-                  placeholder="Ej: FILAR PLA"
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
-                  value={formData.variantGroup || ''} onChange={e => setFormData({...formData, variantGroup: e.target.value})}
+                <SearchableVariantGroupSelect
+                  variantGroups={variantGroups}
+                  value={formData.variantGroup || ''}
+                  onChange={val => setFormData({ ...formData, variantGroup: val })}
+                  canManage={userData?.role === 'owner'}
                 />
-                <datalist id="variant-groups">
-                  {existingVariantGroups.map(g => (
-                    <option key={g} value={g} />
-                  ))}
-                </datalist>
               </div>
             </div>
 
@@ -1585,93 +1624,179 @@ export const ProductForm: React.FC = () => {
           <div className="card p-6 space-y-4">
               <h3 className="font-semibold text-lg text-slate-800 border-b pb-2 flex items-center justify-between">
                 <span>Tramos de Precios (Precios por Cantidad)</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const tiers = formData.priceTiers || [];
-                    const lastTier = tiers[tiers.length - 1];
-                    const nextMin = lastTier ? lastTier.maxQty + 1 : 2;
-                    
-                    const basePrice = formData.useManualPrice ? (formData.manualRetailPrice || 0) : calculated.retail;
-                    const discountPercent = (tiers.length + 1) * 5;
-                    const rawSuggested = basePrice * (1 - discountPercent / 100);
-                    const minPriceLimit = (calculated.cost || 0) * 1.10;
-                    const suggestedPrice = Math.max(rawSuggested, minPriceLimit);
-                    const unitPrice = roundPriceUp10(suggestedPrice);
+                {isCustomTiers && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tiers = formData.priceTiers || [];
+                      const lastTier = tiers[tiers.length - 1];
+                      const nextMin = lastTier ? lastTier.maxQty + 1 : 2;
+                      
+                      const basePrice = formData.useManualPrice ? (formData.manualRetailPrice || 0) : calculated.retail;
+                      const discountPercent = (tiers.length + 1) * 5;
+                      const rawSuggested = basePrice * (1 - discountPercent / 100);
+                      const minPriceLimit = (calculated.cost || 0) * 1.10;
+                      const suggestedPrice = Math.max(rawSuggested, minPriceLimit);
+                      const unitPrice = roundPriceUp10(suggestedPrice);
 
-                    setFormData({
-                      ...formData,
-                      priceTiers: [...tiers, { minQty: nextMin, maxQty: nextMin + 9, unitPrice }]
-                    });
-                  }}
-                  className="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1"
-                >
-                  <Plus size={14} /> Agregar Tramo
-                </button>
+                      setFormData({
+                        ...formData,
+                        priceTiers: [...tiers, { minQty: nextMin, maxQty: nextMin + 9, unitPrice }]
+                      });
+                    }}
+                    className="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Agregar Tramo
+                  </button>
+                )}
               </h3>
               
-              <div className="space-y-3">
-                {(!formData.priceTiers || formData.priceTiers.length === 0) &&
-                  <p className="text-sm text-slate-400 text-center py-4">No hay tramos de precios personalizados definidos para este producto. Se venderá al precio base o heredará los tramos de su categoría.</p>
-                }
-                
-                {formData.priceTiers?.map((tier: any, index: number) => (
-                  <div key={index} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <div className="flex-1 grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Min Cantidad</label>
-                        <NumericInput
-                          required
-                          value={tier.minQty}
-                          onChange={val => {
-                            const newTiers = [...formData.priceTiers];
-                            newTiers[index].minQty = val;
-                            setFormData({ ...formData, priceTiers: newTiers });
-                          }}
-                          className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
-                        />
+              {!isCustomTiers ? (
+                // Inherited view
+                <div className="space-y-3">
+                  {inheritedTiers ? (
+                    <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                        <span className="text-xs font-bold text-emerald-800">
+                          {inheritedTiers.sourceType === 'group' ? (
+                            <>Heredando tramos del grupo: <span className="underline">{inheritedTiers.sourceName}</span></>
+                          ) : (
+                            <>Heredando tramos de la categoría: <span className="underline">{inheritedTiers.sourceName}</span></>
+                          )}
+                        </span>
+                        {inheritedTiers.sourceType === 'group' ? (
+                          <span className="text-[10px] text-slate-400 font-semibold italic">
+                            Administrado en el Grupo de Tramos
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCustomTiers(true);
+                              // Initialize with copy of inherited tiers
+                              setFormData({
+                                ...formData,
+                                priceTiers: inheritedTiers.priceTiers.map((t: any) => ({ ...t }))
+                              });
+                            }}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline text-left"
+                          >
+                            Personalizar tramos para este producto
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Max Cantidad</label>
-                        <NumericInput
-                          required
-                          value={tier.maxQty}
-                          onChange={val => {
-                            const newTiers = [...formData.priceTiers];
-                            newTiers[index].maxQty = val;
-                            setFormData({ ...formData, priceTiers: newTiers });
-                          }}
-                          className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Precio Unitario ($)</label>
-                        <NumericInput
-                          required
-                          value={tier.unitPrice}
-                          onChange={val => {
-                            const newTiers = [...formData.priceTiers];
-                            newTiers[index].unitPrice = val;
-                            setFormData({ ...formData, priceTiers: newTiers });
-                          }}
-                          className="w-full border border-slate-300 rounded-md p-1 text-sm text-right font-semibold text-emerald-600"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {inheritedTiers.priceTiers.map((tier: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-emerald-100 text-xs font-semibold text-slate-700">
+                            <span>De {tier.minQty} a {tier.maxQty} unidades:</span>
+                            <span className="text-emerald-600">${tier.unitPrice.toLocaleString('es-AR')}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
+                  ) : (
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center space-y-2">
+                      <p className="text-xs text-slate-500">
+                        Este producto no tiene tramos de precios personalizados y no hereda de ningún grupo o categoría. Se venderá siempre al precio minorista base.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomTiers(true);
+                          setFormData({ ...formData, priceTiers: [] });
+                        }}
+                        className="btn-secondary text-xs !py-1.5 !px-3 font-bold"
+                      >
+                        Configurar tramos personalizados
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Editable custom view
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-amber-50 border border-amber-100 text-amber-800 p-3 rounded-xl text-xs">
+                    <span className="font-bold">
+                      Configuración personalizada activa (sobrescribe los tramos heredados).
+                    </span>
                     <button
                       type="button"
                       onClick={() => {
-                        const newTiers = formData.priceTiers.filter((_: any, i: number) => i !== index);
-                        setFormData({ ...formData, priceTiers: newTiers });
+                        if (window.confirm('¿Estás seguro de que deseas restablecer los tramos? Se perderán los tramos personalizados de este producto y volverá a heredar de la categoría/grupo.')) {
+                          setIsCustomTiers(false);
+                          setFormData({ ...formData, priceTiers: [] });
+                        }
                       }}
-                      className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg self-end"
+                      className="font-bold text-blue-600 hover:underline text-left"
                     >
-                      <Trash2 size={16} />
+                      Restablecer y usar tramos de categoría
                     </button>
                   </div>
-                ))}
-              </div>
-            </div>
+                  
+                  {(!formData.priceTiers || formData.priceTiers.length === 0) && (
+                    <p className="text-sm text-slate-400 text-center py-4">
+                      No hay tramos personalizados agregados. Hacía clic en "Agregar tramo" para definir precios por volumen.
+                    </p>
+                  )}
+                  
+                  {formData.priceTiers?.map((tier: any, index: number) => (
+                    <div key={index} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <div className="flex-1 grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Min Cantidad</label>
+                          <NumericInput
+                            required
+                            value={tier.minQty}
+                            onChange={val => {
+                              const newTiers = [...formData.priceTiers];
+                              newTiers[index].minQty = val;
+                              setFormData({ ...formData, priceTiers: newTiers });
+                            }}
+                            className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Max Cantidad</label>
+                          <NumericInput
+                            required
+                            value={tier.maxQty}
+                            onChange={val => {
+                              const newTiers = [...formData.priceTiers];
+                              newTiers[index].maxQty = val;
+                              setFormData({ ...formData, priceTiers: newTiers });
+                            }}
+                            className="w-full border border-slate-300 rounded-md p-1 text-sm text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Precio Unitario ($)</label>
+                          <NumericInput
+                            required
+                            value={tier.unitPrice}
+                            onChange={val => {
+                              const newTiers = [...formData.priceTiers];
+                              newTiers[index].unitPrice = val;
+                              setFormData({ ...formData, priceTiers: newTiers });
+                            }}
+                            className="w-full border border-slate-300 rounded-md p-1 text-sm text-right font-semibold text-emerald-600"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTiers = formData.priceTiers.filter((_: any, i: number) => i !== index);
+                          setFormData({ ...formData, priceTiers: newTiers });
+                        }}
+                        className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg self-end"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+          </div>
           </div>
 
         {/* Columna Derecha: Imagen y Guardar */}

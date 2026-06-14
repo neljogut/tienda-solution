@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ProductType, PriceTier } from '../types/product';
 import type { Category } from '../types/category';
+import type { VariantGroup } from '../types/variantGroup';
 import { getTierPrice, roundPriceUp10, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
 import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -9,6 +10,7 @@ import type { PricingSettings3D } from '../types/settings';
 
 let pricing3dSettings: PricingSettings3D | null = null;
 let allCategories: Category[] = [];
+let allVariantGroups: VariantGroup[] = [];
 
 export interface CartItem {
   productId: string;
@@ -52,7 +54,13 @@ interface CartState {
 function recalculateCartItems(items: CartItem[]): CartItem[] {
   // 1. Resolve price tiers for each item first, storing it in resolvedPriceTiers
   const itemsWithResolved = items.map(item => {
-    const resolvedPriceTiers = resolveInheritedPriceTiers(item.priceTiers, item.categoryId, allCategories);
+    const resolvedPriceTiers = resolveInheritedPriceTiers(
+      item.priceTiers,
+      item.categoryId,
+      allCategories,
+      item.variantGroup,
+      allVariantGroups
+    );
     return { ...item, resolvedPriceTiers };
   });
 
@@ -248,5 +256,24 @@ onSnapshot(collection(db, 'categories'), (snap) => {
     }
   } catch (e) {
     console.warn("Zustand store not fully initialized during categories fetch:", e);
+  }
+});
+
+// Subscribe to variantGroups
+onSnapshot(collection(db, 'variantGroups'), (snap) => {
+  const groups: VariantGroup[] = [];
+  snap.forEach((d) => {
+    groups.push({ id: d.id, ...d.data() } as VariantGroup);
+  });
+  allVariantGroups = groups;
+  
+  // Trigger recalculation if the store is already initialized and has items
+  try {
+    const store = useCartStore.getState();
+    if (store && store.items.length > 0) {
+      store.recalculatePrices();
+    }
+  } catch (e) {
+    console.warn("Zustand store not fully initialized during variantGroups fetch:", e);
   }
 });

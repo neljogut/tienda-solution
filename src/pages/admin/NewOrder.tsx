@@ -6,6 +6,7 @@ import type { Order } from '../../types/order';
 import type { Client } from '../../types/client';
 import { migrateClient } from '../../types/client';
 import type { Category } from '../../types/category';
+import type { VariantGroup } from '../../types/variantGroup';
 import { dedupeCategories, resolveCategoryId, getCategoryTreeIds, getSortedCategoryTree } from '../../utils/categories';
 import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
@@ -76,6 +77,7 @@ export const NewOrder: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -170,6 +172,11 @@ export const NewOrder: React.FC = () => {
       setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() } as Category)));
     });
 
+    // 2c. Live variantGroups listener
+    const unsubVariantGroups = onSnapshot(collection(db, 'variantGroups'), (snap) => {
+      setVariantGroups(snap.docs.map(d => ({ id: d.id, ...d.data() } as VariantGroup)));
+    });
+
     // 3. Live deposit settings listener
     const unsubDeposit = onSnapshot(doc(db, 'settings', 'deposit'), (snap) => {
       if (snap.exists()) setDepositSettings(snap.data() as DepositSettings);
@@ -197,6 +204,7 @@ export const NewOrder: React.FC = () => {
       unsubProducts();
       unsubClients();
       unsubCategories();
+      unsubVariantGroups();
       unsubDeposit();
       unsubRate();
       unsubPricing3d();
@@ -345,7 +353,7 @@ export const NewOrder: React.FC = () => {
     scopeQtyMap?: Map<string, number>
   ) => {
     // 0. If product has price tiers, resolve them and use aggregated scope quantity
-    const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+    const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
     if (resolvedTiers && resolvedTiers.length > 0) {
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
       const scopeId = deepestTierScopeCategoryId(product.priceTiers, product.categoryId, categories, product.variantGroup);
@@ -409,7 +417,7 @@ export const NewOrder: React.FC = () => {
     items.forEach(item => {
       const product = products.find(p => p.id === item.productId);
       if (product && product.type === '3d') {
-        const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+        const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
         const hasTiers = resolvedTiers && resolvedTiers.length > 0;
         if (hasTiers) return; // Price tiers ignore wholesale thresholds
 
@@ -436,7 +444,7 @@ export const NewOrder: React.FC = () => {
         total3DWeightKeychain,
         scopeQtyMap
       );
-      const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+      const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
       const hasTiers = resolvedTiers && resolvedTiers.length > 0;
       
       let isWholesaleApplied = false;
@@ -891,7 +899,7 @@ export const NewOrder: React.FC = () => {
           cartItems.forEach(item => {
             const product = products.find(p => p.id === item.productId);
             if (!product) return;
-            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
             const hasTiers = resolvedTiers && resolvedTiers.length > 0;
             // If it has price tiers, it does not count towards threshold weights
             if (hasTiers) return;
@@ -915,13 +923,13 @@ export const NewOrder: React.FC = () => {
           const has3DNormal = cartItems.some(i => {
             const product = products.find(p => p.id === i.productId);
             if (!product) return false;
-            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
             return product.type === '3d' && !(product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
           });
           const has3DKeychain = cartItems.some(i => {
             const product = products.find(p => p.id === i.productId);
             if (!product) return false;
-            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories);
+            const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
             return product.type === '3d' && (product as any).isKeychain && (!resolvedTiers || resolvedTiers.length === 0);
           });
 
@@ -986,7 +994,7 @@ export const NewOrder: React.FC = () => {
             cartItems.map(item => {
               const product = products.find(p => p.id === item.productId);
               const imageUrl = product?.mainImage;
-              const resolvedPriceTiers = product ? resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories) : [];
+              const resolvedPriceTiers = product ? resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups) : [];
               const basePrice = product ? (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice) : item.unitPrice;
               const itemQty = item.quantity === '' ? 0 : Number(item.quantity);
               const wholesalePrice = product?.calculatedWholesalePrice || Math.ceil(basePrice * 0.8);

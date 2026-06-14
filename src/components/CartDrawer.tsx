@@ -323,7 +323,7 @@ export const CartDrawer: React.FC = () => {
         employeeName = userData.displayName || 'Vendedor';
       }
 
-      const commissionPercent = 10;
+      const commissionPercent = pricingSettings?.employeeCommissionPercent ?? 10;
       const totalProfit = totalAmount - totalCost;
       const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
@@ -557,7 +557,7 @@ export const CartDrawer: React.FC = () => {
 
       const employeeId = activeClient?.employeeId;
       const employeeName = activeClient?.employeeName;
-      const commissionPercent = 10;
+      const commissionPercent = pricingSettings?.employeeCommissionPercent ?? 10;
       const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 

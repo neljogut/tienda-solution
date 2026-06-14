@@ -48,7 +48,7 @@ export const Inventory: React.FC = () => {
 
   // Sorting and Business Settings States
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [sortByFilament, setSortByFilament] = useState<'color' | 'stock' | 'type' | 'brand'>('color');
+  const [sortByFilament, setSortByFilament] = useState<'colorMaterial' | 'stock' | 'brand'>('colorMaterial');
   const [sortOrderFilament, setSortOrderFilament] = useState<'asc' | 'desc'>('asc');
   const [business, setBusiness] = useState<BusinessSettings>({
     name: 'Dualgi 3D',
@@ -298,21 +298,21 @@ export const Inventory: React.FC = () => {
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
 
-  const handleSortFilament = (field: 'color' | 'stock' | 'type' | 'brand') => {
+  const handleSortFilament = (field: 'colorMaterial' | 'stock' | 'brand') => {
     if (sortByFilament === field) {
       setSortOrderFilament(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortByFilament(field);
-      setSortOrderFilament('asc');
+      setSortOrderFilament(field === 'colorMaterial' ? 'asc' : 'desc');
     }
   };
 
-  const renderSortIndicatorFilament = (field: 'color' | 'stock' | 'type' | 'brand') => {
+  const renderSortIndicatorFilament = (field: 'colorMaterial' | 'stock' | 'brand') => {
     if (sortByFilament !== field) return <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity ml-1">⇅</span>;
     return <span className="text-blue-600 ml-1">{sortOrderFilament === 'asc' ? '▲' : '▼'}</span>;
   };
 
-  const renderMobileSortButtonFilament = (field: 'color' | 'stock' | 'type' | 'brand', label: string) => {
+  const renderMobileSortButtonFilament = (field: 'colorMaterial' | 'stock' | 'brand', label: string) => {
     const isActive = sortByFilament === field;
     return (
       <button
@@ -321,7 +321,7 @@ export const Inventory: React.FC = () => {
         className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs'
-            : 'bg-white text-slate-650 border border-slate-200'
+            : 'bg-white text-slate-655 border border-slate-200'
         }`}
       >
         <span>{label}</span>
@@ -351,20 +351,23 @@ export const Inventory: React.FC = () => {
     return list.sort((a, b) => {
       let comparison = 0;
 
-      if (sortByFilament === 'color') {
-        const lumA = getHexLuminance(a.hexColor || '#ffffff');
-        const lumB = getHexLuminance(b.hexColor || '#ffffff');
-        // asc: clearest first (highest luminance first)
-        // desc: darkest first (lowest luminance first)
-        comparison = sortOrderFilament === 'asc' ? lumB - lumA : lumA - lumB;
+      if (sortByFilament === 'colorMaterial') {
+        const tA = (a.material || '').toLowerCase();
+        const tB = (b.material || '').toLowerCase();
+        const matComp = sortOrderFilament === 'asc' ? tA.localeCompare(tB, 'es') : tB.localeCompare(tA, 'es');
+        
+        if (matComp !== 0) {
+          comparison = matComp;
+        } else {
+          // If same material, sort by color Hex (lightest to darkest in 'asc', darkest to lightest in 'desc')
+          const lumA = getHexLuminance(a.hexColor || '#ffffff');
+          const lumB = getHexLuminance(b.hexColor || '#ffffff');
+          comparison = sortOrderFilament === 'asc' ? lumB - lumA : lumA - lumB;
+        }
       } else if (sortByFilament === 'stock') {
         const qA = a.availableWeightGrams;
         const qB = b.availableWeightGrams;
         comparison = sortOrderFilament === 'asc' ? qA - qB : qB - qA;
-      } else if (sortByFilament === 'type') {
-        const tA = (a.material || '').toLowerCase();
-        const tB = (b.material || '').toLowerCase();
-        comparison = sortOrderFilament === 'asc' ? tA.localeCompare(tB, 'es') : tB.localeCompare(tA, 'es');
       } else if (sortByFilament === 'brand') {
         const bA = (a.brand || '').toLowerCase();
         const bB = (b.brand || '').toLowerCase();
@@ -623,12 +626,8 @@ export const Inventory: React.FC = () => {
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <tr>
                   <th className="p-4 select-none">
-                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center group" onClick={() => handleSortFilament('color')}>
-                      Color {renderSortIndicatorFilament('color')}
-                    </span>
-                    <span className="text-slate-300 mx-1.5 font-normal">/</span>
-                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center group" onClick={() => handleSortFilament('type')}>
-                      Tipo {renderSortIndicatorFilament('type')}
+                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center group" onClick={() => handleSortFilament('colorMaterial')}>
+                      Color / Material {renderSortIndicatorFilament('colorMaterial')}
                     </span>
                   </th>
                   <th className="p-4 select-none">
@@ -777,10 +776,9 @@ export const Inventory: React.FC = () => {
           <div className="block md:hidden divide-y divide-slate-100 text-xs">
             {/* Mobile Sorting Controls */}
             <div className="p-4 bg-slate-50/50 border-b border-slate-150 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-              <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider mr-1 shrink-0">Ordenar por:</span>
-              {renderMobileSortButtonFilament('color', 'Color')}
+              <span className="text-[10px] font-bold text-slate-455 uppercase tracking-wider mr-1 shrink-0">Ordenar por:</span>
+              {renderMobileSortButtonFilament('colorMaterial', 'Color / Material')}
               {renderMobileSortButtonFilament('stock', 'Stock')}
-              {renderMobileSortButtonFilament('type', 'Tipo')}
               {renderMobileSortButtonFilament('brand', 'Marca')}
             </div>
 

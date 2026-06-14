@@ -56,6 +56,8 @@ export const sendNotificationPush = onDocumentCreated(
             ? "Ver pedidos"
             : "Abrir";
 
+    const collapseId = orderId || snap.id;
+
     const response = await getMessaging().sendEachForMulticast({
       tokens,
       notification: {title, body},
@@ -67,6 +69,9 @@ export const sendNotificationPush = onDocumentCreated(
         orderId,
       },
       webpush: {
+        headers: {
+          Topic: collapseId,
+        },
         fcmOptions: {link: linkPath},
         notification: {
           title,
@@ -80,6 +85,7 @@ export const sendNotificationPush = onDocumentCreated(
       },
       android: {
         priority: "high",
+        collapseKey: collapseId,
         notification: {
           sound: "default",
           channelId: "orders",
@@ -87,6 +93,9 @@ export const sendNotificationPush = onDocumentCreated(
         },
       },
       apns: {
+        headers: {
+          "apns-collapse-id": collapseId,
+        },
         payload: {
           aps: {
             sound: "default",

@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { UserData } from '../../types/user';
 import {
   Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin,
-  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert, Store
+  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert, Store, RefreshCw
 } from 'lucide-react';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
@@ -79,6 +79,130 @@ export const ClientsManager: React.FC = () => {
   const [selectedOrphanTargets, setSelectedOrphanTargets] = useState<Record<string, string>>({});
   const [linkOrphanLoading, setLinkOrphanLoading] = useState(false);
   const [dismissedPairs, setDismissedPairs] = useState<string[]>([]);
+  const [mergedFields, setMergedFields] = useState<Record<string, string>>({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    dni: '',
+    cuit: '',
+    address: '',
+    city: '',
+    province: '',
+    postalCode: '',
+    observations: '',
+  });
+
+  useEffect(() => {
+    const sourceClient = clients.find(c => c.id === mergeSourceId);
+    const targetClient = clients.find(c => c.id === mergeTargetId);
+    if (sourceClient && targetClient) {
+      setMergedFields({
+        firstName: targetClient.firstName || sourceClient.firstName || '',
+        lastName: targetClient.lastName || sourceClient.lastName || '',
+        phone: targetClient.phone || sourceClient.phone || '',
+        email: targetClient.email || sourceClient.email || '',
+        dni: targetClient.dni || sourceClient.dni || '',
+        cuit: targetClient.cuit || sourceClient.cuit || '',
+        address: targetClient.address || sourceClient.address || '',
+        city: targetClient.city || sourceClient.city || '',
+        province: targetClient.province || sourceClient.province || '',
+        postalCode: targetClient.postalCode || sourceClient.postalCode || '',
+        observations: targetClient.observations 
+          ? (sourceClient.observations && targetClient.observations !== sourceClient.observations
+              ? `${targetClient.observations}\n---\nFusión: ${sourceClient.observations}`
+              : targetClient.observations)
+          : (sourceClient.observations || ''),
+      });
+    } else {
+      setMergedFields({
+        firstName: '',
+        lastName: '',
+        phone: '',
+        email: '',
+        dni: '',
+        cuit: '',
+        address: '',
+        city: '',
+        province: '',
+        postalCode: '',
+        observations: '',
+      });
+    }
+  }, [mergeSourceId, mergeTargetId, clients]);
+
+  const handleSwapMerge = () => {
+    const temp = mergeSourceId;
+    setMergeSourceId(mergeTargetId);
+    setMergeTargetId(temp);
+  };
+
+  const renderMergeRow = (
+    field: string,
+    label: string,
+    source: Client | undefined,
+    target: Client | undefined,
+    isTextArea = false
+  ) => {
+    if (!source || !target) return null;
+    const valSource = (source as any)[field] || '';
+    const valTarget = (target as any)[field] || '';
+    const currentMerged = mergedFields[field] || '';
+    const isDifferent = valSource && valTarget && valSource !== valTarget;
+
+    return (
+      <tr key={field} className={`hover:bg-slate-50/50 ${isDifferent ? 'bg-amber-50/30' : ''}`}>
+        <td className="p-2.5 font-bold text-slate-600">
+          {label}
+          {isDifferent && <span className="text-amber-600 ml-1 font-normal text-[9px]">(Difiere)</span>}
+        </td>
+        <td className="p-2.5 bg-red-50/10 max-w-[150px] truncate">
+          {valSource ? (
+            <button
+              type="button"
+              onClick={() => setMergedFields(prev => ({ ...prev, [field]: valSource }))}
+              title="Copiar a resultado"
+              className="text-left text-red-600 hover:text-red-800 font-medium hover:underline w-full truncate block"
+            >
+              {valSource}
+            </button>
+          ) : (
+            <span className="text-slate-300 italic">Vacío</span>
+          )}
+        </td>
+        <td className="p-2.5 bg-emerald-50/10 max-w-[150px] truncate">
+          {valTarget ? (
+            <button
+              type="button"
+              onClick={() => setMergedFields(prev => ({ ...prev, [field]: valTarget }))}
+              title="Copiar a resultado"
+              className="text-left text-emerald-600 hover:text-emerald-800 font-medium hover:underline w-full truncate block"
+            >
+              {valTarget}
+            </button>
+          ) : (
+            <span className="text-slate-300 italic">Vacío</span>
+          )}
+        </td>
+        <td className="p-2">
+          {isTextArea ? (
+            <textarea
+              value={currentMerged}
+              onChange={e => setMergedFields(prev => ({ ...prev, [field]: e.target.value }))}
+              className="input w-full py-1 px-1.5 h-12 text-[11px] resize-none"
+            />
+          ) : (
+            <input
+              type="text"
+              value={currentMerged}
+              onChange={e => setMergedFields(prev => ({ ...prev, [field]: e.target.value }))}
+              className="input w-full py-1 px-1.5 h-7 text-[11px]"
+            />
+          )}
+        </td>
+      </tr>
+    );
+  };
 
   const { userData } = useAuth();
   const [employees, setEmployees] = useState<UserData[]>([]);
@@ -176,8 +300,9 @@ export const ClientsManager: React.FC = () => {
     for (let i = 0; i < clients.length; i++) {
       const cA = clients[i];
       const lastNameA = cA.lastName || '';
-      const wordsA = clean(lastNameA);
-      if (wordsA.length === 0) continue;
+      const firstNameA = cA.firstName || '';
+      const wordsLastNameA = clean(lastNameA);
+      const wordsFirstNameA = clean(firstNameA);
 
       for (let j = i + 1; j < clients.length; j++) {
         const cB = clients[j];
@@ -187,8 +312,9 @@ export const ClientsManager: React.FC = () => {
         if (dismissedKeys.has(key1) || dismissedKeys.has(key2)) continue;
 
         const lastNameB = cB.lastName || '';
-        const wordsB = clean(lastNameB);
-        if (wordsB.length === 0) continue;
+        const firstNameB = cB.firstName || '';
+        const wordsLastNameB = clean(lastNameB);
+        const wordsFirstNameB = clean(firstNameB);
 
         const phoneA = cA.phone?.replace(/\D/g, '');
         const phoneB = cB.phone?.replace(/\D/g, '');
@@ -196,16 +322,23 @@ export const ClientsManager: React.FC = () => {
 
         const dniA = cA.dni?.trim();
         const dniB = cB.dni?.trim();
-        const dniMatch = dniA && dniB && dniA === dniB;
+        const dniMatch = dniA && dniB && dniA.length > 4 && dniA === dniB;
 
-        const shared = wordsA.filter(w => wordsB.includes(w));
-        const nameMatch = shared.length >= 1; // Coincide al menos una palabra del apellido (ej. "García")
+        const cuitA = cA.cuit?.replace(/\D/g, '');
+        const cuitB = cB.cuit?.replace(/\D/g, '');
+        const cuitMatch = cuitA && cuitB && cuitA.length > 5 && cuitA === cuitB;
 
-        if (phoneMatch || dniMatch || nameMatch) {
+        // nameMatch: comparte al menos una palabra del nombre Y una del apellido
+        const sharedLast = wordsLastNameA.filter(w => wordsLastNameB.includes(w));
+        const sharedFirst = wordsFirstNameA.filter(w => wordsFirstNameB.includes(w));
+        const nameMatch = sharedLast.length >= 1 && sharedFirst.length >= 1;
+
+        if (phoneMatch || dniMatch || cuitMatch || nameMatch) {
           let reason = '';
-          if (phoneMatch) reason = 'Mismo número de teléfono';
-          else if (dniMatch) reason = 'Mismo número de DNI';
-          else reason = `Apellidos coincidentes o similares: ${shared.join(', ')}`;
+          if (phoneMatch) reason = `Mismo número de teléfono (${cA.phone})`;
+          else if (dniMatch) reason = `Mismo número de DNI (${cA.dni})`;
+          else if (cuitMatch) reason = `Mismo número de CUIT (${cA.cuit})`;
+          else reason = `Nombre y apellido coincidentes o muy similares`;
 
           list.push({
             clientA: cA,
@@ -221,9 +354,8 @@ export const ClientsManager: React.FC = () => {
 
   const handleDismissDuplicate = async (key: string) => {
     try {
-      const { setDoc, doc } = await import('firebase/firestore');
-      const newPairs = [...dismissedPairs, key];
-      await setDoc(doc(db, 'settings', 'dismissed_duplicates'), { pairs: newPairs }, { merge: true });
+      const { setDoc, doc, arrayUnion } = await import('firebase/firestore');
+      await setDoc(doc(db, 'settings', 'dismissed_duplicates'), { pairs: arrayUnion(key) }, { merge: true });
     } catch (err) {
       console.error("Error dismissing duplicate:", err);
     }
@@ -431,10 +563,12 @@ export const ClientsManager: React.FC = () => {
 
       const batch = writeBatch(db);
 
+      // Unified target name
+      const targetName = `${mergedFields.firstName.trim()} ${mergedFields.lastName.trim()}`;
+
       // 1. Update all orders where customerId === sourceId
       const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', mergeSourceId));
       const ordersSnap = await getDocs(ordersQuery);
-      const targetName = `${targetClient.firstName} ${targetClient.lastName}`;
       ordersSnap.forEach(o => {
         batch.update(doc(db, 'orders', o.id), {
           customerId: mergeTargetId,
@@ -451,17 +585,38 @@ export const ClientsManager: React.FC = () => {
         });
       });
 
-      // 3. Update target client links if needed (userId or email)
-      const targetUpdates: any = {};
-      if (!targetClient.userId && sourceClient.userId) {
+      // 3. Update target client unifiable fields from mergedFields state
+      const targetUpdates: any = {
+        firstName: mergedFields.firstName.trim(),
+        lastName: mergedFields.lastName.trim(),
+        phone: mergedFields.phone.trim(),
+        email: mergedFields.email.trim(),
+        dni: mergedFields.dni.trim(),
+        cuit: mergedFields.cuit.trim(),
+        address: mergedFields.address.trim(),
+        city: mergedFields.city.trim(),
+        province: mergedFields.province.trim(),
+        postalCode: mergedFields.postalCode.trim(),
+        observations: mergedFields.observations.trim(),
+        isWholesale: targetClient.isWholesale || sourceClient.isWholesale,
+        isTrusted: targetClient.isTrusted || sourceClient.isTrusted,
+        isLocal: targetClient.isLocal || sourceClient.isLocal,
+      };
+
+      // Handle user accounts mapping updates
+      if (targetClient.userId) {
+        targetUpdates.userId = targetClient.userId;
+      } else if (sourceClient.userId) {
         targetUpdates.userId = sourceClient.userId;
-        
-        // Also update users collection mapping
+      }
+
+      if (sourceClient.userId) {
         const userRef = doc(db, 'users', sourceClient.userId);
         batch.update(userRef, { customerId: mergeTargetId });
       }
-      if (!targetClient.email && sourceClient.email) {
-        targetUpdates.email = sourceClient.email;
+      if (targetClient.userId) {
+        const userRef = doc(db, 'users', targetClient.userId);
+        batch.update(userRef, { customerId: mergeTargetId });
       }
       
       // Update target balances
@@ -1521,116 +1676,165 @@ export const ClientsManager: React.FC = () => {
       )}
 
       {/* ══════════════ Merge Duplicates / Orphans Modal ══════════════ */}
-      {isMergeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setIsMergeModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fadeIn p-6">
-            <div className="flex items-center justify-between border-b pb-3 mb-3">
-              <h3 className="text-base font-extrabold text-slate-800">Herramientas de Unificación</h3>
-              <button 
-                onClick={() => setIsMergeModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {isMergeModalOpen && (() => {
+        const sourceClient = clients.find(c => c.id === mergeSourceId);
+        const targetClient = clients.find(c => c.id === mergeTargetId);
 
-            {/* Tabs */}
-            <div className="flex border-b mb-4 text-xs font-bold">
-              <button
-                type="button"
-                className={`flex-1 pb-2 border-b-2 transition-all ${mergeTab === 'merge' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                onClick={() => setMergeTab('merge')}
-              >
-                Fusionar Clientes
-              </button>
-              <button
-                type="button"
-                className={`flex-1 pb-2 border-b-2 transition-all flex justify-center items-center gap-1.5 ${mergeTab === 'orphans' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                onClick={() => setMergeTab('orphans')}
-              >
-                Pedidos Huérfanos
-                {orphanedOrders.length > 0 && (
-                  <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-black">
-                    {orphanedOrders.length}
-                  </span>
-                )}
-              </button>
-            </div>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setIsMergeModalOpen(false)} />
+            <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${mergeSourceId && mergeTargetId && mergeTab === 'merge' ? 'max-w-3xl' : 'max-w-lg'} animate-fadeIn p-6 transition-all duration-300`}>
+              <div className="flex items-center justify-between border-b pb-3 mb-3">
+                <h3 className="text-base font-extrabold text-slate-800">Herramientas de Unificación</h3>
+                <button 
+                  onClick={() => setIsMergeModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-            {mergeTab === 'merge' ? (
-              <form onSubmit={handleMergeClients} className="space-y-4 text-xs">
-                {mergeError && (
-                  <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-lg">
-                    {mergeError}
+              {/* Tabs */}
+              <div className="flex border-b mb-4 text-xs font-bold">
+                <button
+                  type="button"
+                  className={`flex-1 pb-2 border-b-2 transition-all ${mergeTab === 'merge' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => setMergeTab('merge')}
+                >
+                  Fusionar Clientes
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 pb-2 border-b-2 transition-all flex justify-center items-center gap-1.5 ${mergeTab === 'orphans' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  onClick={() => setMergeTab('orphans')}
+                >
+                  Pedidos Huérfanos
+                  {orphanedOrders.length > 0 && (
+                    <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-black">
+                      {orphanedOrders.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {mergeTab === 'merge' ? (
+                <form onSubmit={handleMergeClients} className="space-y-4 text-xs">
+                  {mergeError && (
+                    <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-lg">
+                      {mergeError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                        1. Cliente Duplicado (Se eliminará)
+                      </label>
+                      <select
+                        value={mergeSourceId}
+                        onChange={e => setMergeSourceId(e.target.value)}
+                        className="input w-full"
+                        required
+                      >
+                        <option value="">-- Selecciona el duplicado a eliminar --</option>
+                        {clients.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.lastName}, {c.firstName} {c.email ? `(${c.email})` : '(Sin email)'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                        2. Cliente Principal (Se conservará)
+                      </label>
+                      <select
+                        value={mergeTargetId}
+                        onChange={e => setMergeTargetId(e.target.value)}
+                        className="input w-full"
+                        required
+                      >
+                        <option value="">-- Selecciona el cliente principal a conservar --</option>
+                        {clients.filter(c => c.id !== mergeSourceId).map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.lastName}, {c.firstName} {c.email ? `(${c.email})` : '(Sin email)'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                )}
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
-                    1. Cliente Duplicado (Se eliminará)
-                  </label>
-                  <select
-                    value={mergeSourceId}
-                    onChange={e => setMergeSourceId(e.target.value)}
-                    className="input w-full"
-                    required
-                  >
-                    <option value="">-- Selecciona el duplicado a eliminar --</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.lastName}, {c.firstName} {c.email ? `(${c.email})` : '(Sin email)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {sourceClient && targetClient && (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-500 font-bold">REVISIÓN DE DATOS (Hacé clic en los valores para copiarlos)</span>
+                        <button
+                          type="button"
+                          onClick={handleSwapMerge}
+                          className="text-[10px] bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-extrabold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          <RefreshCw size={11} className="text-slate-400" />
+                          Intercambiar Roles
+                        </button>
+                      </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
-                    2. Cliente Principal (Se conservará)
-                  </label>
-                  <select
-                    value={mergeTargetId}
-                    onChange={e => setMergeTargetId(e.target.value)}
-                    className="input w-full"
-                    required
-                  >
-                    <option value="">-- Selecciona el cliente principal a conservar --</option>
-                    {clients.filter(c => c.id !== mergeSourceId).map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.lastName}, {c.firstName} {c.email ? `(${c.email})` : '(Sin email)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                      <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[280px] overflow-y-auto">
+                        <table className="w-full text-left border-collapse min-w-[500px]">
+                          <thead>
+                            <tr className="bg-slate-100/80 border-b text-[9px] font-black text-slate-500 uppercase sticky top-0 z-10">
+                              <th className="p-2 w-1/4">Campo</th>
+                              <th className="p-2 w-1/3 bg-red-50/40 text-red-700">Se Elimina</th>
+                              <th className="p-2 w-1/3 bg-emerald-50/40 text-emerald-700">Se Conserva</th>
+                              <th className="p-2 text-slate-700">Resultado Final</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y text-[11px]">
+                            {renderMergeRow('firstName', 'Nombre', sourceClient, targetClient)}
+                            {renderMergeRow('lastName', 'Apellido', sourceClient, targetClient)}
+                            {renderMergeRow('phone', 'Teléfono', sourceClient, targetClient)}
+                            {renderMergeRow('email', 'Email', sourceClient, targetClient)}
+                            {renderMergeRow('dni', 'DNI', sourceClient, targetClient)}
+                            {renderMergeRow('cuit', 'CUIT', sourceClient, targetClient)}
+                            {renderMergeRow('address', 'Dirección', sourceClient, targetClient)}
+                            {renderMergeRow('city', 'Localidad', sourceClient, targetClient)}
+                            {renderMergeRow('province', 'Provincia', sourceClient, targetClient)}
+                            {renderMergeRow('postalCode', 'Cód. Postal', sourceClient, targetClient)}
+                            {renderMergeRow('observations', 'Observaciones', sourceClient, targetClient, true)}
+                          </tbody>
+                        </table>
+                      </div>
 
-                <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-amber-800 space-y-1.5 leading-relaxed">
-                  <p className="font-bold flex items-center gap-1">⚠️ Importante:</p>
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    <li>Todos los pedidos e historial de pagos se transferirán al principal.</li>
-                    <li>Si el principal no tiene email/usuario y el duplicado sí, se transferirá su vinculación de acceso.</li>
-                    <li>El perfil duplicado será borrado definitivamente de la lista.</li>
-                  </ul>
-                </div>
+                      <div className="bg-amber-50 border border-amber-200/60 p-3 rounded-xl text-amber-900 space-y-1 mt-2">
+                        <p className="font-extrabold text-[11px] flex items-center gap-1">⚠️ Efectos de la Fusión:</p>
+                        <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-amber-800/95 leading-normal">
+                          <li>Todos los pedidos e historial de cuentas corrientes se transferirán al principal.</li>
+                          <li>Se unificarán los saldos: comprado <strong>${((targetClient.totalPurchased || 0) + (sourceClient.totalPurchased || 0)).toLocaleString('es-AR')}</strong>, deudores <strong>${((targetClient.totalOwed || 0) + (sourceClient.totalOwed || 0)).toLocaleString('es-AR')}</strong>.</li>
+                          <li>Las cuentas de acceso del cliente (userId) se redireccionarán de forma transparente.</li>
+                          <li>El duplicado original se eliminará definitivamente.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="flex gap-3 w-full mt-4 pt-3 border-t">
-                  <button 
-                    type="button" 
-                    onClick={() => setIsMergeModalOpen(false)} 
-                    className="btn-secondary flex-1"
-                    disabled={mergeLoading}
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="btn-primary flex-1 flex justify-center items-center gap-1.5"
-                    disabled={mergeLoading || !mergeSourceId || !mergeTargetId}
-                  >
-                    {mergeLoading ? 'Fusionando...' : 'Fusionar Clientes'}
-                  </button>
-                </div>
-              </form>
+                  <div className="flex gap-3 w-full mt-4 pt-3 border-t">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsMergeModalOpen(false)} 
+                      className="btn-secondary flex-1"
+                      disabled={mergeLoading}
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="btn-primary flex-1 flex justify-center items-center gap-1.5"
+                      disabled={mergeLoading || !mergeSourceId || !mergeTargetId}
+                    >
+                      {mergeLoading ? 'Fusionando...' : 'Fusionar Clientes'}
+                    </button>
+                  </div>
+                </form>
             ) : (
               <div className="space-y-4 text-xs max-h-[400px] overflow-y-auto pr-1">
                 <p className="text-slate-500 leading-normal">
@@ -1687,7 +1891,8 @@ export const ClientsManager: React.FC = () => {
             )}
           </div>
         </div>
-      )}
+      );
+    })()}
     </div>
   );
 };

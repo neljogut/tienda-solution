@@ -8,7 +8,6 @@ import {
   type Messaging,
 } from 'firebase/messaging';
 import { app, db, firebaseConfig } from '../firebase';
-import { playNotificationSound, showSystemNotification } from '../utils/notificationAlert';
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
 
@@ -156,24 +155,12 @@ export async function unregisterFcmToken(uid: string): Promise<void> {
   currentToken = null;
   currentRegisteredUid = null;
 }
-
 export async function setupFcmForegroundListener(): Promise<void> {
   const messaging = await getMessagingInstance();
   if (!messaging) return;
 
   onMessage(messaging, (payload) => {
-    const title = payload.notification?.title || payload.data?.title || 'Nueva notificación';
-    const body = payload.notification?.body || payload.data?.body || '';
-    const linkPath = payload.data?.linkPath || '/';
-
-    void playNotificationSound();
-    void showSystemNotification({
-      title,
-      body,
-      tag: payload.data?.notificationId || `fcm-${Date.now()}`,
-      linkPath,
-      orderId: payload.data?.orderId,
-    });
+    console.log('FCM foreground message received (handled by Firestore listener instead):', payload);
   });
 }
 

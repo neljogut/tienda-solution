@@ -6,6 +6,7 @@ import {db} from "./admin.js";
 export {sendNotificationPush} from "./pushNotifications.js";
 export {notifyStaffOnNewOrder} from "./orderNotifications.js";
 export {notifyStaffOnPaymentDeclaration} from "./paymentNotifications.js";
+export {notifyOwnerOnNewClient} from "./clientNotifications.js";
 
 function getFirestoreRegion(): string {
   const projectId =

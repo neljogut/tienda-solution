@@ -332,6 +332,13 @@ export const Inventory: React.FC = () => {
     );
   };
 
+  const getMaterialPriority = (material: string) => {
+    const m = material.trim().toLowerCase();
+    if (m === 'pla' || m.startsWith('pla')) return 1;
+    if (m === 'petg' || m.startsWith('petg')) return 2;
+    return 3;
+  };
+
   const filteredFilaments = useMemo(() => {
     const list = filaments.filter(f => {
       if (filamentFilterBrand && f.brand !== filamentFilterBrand) return false;
@@ -352,17 +359,25 @@ export const Inventory: React.FC = () => {
       let comparison = 0;
 
       if (sortByFilament === 'colorMaterial') {
-        const tA = (a.material || '').toLowerCase();
-        const tB = (b.material || '').toLowerCase();
-        const matComp = sortOrderFilament === 'asc' ? tA.localeCompare(tB, 'es') : tB.localeCompare(tA, 'es');
+        const pA = getMaterialPriority(a.material || '');
+        const pB = getMaterialPriority(b.material || '');
         
-        if (matComp !== 0) {
-          comparison = matComp;
+        if (pA !== pB) {
+          comparison = sortOrderFilament === 'asc' ? pA - pB : pB - pA;
         } else {
-          // If same material, sort by color Hex (lightest to darkest in 'asc', darkest to lightest in 'desc')
-          const lumA = getHexLuminance(a.hexColor || '#ffffff');
-          const lumB = getHexLuminance(b.hexColor || '#ffffff');
-          comparison = sortOrderFilament === 'asc' ? lumB - lumA : lumA - lumB;
+          // If same priority, compare alphabetically by material first
+          const tA = (a.material || '').toLowerCase();
+          const tB = (b.material || '').toLowerCase();
+          const matComp = sortOrderFilament === 'asc' ? tA.localeCompare(tB, 'es') : tB.localeCompare(tA, 'es');
+          
+          if (matComp !== 0) {
+            comparison = matComp;
+          } else {
+            // If same material name, sort by color Hex (lightest to darkest in 'asc', darkest to lightest in 'desc')
+            const lumA = getHexLuminance(a.hexColor || '#ffffff');
+            const lumB = getHexLuminance(b.hexColor || '#ffffff');
+            comparison = sortOrderFilament === 'asc' ? lumB - lumA : lumA - lumB;
+          }
         }
       } else if (sortByFilament === 'stock') {
         const qA = a.availableWeightGrams;

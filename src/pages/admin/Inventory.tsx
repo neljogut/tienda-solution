@@ -386,7 +386,33 @@ export const Inventory: React.FC = () => {
       } else if (sortByFilament === 'brand') {
         const bA = (a.brand || '').toLowerCase();
         const bB = (b.brand || '').toLowerCase();
-        comparison = sortOrderFilament === 'asc' ? bA.localeCompare(bB, 'es') : bB.localeCompare(bA, 'es');
+        const brandComp = sortOrderFilament === 'asc' ? bA.localeCompare(bB, 'es') : bB.localeCompare(bA, 'es');
+        
+        if (brandComp !== 0) {
+          comparison = brandComp;
+        } else {
+          // Same brand, sort by material priority
+          const pA = getMaterialPriority(a.material || '');
+          const pB = getMaterialPriority(b.material || '');
+          
+          if (pA !== pB) {
+            comparison = sortOrderFilament === 'asc' ? pA - pB : pB - pA;
+          } else {
+            // Same priority, compare alphabetically by material name
+            const tA = (a.material || '').toLowerCase();
+            const tB = (b.material || '').toLowerCase();
+            const matComp = sortOrderFilament === 'asc' ? tA.localeCompare(tB, 'es') : tB.localeCompare(tA, 'es');
+            
+            if (matComp !== 0) {
+              comparison = matComp;
+            } else {
+              // Same material name, sort by color Hex (lightest to darkest in 'asc', darkest to lightest in 'desc')
+              const lumA = getHexLuminance(a.hexColor || '#ffffff');
+              const lumB = getHexLuminance(b.hexColor || '#ffffff');
+              comparison = sortOrderFilament === 'asc' ? lumB - lumA : lumA - lumB;
+            }
+          }
+        }
       }
 
       // Secondary sorting for stable list ordering

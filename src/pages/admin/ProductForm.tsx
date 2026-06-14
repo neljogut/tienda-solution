@@ -20,6 +20,7 @@ import {
 import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star, Folder, Package, Palette, Check, Edit, X, FolderOpen, FolderPlus, ChevronDown, PlusCircle } from 'lucide-react';
 import { getProductImages } from '../../utils/productImages';
 import { NumericInput } from '../../components/NumericInput';
+import { uploadImageToImgBB } from '../../services/imageUploadService';
 import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
 import { TimeHoursMinutesInput } from '../../components/TimeHoursMinutesInput';
 import { formatWeightGrams } from '../../utils/weightGrams';
@@ -1181,46 +1182,6 @@ export const ProductForm: React.FC = () => {
     setMainImageUrl(url);
   };
 
-  const compressAndConvertToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new window.Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Comprimir a JPEG al 70% de calidad para ocupar muy poco espacio
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          resolve(dataUrl);
-        };
-        img.onerror = (error) => reject(error);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -1243,7 +1204,7 @@ export const ProductForm: React.FC = () => {
       const resolvedUrls: string[] = [];
       for (const img of images) {
         if (img.file) {
-          resolvedUrls.push(await compressAndConvertToBase64(img.file));
+          resolvedUrls.push(await uploadImageToImgBB(img.file));
         } else {
           resolvedUrls.push(img.url);
         }
@@ -1302,7 +1263,7 @@ export const ProductForm: React.FC = () => {
       navigate('/admin/products');
     } catch (error) {
       console.error("Error al guardar:", error);
-      alert("Hubo un error al guardar el producto.");
+      alert(error instanceof Error ? error.message : "Hubo un error al guardar el producto.");
     } finally {
       setLoading(false);
     }

@@ -19,7 +19,8 @@ const defaultBusinessSettings: BusinessSettings = {
   province: 'CABA',
   cuit: '20-12345678-9',
   socialMedia: '@dualgi3d',
-  description: 'Materializando tus ideas en 3D'
+  description: 'Materializando tus ideas en 3D',
+  imgbbApiKey: ''
 };
 
 export const BusinessSettingsPage: React.FC = () => {
@@ -268,6 +269,31 @@ export const BusinessSettingsPage: React.FC = () => {
             <p className="text-[10px] text-slate-400 leading-relaxed">
               Carga preferentemente un logo con fondo transparente. Se redimensiona automáticamente para caber en las cabeceras de tus reportes financieros y facturas.
             </p>
+          </div>
+
+          {/* Hosting de Imágenes (ImgBB) */}
+          <div className="card p-5 border border-slate-200/80 shadow-sm space-y-4 animate-fadeIn">
+            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 border-b pb-2">
+              <Image size={16} className="text-blue-500" />
+              Hosting de Imágenes (ImgBB)
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="input-label font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  ImgBB API Key
+                </label>
+                <input 
+                  type="password" 
+                  placeholder="Ingrese su API Key de ImgBB"
+                  className="input w-full mt-1.5"
+                  value={formData.imgbbApiKey || ''}
+                  onChange={e => setFormData({ ...formData, imgbbApiKey: e.target.value })}
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Esta clave se usa para subir las imágenes del catálogo a ImgBB de forma automática (evitando lentitud en la carga y el almacenamiento en base64). Podés conseguir una clave gratuita en <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">api.imgbb.com</a>.
+              </p>
+            </div>
           </div>
         </div>
 

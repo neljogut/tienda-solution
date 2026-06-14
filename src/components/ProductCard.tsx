@@ -41,9 +41,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const images = useMemo(() => getProductImages(product), [product]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+
+  const handleImageLoad = (url: string) => {
+    setLoadedImages((prev) => ({ ...prev, [url]: true }));
+  };
 
   useEffect(() => {
     setActiveIndex(0);
+    setLoadedImages({});
   }, [product.id]);
 
   useEffect(() => {
@@ -53,8 +59,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     }, 3500);
     return () => window.clearInterval(timer);
   }, [images.length, isPaused, product.id]);
-
-  const displayImage = images[activeIndex] ?? product.mainImage;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -144,13 +148,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        {displayImage ? (
-          <img
-            key={displayImage}
-            src={displayImage}
-            alt={product.name}
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 animate-fadeIn"
-          />
+        {images.length > 0 ? (
+          <>
+            {/* Pulsing Skeleton Background while active image is loading */}
+            {!loadedImages[images[activeIndex]] && (
+              <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+              </div>
+            )}
+            <div className="absolute inset-0 w-full h-full">
+              {images.map((imgUrl, idx) => (
+                <img
+                  key={imgUrl}
+                  src={imgUrl}
+                  alt={`${product.name} - ${idx}`}
+                  onLoad={() => handleImageLoad(imgUrl)}
+                  className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 ${
+                    idx === activeIndex && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                  }`}
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-slate-300">
             <ShoppingCart size={40} />

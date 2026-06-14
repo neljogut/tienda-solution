@@ -49,6 +49,7 @@ export interface BusinessSettings {
   tiktok?: string;
   whatsapp?: string;
   categorySortMode?: 'manual' | 'alphabetical';
+  imgbbApiKey?: string;
 }
 
 export interface BankTransferSettings {

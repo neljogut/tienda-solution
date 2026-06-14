@@ -17,6 +17,11 @@ export const ProductDetail: React.FC = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+
+  const handleImageLoad = (url: string) => {
+    setLoadedImages((prev) => ({ ...prev, [url]: true }));
+  };
   
   const { addItem } = useCartStore();
   const { userData, hasPermission } = useAuth();
@@ -47,6 +52,7 @@ export const ProductDetail: React.FC = () => {
           const data = { id: docSnap.id, ...docSnap.data() } as Product;
           setProduct(data);
           setSelectedImage(data.mainImage);
+          setLoadedImages({});
         } else {
           console.error("No such product!");
         }
@@ -112,9 +118,28 @@ export const ProductDetail: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Galería de Imágenes */}
         <div className="space-y-4">
-          <div className="aspect-square bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+          <div className="aspect-square bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 relative">
             {selectedImage ? (
-              <img src={selectedImage} alt={product.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+              <>
+                {/* Pulsing Skeleton Background while loading */}
+                {!loadedImages[selectedImage] && (
+                  <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+                  </div>
+                )}
+                {allImages.map((imgUrl, idx) => (
+                  <img
+                    key={imgUrl}
+                    src={imgUrl}
+                    alt={`${product.name} - ${idx}`}
+                    onLoad={() => handleImageLoad(imgUrl)}
+                    className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-in-out ${
+                      selectedImage === imgUrl && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                    }`}
+                    referrerPolicy="no-referrer"
+                  />
+                ))}
+              </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-400">Sin Imagen</div>
             )}

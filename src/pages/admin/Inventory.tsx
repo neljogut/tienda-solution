@@ -17,6 +17,7 @@ import {
 import { NumericInput } from '../../components/NumericInput';
 import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
 import { formatWeightGrams } from '../../utils/weightGrams';
+import { uploadImageToImgBB } from '../../services/imageUploadService';
 
 export const Inventory: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'filaments' | 'supplies'>('filaments');
@@ -1139,6 +1140,7 @@ const InventoryModal = ({
   );
   
   const [imagePreview, setImagePreview] = useState<string | null>(formData.mainImage || null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1153,53 +1155,24 @@ const InventoryModal = ({
     };
   }, [onClose]);
 
-  // Compress & convert file to Base64
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new window.Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500;
-        const MAX_HEIGHT = 500;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        setImagePreview(dataUrl);
-        setFormData((prev: any) => ({ ...prev, mainImage: dataUrl }));
-      };
-    };
+    setSelectedFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      let mainImage = formData.mainImage;
+      if (selectedFile) {
+        mainImage = await uploadImageToImgBB(selectedFile);
+      }
       // Sanitize fields before saving
-      const dataToSave = { ...formData };
+      const dataToSave = { ...formData, mainImage };
       if (type === 'filaments') {
         dataToSave.priceUsdKg = useCustomFilamentPrice
           ? (dataToSave.priceUsdKg === '' ? 0 : Number(dataToSave.priceUsdKg))
@@ -1281,7 +1254,7 @@ const InventoryModal = ({
       onClose();
     } catch (err) {
       console.error('Error saving inventory item:', err);
-      alert('Error al guardar el ítem.');
+      alert('Error al guardar: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     } finally {
       setSaving(false);
     }
@@ -1315,7 +1288,7 @@ const InventoryModal = ({
                 <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-sm" />
                 <button 
                   type="button" 
-                  onClick={() => { setImagePreview(null); setFormData((prev: any) => ({ ...prev, mainImage: null })); }}
+                  onClick={() => { setImagePreview(null); setSelectedFile(null); setFormData((prev: any) => ({ ...prev, mainImage: null })); }}
                   className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
                 >
                   <X size={10} />

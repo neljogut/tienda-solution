@@ -187,12 +187,16 @@ export const Liquidations: React.FC = () => {
   const [pendingTotals, setPendingTotals] = useState<Record<string, number>>({});
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
 
+  // Collaborator filter state
+  const [collaboratorFilter, setCollaboratorFilter] = useState<'all' | 'pending' | 'paid'>('all');
+
   // Modal states for liquidation details & sharing
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalOrders, setModalOrders] = useState<Order[]>([]);
   const [modalMessage, setModalMessage] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
+  const [shouldNotify, setShouldNotify] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'orders'), (snap) => {
@@ -287,6 +291,35 @@ export const Liquidations: React.FC = () => {
     return { available, liquidated, waiting, totalSales };
   }, [orders]);
 
+  // Sorted collaborators list (unpaid first, then alphabetically)
+  const sortedEmployees = useMemo(() => {
+    return [...employees].sort((a, b) => {
+      const amtA = pendingTotals[a.uid] || 0;
+      const amtB = pendingTotals[b.uid] || 0;
+
+      if (amtA > 0 && amtB === 0) return -1;
+      if (amtA === 0 && amtB > 0) return 1;
+      if (amtA > 0 && amtB > 0 && amtA !== amtB) {
+        return amtB - amtA;
+      }
+
+      const nameA = (a.displayName || a.email).toLowerCase();
+      const nameB = (b.displayName || b.email).toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [employees, pendingTotals]);
+
+  // Filtered collaborators list
+  const filteredEmployees = useMemo(() => {
+    return sortedEmployees.filter(emp => {
+      const pendingAmount = pendingTotals[emp.uid] || 0;
+      if (collaboratorFilter === 'all') return true;
+      if (collaboratorFilter === 'pending') return pendingAmount > 0;
+      if (collaboratorFilter === 'paid') return pendingAmount === 0;
+      return true;
+    });
+  }, [sortedEmployees, pendingTotals, collaboratorFilter]);
+
   // Selected collaborator details
   const activeEmployee = useMemo(() => {
     return employees.find(e => e.uid === selectedEmpId) || null;
@@ -367,6 +400,7 @@ export const Liquidations: React.FC = () => {
 
     setModalOrders([order]);
     setModalMessage(defaultMsg);
+    setShouldNotify(!!emp?.payoutDetails?.phone);
     setIsModalOpen(true);
   };
 
@@ -388,6 +422,7 @@ export const Liquidations: React.FC = () => {
 
     setModalOrders(ordersToLiquidate);
     setModalMessage(defaultMsg);
+    setShouldNotify(!!emp?.payoutDetails?.phone);
     setIsModalOpen(true);
   };
 
@@ -412,15 +447,40 @@ export const Liquidations: React.FC = () => {
         return next;
       });
 
+      const emp = employees.find(e => e.uid === selectedEmpId);
+      const phone = emp?.payoutDetails?.phone || '';
+
       setIsModalOpen(false);
       setModalOrders([]);
-      alert('Comisiones liquidadas con éxito.');
+
+      if (shouldNotify && phone) {
+        openWhatsApp(phone, modalMessage);
+      } else {
+        alert('Comisiones liquidadas con éxito.');
+      }
     } catch (err) {
       console.error("Error liquidating commissions:", err);
       alert('Hubo un error al liquidar las comisiones.');
     } finally {
       setLiquidating(false);
     }
+  };
+
+  const handleSendExistingNotification = (order: Order) => {
+    const emp = employees.find(e => e.uid === selectedEmpId);
+    const empName = emp?.displayName || emp?.email || 'Colaborador';
+    const amount = order.commissionAmount || 0;
+    const formattedAmount = formatCurrency(amount);
+    const orderNum = String(order.orderNumber).padStart(5, '0');
+    const clientName = order.customerName || 'Cliente';
+    const phone = emp?.payoutDetails?.phone || '';
+    if (!phone) {
+      alert('El colaborador no tiene configurado un teléfono/WhatsApp de contacto.');
+      return;
+    }
+
+    const msg = `Hola ${empName}! Te comparto el comprobante de la comisión ya liquidada de ${formattedAmount} por el pedido #${orderNum} del cliente ${clientName}.`;
+    openWhatsApp(phone, msg);
   };
 
   const handleCopyField = (key: string, value: string) => {
@@ -435,15 +495,6 @@ export const Liquidations: React.FC = () => {
     setTimeout(() => setCopiedMessage(false), 2000);
   };
 
-  const handleShareWhatsApp = () => {
-    const emp = employees.find(e => e.uid === selectedEmpId);
-    const phone = emp?.payoutDetails?.phone || '';
-    if (!phone) {
-      alert('El colaborador no tiene configurado un teléfono/WhatsApp de contacto.');
-      return;
-    }
-    openWhatsApp(phone, modalMessage);
-  };
 
   const formatCurrency = (val: number) => {
     return `$${val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -481,16 +532,55 @@ export const Liquidations: React.FC = () => {
 
       {/* Collaborator Grid (Cards) */}
       <div className="space-y-3">
-        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-          Resumen de Liquidaciones por Colaborador
-        </label>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Resumen de Liquidaciones por Colaborador
+          </label>
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setCollaboratorFilter('all')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                collaboratorFilter === 'all'
+                  ? 'bg-white text-slate-800 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setCollaboratorFilter('pending')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                collaboratorFilter === 'pending'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Pendientes
+            </button>
+            <button
+              onClick={() => setCollaboratorFilter('paid')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                collaboratorFilter === 'paid'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Al día
+            </button>
+          </div>
+        </div>
+
         {employees.length === 0 ? (
           <div className="p-8 text-center text-slate-400 border border-slate-200 border-dashed rounded-2xl bg-white">
             No se encontraron empleados registrados.
           </div>
+        ) : filteredEmployees.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 border border-slate-200 border-dashed rounded-2xl bg-white text-xs font-semibold">
+            No hay colaboradores que coincidan con el filtro seleccionado.
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {employees.map((emp) => {
+            {filteredEmployees.map((emp) => {
               const isSelected = emp.uid === selectedEmpId;
               const pendingAmount = pendingTotals[emp.uid] || 0;
               const pendingCount = pendingCounts[emp.uid] || 0;
@@ -501,7 +591,7 @@ export const Liquidations: React.FC = () => {
                   key={emp.uid}
                   type="button"
                   onClick={() => setSelectedEmpId(emp.uid)}
-                  className={`flex items-center gap-3.5 p-4 rounded-2xl border-2 text-left transition-all duration-300 ${
+                  className={`flex items-center gap-3.5 p-4 rounded-2xl border-2 text-left transition-all duration-300 cursor-pointer ${
                     isSelected
                       ? 'border-indigo-600 bg-indigo-50/40 shadow-lg shadow-indigo-600/5'
                       : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-md'
@@ -556,7 +646,7 @@ export const Liquidations: React.FC = () => {
               Buscador de Colaboradores
             </label>
             <SearchableEmployeeSelect 
-              employees={employees} 
+              employees={sortedEmployees} 
               value={selectedEmpId} 
               onChange={setSelectedEmpId} 
             />
@@ -783,12 +873,23 @@ export const Liquidations: React.FC = () => {
                             {isSelectable ? (
                               <button
                                 onClick={() => handleOpenSingleLiquidation(o)}
-                                className="px-3 py-1.5 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg transition-all shadow-sm shadow-emerald-600/10 whitespace-nowrap"
+                                className="px-3 py-1.5 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg transition-all shadow-sm shadow-emerald-600/10 whitespace-nowrap cursor-pointer"
                               >
                                 Liquidar
                               </button>
                             ) : o.commissionPaidStatus === 'paid' ? (
-                              <span className="text-[10px] text-emerald-500 font-semibold">✓ Pagado</span>
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-[10px] text-emerald-500 font-bold">✓ Pagado</span>
+                                {activeEmployee?.payoutDetails?.phone && (
+                                  <button
+                                    onClick={() => handleSendExistingNotification(o)}
+                                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Notificar por WhatsApp"
+                                  >
+                                    <MessageSquare size={13} />
+                                  </button>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
@@ -847,14 +948,22 @@ export const Liquidations: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {getCommissionBadge(o)}
-                          {isSelectable && (
+                          {isSelectable ? (
                             <button
                               onClick={() => handleOpenSingleLiquidation(o)}
-                              className="px-2.5 py-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm"
+                              className="px-2.5 py-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm cursor-pointer"
                             >
                               Liquidar
                             </button>
-                          )}
+                          ) : o.commissionPaidStatus === 'paid' && activeEmployee?.payoutDetails?.phone ? (
+                            <button
+                              onClick={() => handleSendExistingNotification(o)}
+                              className="px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <MessageSquare size={11} />
+                              <span>Notificar</span>
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -869,7 +978,7 @@ export const Liquidations: React.FC = () => {
       {/* Liquidation Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[1000] animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
@@ -1054,6 +1163,27 @@ export const Liquidations: React.FC = () => {
                   placeholder="Redacta un mensaje para notificar al colaborador..."
                 />
               </div>
+
+              {/* Consolidated WhatsApp option */}
+              {activeEmployee?.payoutDetails?.phone ? (
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="should-notify-checkbox"
+                    checked={shouldNotify}
+                    onChange={(e) => setShouldNotify(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
+                  />
+                  <label htmlFor="should-notify-checkbox" className="text-xs font-bold text-slate-700 select-none cursor-pointer">
+                    Enviar notificación por WhatsApp al confirmar
+                  </label>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 flex items-center gap-2 text-[11px] font-semibold">
+                  <AlertCircle size={14} className="flex-shrink-0" />
+                  <span>El colaborador no tiene teléfono configurado en su cuenta para enviar notificaciones de WhatsApp.</span>
+                </div>
+              )}
             </div>
 
             {/* Actions Footer */}
@@ -1061,29 +1191,32 @@ export const Liquidations: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-full sm:w-auto px-4 py-2.5 border border-slate-200 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all"
+                className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
               >
                 Cancelar
               </button>
 
-              <button
-                type="button"
-                onClick={handleShareWhatsApp}
-                disabled={!activeEmployee?.payoutDetails?.phone}
-                className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <MessageSquare size={14} />
-                <span>Notificar por WhatsApp</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleConfirmLiquidation}
-                disabled={liquidating}
-                className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                {liquidating ? 'Liquidando...' : 'Confirmar y Liquidar'}
-              </button>
+              {shouldNotify && activeEmployee?.payoutDetails?.phone ? (
+                <button
+                  type="button"
+                  onClick={handleConfirmLiquidation}
+                  disabled={liquidating}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <MessageSquare size={14} />
+                  <span>{liquidating ? 'Liquidando...' : 'Confirmar, Liquidar y Notificar'}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConfirmLiquidation}
+                  disabled={liquidating}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>{liquidating ? 'Liquidando...' : 'Confirmar y Liquidar'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

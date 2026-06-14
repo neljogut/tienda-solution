@@ -15,8 +15,12 @@ import {
   TrendingUp,
   Award,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  Copy,
+  X,
+  MessageSquare
 } from 'lucide-react';
+import { openWhatsApp } from '../../utils/whatsapp';
 
 interface SearchableEmployeeSelectProps {
   employees: UserData[];
@@ -183,6 +187,13 @@ export const Liquidations: React.FC = () => {
   const [pendingTotals, setPendingTotals] = useState<Record<string, number>>({});
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
 
+  // Modal states for liquidation details & sharing
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalOrders, setModalOrders] = useState<Order[]>([]);
+  const [modalMessage, setModalMessage] = useState('');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'orders'), (snap) => {
       const totals: Record<string, number> = {};
@@ -281,6 +292,8 @@ export const Liquidations: React.FC = () => {
     return employees.find(e => e.uid === selectedEmpId) || null;
   }, [selectedEmpId, employees]);
 
+  const payoutDetails = activeEmployee?.payoutDetails;
+
   // Filtered orders list
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
@@ -342,24 +355,65 @@ export const Liquidations: React.FC = () => {
       .reduce((sum, o) => sum + (o.commissionAmount || 0), 0);
   }, [selectableOrders, selectedOrderIds]);
 
-  const handleLiquidateSelected = async () => {
+  const handleOpenSingleLiquidation = (order: Order) => {
+    const emp = employees.find(e => e.uid === selectedEmpId);
+    const empName = emp?.displayName || emp?.email || 'Colaborador';
+    const amount = order.commissionAmount || 0;
+    const formattedAmount = formatCurrency(amount);
+    const orderNum = String(order.orderNumber).padStart(5, '0');
+    const clientName = order.customerName || 'Cliente';
+
+    const defaultMsg = `Hola ${empName}! Ya te transferí ${formattedAmount} de comisión por el pedido #${orderNum} del cliente ${clientName}.`;
+
+    setModalOrders([order]);
+    setModalMessage(defaultMsg);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenBulkLiquidation = () => {
     const idsToLiquidate = Object.keys(selectedOrderIds).filter(id => selectedOrderIds[id]);
-    if (idsToLiquidate.length === 0) return;
+    const ordersToLiquidate = selectableOrders.filter(o => idsToLiquidate.includes(o.id));
+    if (ordersToLiquidate.length === 0) return;
 
-    if (!window.confirm(`¿Estás seguro de liquidar y marcar como pagadas ${idsToLiquidate.length} comisiones por un total de $${selectedTotalAmount.toLocaleString('es-AR')}?`)) {
-      return;
-    }
+    const emp = employees.find(e => e.uid === selectedEmpId);
+    const empName = emp?.displayName || emp?.email || 'Colaborador';
+    const totalAmount = ordersToLiquidate.reduce((sum, o) => sum + (o.commissionAmount || 0), 0);
+    const formattedTotal = formatCurrency(totalAmount);
 
+    const ordersListText = ordersToLiquidate
+      .map(o => `#${String(o.orderNumber).padStart(5, '0')} (${o.customerName || 'Cliente'})`)
+      .join(', ');
+
+    const defaultMsg = `Hola ${empName}! Ya te transferí ${formattedTotal} por tus comisiones de los pedidos: ${ordersListText}.`;
+
+    setModalOrders(ordersToLiquidate);
+    setModalMessage(defaultMsg);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmLiquidation = async () => {
+    if (modalOrders.length === 0) return;
     setLiquidating(true);
     try {
       const batch = writeBatch(db);
-      idsToLiquidate.forEach(id => {
-        batch.update(doc(db, 'orders', id), {
+      modalOrders.forEach(o => {
+        batch.update(doc(db, 'orders', o.id), {
           commissionPaidStatus: 'paid'
         });
       });
       await batch.commit();
-      setSelectedOrderIds({});
+
+      // Clean selection
+      setSelectedOrderIds(prev => {
+        const next = { ...prev };
+        modalOrders.forEach(o => {
+          delete next[o.id];
+        });
+        return next;
+      });
+
+      setIsModalOpen(false);
+      setModalOrders([]);
       alert('Comisiones liquidadas con éxito.');
     } catch (err) {
       console.error("Error liquidating commissions:", err);
@@ -369,17 +423,26 @@ export const Liquidations: React.FC = () => {
     }
   };
 
-  const handleLiquidateSingle = async (orderId: string, amount: number) => {
-    if (!window.confirm(`¿Liquidar esta comisión de ${formatCurrency(amount)}?`)) return;
-    try {
-      const batch = writeBatch(db);
-      batch.update(doc(db, 'orders', orderId), { commissionPaidStatus: 'paid' });
-      await batch.commit();
-      setSelectedOrderIds(prev => { const next = { ...prev }; delete next[orderId]; return next; });
-    } catch (err) {
-      console.error('Error liquidating single commission:', err);
-      alert('Hubo un error al liquidar la comisión.');
+  const handleCopyField = (key: string, value: string) => {
+    navigator.clipboard.writeText(value);
+    setCopiedField(key);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(modalMessage);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 2000);
+  };
+
+  const handleShareWhatsApp = () => {
+    const emp = employees.find(e => e.uid === selectedEmpId);
+    const phone = emp?.payoutDetails?.phone || '';
+    if (!phone) {
+      alert('El colaborador no tiene configurado un teléfono/WhatsApp de contacto.');
+      return;
     }
+    openWhatsApp(phone, modalMessage);
   };
 
   const formatCurrency = (val: number) => {
@@ -581,7 +644,7 @@ export const Liquidations: React.FC = () => {
                 </span>
               </div>
               <button
-                onClick={handleLiquidateSelected}
+                onClick={handleOpenBulkLiquidation}
                 disabled={liquidating}
                 className="w-full sm:w-auto px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-md shadow-indigo-600/15 disabled:opacity-50"
               >
@@ -719,7 +782,7 @@ export const Liquidations: React.FC = () => {
                           <td className="p-4 text-center">
                             {isSelectable ? (
                               <button
-                                onClick={() => handleLiquidateSingle(o.id, o.commissionAmount || 0)}
+                                onClick={() => handleOpenSingleLiquidation(o)}
                                 className="px-3 py-1.5 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg transition-all shadow-sm shadow-emerald-600/10 whitespace-nowrap"
                               >
                                 Liquidar
@@ -786,7 +849,7 @@ export const Liquidations: React.FC = () => {
                           {getCommissionBadge(o)}
                           {isSelectable && (
                             <button
-                              onClick={() => handleLiquidateSingle(o.id, o.commissionAmount || 0)}
+                              onClick={() => handleOpenSingleLiquidation(o)}
                               className="px-2.5 py-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm"
                             >
                               Liquidar
@@ -801,6 +864,229 @@ export const Liquidations: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Liquidation Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[1000] animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
+                  <DollarSign size={20} className="text-emerald-600 bg-emerald-100 rounded-full p-0.5" />
+                  Liquidación de Comisiones
+                </h2>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Revisa los datos de transferencia del colaborador y confirma el pago.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              {/* Employee Info & Bank Details */}
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                    {(activeEmployee?.displayName || activeEmployee?.email || 'CL').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-sm">{activeEmployee?.displayName || 'Colaborador'}</h3>
+                    <p className="text-[10px] text-slate-400 font-semibold">{activeEmployee?.email}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200/80 pt-3">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Datos de Transferencia</h4>
+                  
+                  {payoutDetails ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {/* Banco */}
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">Banco</span>
+                        <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs mt-0.5">
+                          <span className="font-semibold text-slate-700 truncate mr-2">{payoutDetails.bankName}</span>
+                          <button
+                            onClick={() => handleCopyField('bank', payoutDetails.bankName)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                          >
+                            {copiedField === 'bank' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Alias */}
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">Alias</span>
+                        <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs mt-0.5">
+                          <span className="font-semibold text-slate-700 truncate mr-2">{payoutDetails.alias}</span>
+                          <button
+                            onClick={() => handleCopyField('alias', payoutDetails.alias)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                          >
+                            {copiedField === 'alias' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* CBU */}
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">CBU / CVU</span>
+                        <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs mt-0.5">
+                          <span className="font-mono font-semibold text-slate-700 truncate mr-2">{payoutDetails.cbu}</span>
+                          <button
+                            onClick={() => handleCopyField('cbu', payoutDetails.cbu)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                          >
+                            {copiedField === 'cbu' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Titular */}
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">Titular</span>
+                        <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs mt-0.5">
+                          <span className="font-semibold text-slate-700 truncate mr-2">{payoutDetails.holderName}</span>
+                          <button
+                            onClick={() => handleCopyField('holder', payoutDetails.holderName)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                          >
+                            {copiedField === 'holder' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* CUIT */}
+                      {payoutDetails.cuit && (
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">CUIT / CUIL</span>
+                          <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs mt-0.5">
+                            <span className="font-semibold text-slate-700 truncate mr-2">{payoutDetails.cuit}</span>
+                            <button
+                              onClick={() => handleCopyField('cuit', payoutDetails.cuit || '')}
+                              className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                            >
+                              {copiedField === 'cuit' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Teléfono */}
+                      {payoutDetails.phone && (
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">WhatsApp / Teléfono</span>
+                          <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs mt-0.5">
+                            <span className="font-semibold text-slate-700 truncate mr-2">{payoutDetails.phone}</span>
+                            <button
+                              onClick={() => handleCopyField('phone', payoutDetails.phone || '')}
+                              className="text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+                            >
+                              {copiedField === 'phone' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl text-red-700 flex items-center gap-2">
+                      <AlertCircle size={15} />
+                      <span className="text-xs font-semibold">Este colaborador no ha configurado sus datos de pago en su cuenta.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Summary */}
+              <div className="space-y-2.5">
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detalle de Comisiones</h4>
+                <div className="bg-slate-50/50 rounded-2xl border border-slate-200 p-4 space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
+                    <span className="text-xs text-slate-500 font-semibold">Pedidos a liquidar:</span>
+                    <span className="text-xs font-bold text-slate-800">{modalOrders.length}</span>
+                  </div>
+
+                  <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                    {modalOrders.map(o => (
+                      <div key={o.id} className="flex justify-between items-center text-xs text-slate-600 bg-white border border-slate-100 p-2 rounded-xl">
+                        <span className="font-bold text-slate-700">Pedido #{String(o.orderNumber).padStart(5, '0')}</span>
+                        <span className="text-slate-400 max-w-40 truncate">{o.customerName || 'Cliente'}</span>
+                        <span className="font-bold text-indigo-600">{formatCurrency(o.commissionAmount || 0)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2.5 border-t border-slate-200/80">
+                    <span className="text-sm font-black text-slate-800 uppercase tracking-wide">Total a Transferir</span>
+                    <span className="text-lg font-black text-indigo-600">
+                      {formatCurrency(modalOrders.reduce((sum, o) => sum + (o.commissionAmount || 0), 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personalized Message Textarea */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Mensaje de Notificación de Pago (WhatsApp)
+                  </label>
+                  <button
+                    onClick={handleCopyMessage}
+                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  >
+                    {copiedMessage ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedMessage ? 'Copiado' : 'Copiar mensaje'}
+                  </button>
+                </div>
+                <textarea
+                  className="input w-full text-xs font-medium p-3.5 h-20 bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-all resize-none"
+                  value={modalMessage}
+                  onChange={e => setModalMessage(e.target.value)}
+                  placeholder="Redacta un mensaje para notificar al colaborador..."
+                />
+              </div>
+            </div>
+
+            {/* Actions Footer */}
+            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-end items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="w-full sm:w-auto px-4 py-2.5 border border-slate-200 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                disabled={!activeEmployee?.payoutDetails?.phone}
+                className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <MessageSquare size={14} />
+                <span>Notificar por WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmLiquidation}
+                disabled={liquidating}
+                className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-indigo-600/15 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {liquidating ? 'Liquidando...' : 'Confirmar y Liquidar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

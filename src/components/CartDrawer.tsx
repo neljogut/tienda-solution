@@ -337,7 +337,7 @@ export const CartDrawer: React.FC = () => {
         totalAmount,
         paidAmount: paidAmountAmt,
         pendingAmount,
-        paymentStatus: paidAmountAmt >= totalAmount ? 'paid' : (paidAmountAmt > 0 ? 'partially_paid' : 'unpaid'),
+        paymentStatus: paidAmountAmt >= totalAmount ? 'paid' : (paidAmountAmt > 0 ? 'partial' : 'unpaid'),
         orderStatus: 'pending',
         observationsPublic,
         observationsInternal,

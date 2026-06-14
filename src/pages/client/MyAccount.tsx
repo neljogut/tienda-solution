@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { User, Mail, Edit2, Check, X, Loader2 } from 'lucide-react';
+import { User, Mail, Edit2, Check, X, Loader2, CreditCard } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, db } from '../../firebase';
 import { doc, updateDoc, query, where, getDocs, collection, writeBatch } from 'firebase/firestore';
@@ -11,6 +11,54 @@ export const MyAccount: React.FC = () => {
   const [name, setName] = useState(userData?.displayName || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // States for employee payout details
+  const [payoutAlias, setPayoutAlias] = useState(userData?.payoutDetails?.alias || '');
+  const [payoutCbu, setPayoutCbu] = useState(userData?.payoutDetails?.cbu || '');
+  const [payoutHolderName, setPayoutHolderName] = useState(userData?.payoutDetails?.holderName || '');
+  const [payoutBankName, setPayoutBankName] = useState(userData?.payoutDetails?.bankName || '');
+  const [payoutCuit, setPayoutCuit] = useState(userData?.payoutDetails?.cuit || '');
+  const [payoutPhone, setPayoutPhone] = useState(userData?.payoutDetails?.phone || '');
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutMessage, setPayoutMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (userData?.payoutDetails) {
+      setPayoutAlias(userData.payoutDetails.alias || '');
+      setPayoutCbu(userData.payoutDetails.cbu || '');
+      setPayoutHolderName(userData.payoutDetails.holderName || '');
+      setPayoutBankName(userData.payoutDetails.bankName || '');
+      setPayoutCuit(userData.payoutDetails.cuit || '');
+      setPayoutPhone(userData.payoutDetails.phone || '');
+    }
+  }, [userData]);
+
+  const handleSavePayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userData) return;
+    setPayoutLoading(true);
+    setPayoutMessage(null);
+
+    try {
+      const userRef = doc(db, 'users', userData.uid);
+      await updateDoc(userRef, {
+        payoutDetails: {
+          alias: payoutAlias.trim(),
+          cbu: payoutCbu.trim(),
+          holderName: payoutHolderName.trim(),
+          bankName: payoutBankName.trim(),
+          cuit: payoutCuit.trim(),
+          phone: payoutPhone.trim(),
+        }
+      });
+      setPayoutMessage({ type: 'success', text: 'Datos de transferencia guardados correctamente.' });
+    } catch (error: any) {
+      console.error('Error saving payout details:', error);
+      setPayoutMessage({ type: 'error', text: 'Error al guardar los datos de transferencia.' });
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +198,117 @@ export const MyAccount: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Payout Details Section */}
+      {(userData?.role === 'employee' || userData?.role === 'owner') && (
+        <div className="card p-6 mt-6">
+          <div className="flex items-center gap-2 mb-6 pb-6 border-b border-slate-100">
+            <CreditCard className="text-indigo-600 animate-pulse" size={20} />
+            <div>
+              <h2 className="text-lg font-black text-slate-800 tracking-tight">Datos de Transferencia Bancaria</h2>
+              <p className="text-slate-500 text-xs mt-0.5">Configura a dónde deseas recibir el pago de tus comisiones.</p>
+            </div>
+          </div>
+
+          {payoutMessage && (
+            <div className={`p-3 text-xs rounded-lg border mb-4 font-semibold ${
+              payoutMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
+            }`}>
+              {payoutMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSavePayout} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">CBU / CVU</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={22}
+                  placeholder="22 dígitos"
+                  value={payoutCbu}
+                  onChange={(e) => setPayoutCbu(e.target.value.replace(/\D/g, ''))}
+                  className="input w-full text-xs font-mono bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Alias</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: pedro.pago.mp"
+                  value={payoutAlias}
+                  onChange={(e) => setPayoutAlias(e.target.value)}
+                  className="input w-full text-xs bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nombre del Titular</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nombre y Apellido completo"
+                  value={payoutHolderName}
+                  onChange={(e) => setPayoutHolderName(e.target.value)}
+                  className="input w-full text-xs bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Banco</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Banco Galicia / Mercado Pago"
+                  value={payoutBankName}
+                  onChange={(e) => setPayoutBankName(e.target.value)}
+                  className="input w-full text-xs bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">CUIT / CUIL (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: 20405006007"
+                  value={payoutCuit}
+                  onChange={(e) => setPayoutCuit(e.target.value.replace(/\D/g, ''))}
+                  className="input w-full text-xs bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">WhatsApp / Teléfono</label>
+                <input
+                  type="text"
+                  placeholder="Ej: 5491112345678 (código de país sin +)"
+                  value={payoutPhone}
+                  onChange={(e) => setPayoutPhone(e.target.value.replace(/\D/g, ''))}
+                  className="input w-full text-xs bg-slate-50 hover:bg-slate-100/50 focus:bg-white transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={payoutLoading}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {payoutLoading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                <span>Guardar datos de transferencia</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

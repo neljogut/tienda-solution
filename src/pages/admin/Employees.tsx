@@ -406,9 +406,25 @@ export const Employees: React.FC = () => {
     }
     setSelectedUser(user);
     setSelectedRole(user.role);
-    setPermissions(user.permissions || {});
+    
+    // Prefill defaults if they are an employee but have empty/no permissions
+    const initialPerms = user.permissions && Object.keys(user.permissions).length > 0
+      ? user.permissions
+      : (user.role === 'employee' ? DEFAULT_EMPLOYEE_PERMISSIONS : {});
+      
+    setPermissions(initialPerms);
     setUserDni(user.dni || '');
     setIsModalOpen(true);
+  };
+
+  const handleRoleChange = (role: UserData['role']) => {
+    setSelectedRole(role);
+    if (role === 'employee') {
+      const hasPermissionsEnabled = Object.values(permissions).some(Boolean);
+      if (!hasPermissionsEnabled) {
+        setPermissions(DEFAULT_EMPLOYEE_PERMISSIONS);
+      }
+    }
   };
 
   const handleTogglePermission = (key: keyof UserPermissions) => {
@@ -893,7 +909,7 @@ export const Employees: React.FC = () => {
                         name="userRole" 
                         value={role}
                         checked={selectedRole === role}
-                        onChange={() => setSelectedRole(role)}
+                        onChange={() => handleRoleChange(role)}
                         className="text-blue-600 focus:ring-blue-500"
                       />
                       <span className="capitalize">{role === 'client' ? 'Cliente' : 'Empleado'}</span>

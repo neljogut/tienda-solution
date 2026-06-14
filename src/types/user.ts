@@ -45,6 +45,15 @@ export const DEFAULT_EMPLOYEE_PERMISSIONS: UserPermissions = {
 };
 
 
+export interface EmployeePayoutDetails {
+  bankName: string;
+  cbu: string;
+  alias: string;
+  holderName: string;
+  cuit?: string;
+  phone?: string;
+}
+
 export interface UserData {
   uid: string;
   email: string;
@@ -54,4 +63,5 @@ export interface UserData {
   customerId?: string;
   dni?: string;
   forcePasswordChange?: boolean;
+  payoutDetails?: EmployeePayoutDetails;
 }

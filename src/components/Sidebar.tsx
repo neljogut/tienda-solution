@@ -89,6 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     {
       title: 'Configuración',
       items: [
+        { label: 'Mi Perfil', icon: User, path: '/my-account' },
         { label: 'Precios', icon: Settings, path: '/pricing-settings', permission: 'viewPriceSettings' },
         { label: 'Negocio', icon: Building2, path: '/business-settings', requiredRole: 'owner' },
         { label: 'Roles y Permisos', icon: UserCog, path: '/employees', requiredRole: 'owner' },

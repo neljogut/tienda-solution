@@ -48,6 +48,8 @@ export const Inventory: React.FC = () => {
 
   // Sorting and Business Settings States
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortByFilament, setSortByFilament] = useState<'color' | 'stock' | 'type' | 'brand'>('color');
+  const [sortOrderFilament, setSortOrderFilament] = useState<'asc' | 'desc'>('asc');
   const [business, setBusiness] = useState<BusinessSettings>({
     name: 'Dualgi 3D',
     ownerName: 'Maxi',
@@ -286,23 +288,48 @@ export const Inventory: React.FC = () => {
     }
   };
 
-  // Helper to convert HEX color to HSL Hue (0-360)
-  const getHexHue = (hex: string) => {
-    let r = parseInt(hex.substring(1, 3), 16) / 255;
-    let g = parseInt(hex.substring(3, 5), 16) / 255;
-    let b = parseInt(hex.substring(5, 7), 16) / 255;
-    let max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0;
-    if (max !== min) {
-      let d = max - min;
-      switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-      }
-      h /= 6;
+  // Helper to convert HEX color to relative luminance (0.0 to 1.0)
+  const getHexLuminance = (hex: string) => {
+    const clean = hex.replace('#', '');
+    if (clean.length !== 6) return 0.5;
+    const r = parseInt(clean.substring(0, 2), 16) / 255;
+    const g = parseInt(clean.substring(2, 4), 16) / 255;
+    const b = parseInt(clean.substring(4, 6), 16) / 255;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+
+  const handleSortFilament = (field: 'color' | 'stock' | 'type' | 'brand') => {
+    if (sortByFilament === field) {
+      setSortOrderFilament(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortByFilament(field);
+      setSortOrderFilament('asc');
     }
-    return h * 360;
+  };
+
+  const renderSortIndicatorFilament = (field: 'color' | 'stock' | 'type' | 'brand') => {
+    if (sortByFilament !== field) return <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity ml-1">⇅</span>;
+    return <span className="text-blue-600 ml-1">{sortOrderFilament === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const renderMobileSortButtonFilament = (field: 'color' | 'stock' | 'type' | 'brand', label: string) => {
+    const isActive = sortByFilament === field;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSortFilament(field)}
+        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+          isActive
+            ? 'bg-blue-600 text-white shadow-xs'
+            : 'bg-white text-slate-650 border border-slate-200'
+        }`}
+      >
+        <span>{label}</span>
+        {isActive && (
+          <span className="text-[8px] font-extrabold">{sortOrderFilament === 'asc' ? '▲' : '▼'}</span>
+        )}
+      </button>
+    );
   };
 
   const filteredFilaments = useMemo(() => {
@@ -321,28 +348,41 @@ export const Inventory: React.FC = () => {
       return true;
     });
 
-    // Logical Sort:
-    // 1. Quantity (descending/ascending based on sortDirection)
-    // 2. Brand
-    // 3. Material
-    // 4. Color hue (HSL)
     return list.sort((a, b) => {
-      const qA = a.availableWeightGrams;
-      const qB = b.availableWeightGrams;
-      if (qA !== qB) {
-        return sortDirection === 'desc' ? qB - qA : qA - qB;
+      let comparison = 0;
+
+      if (sortByFilament === 'color') {
+        const lumA = getHexLuminance(a.hexColor || '#ffffff');
+        const lumB = getHexLuminance(b.hexColor || '#ffffff');
+        // asc: clearest first (highest luminance first)
+        // desc: darkest first (lowest luminance first)
+        comparison = sortOrderFilament === 'asc' ? lumB - lumA : lumA - lumB;
+      } else if (sortByFilament === 'stock') {
+        const qA = a.availableWeightGrams;
+        const qB = b.availableWeightGrams;
+        comparison = sortOrderFilament === 'asc' ? qA - qB : qB - qA;
+      } else if (sortByFilament === 'type') {
+        const tA = (a.material || '').toLowerCase();
+        const tB = (b.material || '').toLowerCase();
+        comparison = sortOrderFilament === 'asc' ? tA.localeCompare(tB, 'es') : tB.localeCompare(tA, 'es');
+      } else if (sortByFilament === 'brand') {
+        const bA = (a.brand || '').toLowerCase();
+        const bB = (b.brand || '').toLowerCase();
+        comparison = sortOrderFilament === 'asc' ? bA.localeCompare(bB, 'es') : bB.localeCompare(bA, 'es');
       }
-      const bComp = a.brand.localeCompare(b.brand, 'es');
-      if (bComp !== 0) return bComp;
 
-      const mComp = a.material.localeCompare(b.material, 'es');
-      if (mComp !== 0) return mComp;
+      // Secondary sorting for stable list ordering
+      if (comparison !== 0) return comparison;
 
-      const hueA = getHexHue(a.hexColor || '#ffffff');
-      const hueB = getHexHue(b.hexColor || '#ffffff');
-      return hueA - hueB;
+      const brandComp = (a.brand || '').localeCompare(b.brand || '', 'es');
+      if (brandComp !== 0) return brandComp;
+
+      const matComp = (a.material || '').localeCompare(b.material || '', 'es');
+      if (matComp !== 0) return matComp;
+
+      return (a.color || '').localeCompare(b.color || '', 'es');
     });
-  }, [filaments, filamentFilterBrand, filamentFilterMaterial, filamentSearchTerm, sortDirection]);
+  }, [filaments, filamentFilterBrand, filamentFilterMaterial, filamentSearchTerm, sortByFilament, sortOrderFilament]);
 
   const filteredSupplies = useMemo(() => {
     const list = supplies.filter(s => {
@@ -582,9 +622,26 @@ export const Inventory: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="p-4">Color / Material</th>
-                  <th className="p-4">Marca / Prov.</th>
-                  <th className="p-4 text-right">Peso Disp.</th>
+                  <th className="p-4 select-none">
+                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center group" onClick={() => handleSortFilament('color')}>
+                      Color {renderSortIndicatorFilament('color')}
+                    </span>
+                    <span className="text-slate-300 mx-1.5 font-normal">/</span>
+                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center group" onClick={() => handleSortFilament('type')}>
+                      Tipo {renderSortIndicatorFilament('type')}
+                    </span>
+                  </th>
+                  <th className="p-4 select-none">
+                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center group" onClick={() => handleSortFilament('brand')}>
+                      Marca {renderSortIndicatorFilament('brand')}
+                    </span>
+                    <span className="text-slate-300 mx-1 font-normal">/ Prov.</span>
+                  </th>
+                  <th className="p-4 text-right select-none">
+                    <span className="cursor-pointer hover:text-slate-800 transition-colors inline-flex items-center justify-end group cursor-pointer" onClick={() => handleSortFilament('stock')}>
+                      Peso Disp. {renderSortIndicatorFilament('stock')}
+                    </span>
+                  </th>
                   <th className="p-4 text-right">Mín. Alerta</th>
                   <th className="p-4 text-right">Precio USD/Kg</th>
                   <th className="p-4">Fecha Compra</th>
@@ -718,6 +775,15 @@ export const Inventory: React.FC = () => {
 
           {/* Mobile View: Cards */}
           <div className="block md:hidden divide-y divide-slate-100 text-xs">
+            {/* Mobile Sorting Controls */}
+            <div className="p-4 bg-slate-50/50 border-b border-slate-150 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider mr-1 shrink-0">Ordenar por:</span>
+              {renderMobileSortButtonFilament('color', 'Color')}
+              {renderMobileSortButtonFilament('stock', 'Stock')}
+              {renderMobileSortButtonFilament('type', 'Tipo')}
+              {renderMobileSortButtonFilament('brand', 'Marca')}
+            </div>
+
             {filteredFilaments.length === 0 ? (
               <div className="p-8 text-center text-slate-400 animate-fadeIn">
                 {hasActiveFilamentFilters

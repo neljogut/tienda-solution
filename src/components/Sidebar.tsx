@@ -184,21 +184,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           ) : (
             <div>
               <p className="sidebar-section-title">Menú</p>
-              {clientItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.path);
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => handleNav(item.path)}
-                    className={`sidebar-item w-full ${active ? 'sidebar-item-active' : ''}`}
-                  >
-                    <Icon size={18} />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {active && <ChevronRight size={14} className="text-blue-400" />}
-                  </button>
-                );
-              })}
+              {clientItems
+                .filter(item => item.path === '/catalog' || !!userData)
+                .map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.path);
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => handleNav(item.path)}
+                      className={`sidebar-item w-full ${active ? 'sidebar-item-active' : ''}`}
+                    >
+                      <Icon size={18} />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {active && <ChevronRight size={14} className="text-blue-400" />}
+                    </button>
+                  );
+                })}
             </div>
           )}
         </nav>

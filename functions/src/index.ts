@@ -243,8 +243,140 @@ export const createCatalogOrder = onCall({ region: getFirestoreRegion() }, async
   return {orderId: orderRef.id, orderNumber, totalAmount};
 });
 
+export const finalizeSharedOrder = onCall({ region: getFirestoreRegion() }, async (request) => {
+  const payload = request.data as {
+    orderId: string;
+    paymentMethod: "later" | "transfer" | "mercadopago";
+  };
+
+  if (!payload.orderId) {
+    throw new HttpsError("invalid-argument", "ID de pedido inválido.");
+  }
+
+  const orderRef = db.collection("orders").doc(payload.orderId);
+  const orderSnap = await orderRef.get();
+
+  if (!orderSnap.exists) {
+    throw new HttpsError("not-found", "No se encontró el pedido.");
+  }
+
+  const order = orderSnap.data()!;
+  if (order.orderStatus !== "draft") {
+    throw new HttpsError("failed-precondition", "Este pedido ya fue procesado o no es un borrador.");
+  }
+
+  const ordersColl = db.collection("orders");
+  const countSnap = await ordersColl.count().get();
+  const orderNumber = countSnap.data().count;
+
+  const batch = db.batch();
+  const saleLines: Array<Record<string, any>> = [];
+
+  for (const item of order.items || []) {
+    const prodRef = db.collection("products").doc(item.productId);
+    const prodSnap = await prodRef.get();
+    if (!prodSnap.exists) continue;
+    const product = prodSnap.data()!;
+    const prevStock = product.stock || 0;
+    const newStock = Math.max(0, prevStock - item.quantity);
+    batch.update(prodRef, { stock: newStock });
+    saleLines.push({
+      itemId: item.productId,
+      itemType: "product",
+      lineType: "out_sale",
+      previousQuantity: prevStock,
+      modifiedQuantity: -item.quantity,
+      finalQuantity: newStock,
+    });
+
+    if (product.type === "3d") {
+      const filamentLines = product.filamentLines?.length
+        ? product.filamentLines
+        : (product.filamentIds ?? []).map((filId: string) => ({
+            supplyId: filId,
+            grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds?.length || 1),
+          }));
+
+      for (const line of filamentLines) {
+        const weightToDeduct = (line.grams || 0) * item.quantity;
+        if (!line.supplyId || weightToDeduct <= 0) continue;
+        const filRef = db.collection("inventory").doc(line.supplyId);
+        const filSnap = await filRef.get();
+        if (filSnap.exists) {
+          const filData = filSnap.data()!;
+          const prevWeight = filData.availableWeightGrams || 0;
+          const newWeight = Math.max(0, prevWeight - weightToDeduct);
+          batch.update(filRef, { availableWeightGrams: newWeight });
+          saleLines.push({ itemId: line.supplyId, itemType: "filament", lineType: "consumption", previousQuantity: prevWeight, modifiedQuantity: -weightToDeduct, finalQuantity: newWeight });
+        }
+      }
+
+      if (product.supplyIds?.length) {
+        for (const supObj of product.supplyIds) {
+          const qtyNeeded = supObj.quantity * item.quantity;
+          const supRef = db.collection("inventory").doc(supObj.supplyId);
+          const supSnap = await supRef.get();
+          if (supSnap.exists) {
+            const supData = supSnap.data()!;
+            const prevQty = supData.currentStock || 0;
+            const newQty = Math.max(0, prevQty - qtyNeeded);
+            batch.update(supRef, { currentStock: newQty });
+            saleLines.push({ itemId: supObj.supplyId, itemType: "supply", lineType: "consumption", previousQuantity: prevQty, modifiedQuantity: -qtyNeeded, finalQuantity: newQty });
+          }
+        }
+      }
+    }
+  }
+
+  // Update client totals
+  if (order.customerId) {
+    const clientRef = db.collection("clients").doc(order.customerId);
+    const clientSnap = await clientRef.get();
+    if (clientSnap.exists) {
+      const clientData = clientSnap.data()!;
+      batch.update(clientRef, {
+        totalPurchased: (clientData.totalPurchased || 0) + order.totalAmount,
+        totalOwed: (clientData.totalOwed || 0) + order.totalAmount,
+      });
+    }
+  }
+
+  // Commit the stock/client updates
+  await batch.commit();
+
+  if (saleLines.length > 0) {
+    await db.collection("inventory_movements").add({
+      date: new Date().toISOString(),
+      movementType: "sale",
+      reason: `Venta · Pedido #${orderNumber} (Link compartido)`,
+      userId: request.auth?.uid || "guest_checkout",
+      orderId: payload.orderId,
+      lines: saleLines,
+    });
+  }
+
+  const observations =
+    (order.observationsInternal || "") +
+    `\n[Checkout] Confirmado vía link compartido. Método: ${payload.paymentMethod === "later" ? "pagar después" : payload.paymentMethod}.`;
+
+  const orderUpdate: Record<string, any> = {
+    orderStatus: "pending",
+    orderNumber,
+    observationsInternal: observations,
+  };
+  if (payload.paymentMethod !== "later") {
+    orderUpdate.paymentMethod = payload.paymentMethod;
+  }
+
+  await orderRef.update(orderUpdate);
+
+  return {
+    orderNumber,
+    totalAmount: order.totalAmount,
+  };
+});
+
 export const createPaymentIntent = onCall({ region: getFirestoreRegion() }, async (request) => {
-  const user = await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
   const payload = request.data as {
     type: "catalog" | "balance";
     customerId: string;
@@ -253,11 +385,27 @@ export const createPaymentIntent = onCall({ region: getFirestoreRegion() }, asyn
     orderId?: string;
   };
 
+  let isGuestCheckout = false;
+  if (!request.auth?.uid && payload.orderId && payload.type === "catalog") {
+    const orderSnap = await db.collection("orders").doc(payload.orderId).get();
+    if (orderSnap.exists) {
+      const order = orderSnap.data()!;
+      if (order.orderStatus === "draft" && order.sharedAt) {
+        isGuestCheckout = true;
+      }
+    }
+  }
+
+  let user = null;
+  if (!isGuestCheckout) {
+    user = await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
+  }
+
   if (!payload.customerId || payload.amount < 0) {
     throw new HttpsError("invalid-argument", "Datos de pago inválidos.");
   }
 
-  if (user.role === "client") {
+  if (!isGuestCheckout && user && user.role === "client") {
     const resolvedId = await resolveCustomerId(user.uid, user.data);
     if (resolvedId !== payload.customerId) {
       throw new HttpsError("permission-denied", "Solo podés crear pagos de tu cuenta.");
@@ -294,14 +442,13 @@ export const createPaymentIntent = onCall({ region: getFirestoreRegion() }, asyn
     method: payload.method,
     status: payload.method === "transfer" ? "declared" : "pending",
     createdAt: new Date().toISOString(),
-    createdBy: user.uid,
+    createdBy: request.auth?.uid || "guest_checkout",
   });
 
   return {paymentIntentId: intentRef.id};
 });
 
 export const createMercadoPagoPreference = onCall({ region: getFirestoreRegion() }, async (request) => {
-  await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
   const payload = request.data as {paymentIntentId: string; title: string};
 
   if (!payload.paymentIntentId) {
@@ -314,6 +461,16 @@ export const createMercadoPagoPreference = onCall({ region: getFirestoreRegion()
   }
 
   const intent = intentSnap.data()!;
+  
+  let isGuestCheckout = false;
+  if (!request.auth?.uid && intent.createdBy === "guest_checkout") {
+    isGuestCheckout = true;
+  }
+
+  if (!isGuestCheckout) {
+    await requireRole(request.auth?.uid, ["client", "owner", "employee"]);
+  }
+
   const amount = intent.amount as number;
   if (amount <= 0) {
     throw new HttpsError("invalid-argument", "El monto debe ser mayor a cero para Mercado Pago.");

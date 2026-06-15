@@ -43,7 +43,8 @@ service cloud.firestore {
 
     // Reglas para Pedidos
     match /orders/{orderId} {
-      allow read, write: if isAuth();
+      allow read: if isAuth() || (resource != null && resource.data != null && resource.data.sharedAt != null);
+      allow write: if isAuth();
     }
 
     // Credenciales privadas — solo Cloud Functions (Admin SDK)

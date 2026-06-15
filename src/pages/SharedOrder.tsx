@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  doc, getDoc, updateDoc, addDoc, collection, getCountFromServer, writeBatch,
-} from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Order, OrderItem } from '../types/order';
 import type { PaymentSettings, BusinessSettings } from '../types/settings';
 import { defaultPaymentSettings } from '../constants/defaults';
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { createMPPreference, createMPPaymentIntent } from '../services/mercadoPagoService';
+import { finalizeSharedOrder } from '../services/sharedOrderService';
 import { ShoppingBag, Landmark, CheckCircle2, Copy, Check, ArrowRight, Loader2, Package, AlertCircle } from 'lucide-react';
 
 type Step = 'summary' | 'transfer' | 'done';
@@ -89,108 +88,9 @@ export const SharedOrder: React.FC = () => {
     if (!order || !orderId) return;
     setProcessing(true);
     try {
-      // Assign sequential order number (draft is already in collection, so count == count including draft)
-      const snapshot = await getCountFromServer(collection(db, 'orders'));
-      const orderNumber = snapshot.data().count;
+      const result = await finalizeSharedOrder({ orderId, paymentMethod: mode });
 
-      // Decrement stock
-      const batch = writeBatch(db);
-      const saleLines: Array<Record<string, unknown>> = [];
-
-      for (const item of order.items) {
-        const prodRef = doc(db, 'products', item.productId);
-        const prodSnap = await getDoc(prodRef);
-        if (!prodSnap.exists()) continue;
-        const product = prodSnap.data();
-        const prevStock = product.stock || 0;
-        const newStock = Math.max(0, prevStock - item.quantity);
-        batch.update(prodRef, { stock: newStock });
-        saleLines.push({
-          itemId: item.productId,
-          itemType: 'product',
-          lineType: 'out_sale',
-          previousQuantity: prevStock,
-          modifiedQuantity: -item.quantity,
-          finalQuantity: newStock,
-        });
-
-        if (product.type === '3d') {
-          const filamentLines = product.filamentLines?.length
-            ? product.filamentLines
-            : (product.filamentIds ?? []).map((filId: string) => ({
-                supplyId: filId,
-                grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds?.length || 1),
-              }));
-
-          for (const line of filamentLines) {
-            const weightToDeduct = (line.grams || 0) * item.quantity;
-            if (!line.supplyId || weightToDeduct <= 0) continue;
-            const filRef = doc(db, 'inventory', line.supplyId);
-            const filSnap = await getDoc(filRef);
-            if (filSnap.exists()) {
-              const filData = filSnap.data();
-              const prevWeight = filData.availableWeightGrams || 0;
-              const newWeight = Math.max(0, prevWeight - weightToDeduct);
-              batch.update(filRef, { availableWeightGrams: newWeight });
-              saleLines.push({ itemId: line.supplyId, itemType: 'filament', lineType: 'consumption', previousQuantity: prevWeight, modifiedQuantity: -weightToDeduct, finalQuantity: newWeight });
-            }
-          }
-
-          if (product.supplyIds?.length) {
-            for (const supObj of product.supplyIds) {
-              const qtyNeeded = supObj.quantity * item.quantity;
-              const supRef = doc(db, 'inventory', supObj.supplyId);
-              const supSnap = await getDoc(supRef);
-              if (supSnap.exists()) {
-                const supData = supSnap.data();
-                const prevQty = supData.currentStock || 0;
-                const newQty = Math.max(0, prevQty - qtyNeeded);
-                batch.update(supRef, { currentStock: newQty });
-                saleLines.push({ itemId: supObj.supplyId, itemType: 'supply', lineType: 'consumption', previousQuantity: prevQty, modifiedQuantity: -qtyNeeded, finalQuantity: newQty });
-              }
-            }
-          }
-        }
-      }
-
-      // Update client totals
-      if (order.customerId) {
-        const clientRef = doc(db, 'clients', order.customerId);
-        const clientSnap = await getDoc(clientRef);
-        if (clientSnap.exists()) {
-          const clientData = clientSnap.data();
-          batch.update(clientRef, {
-            totalPurchased: (clientData.totalPurchased || 0) + order.totalAmount,
-            totalOwed: (clientData.totalOwed || 0) + order.totalAmount,
-          });
-        }
-      }
-
-      await batch.commit();
-
-      if (saleLines.length > 0) {
-        await addDoc(collection(db, 'inventory_movements'), {
-          date: new Date().toISOString(),
-          movementType: 'sale',
-          reason: `Venta · Pedido #${orderNumber} (Link compartido)`,
-          userId: 'guest_checkout',
-          orderId,
-          lines: saleLines,
-        });
-      }
-
-      const observations =
-        (order.observationsInternal || '') +
-        `\n[Checkout] Confirmado vía link compartido. Método: ${mode === 'later' ? 'pagar después' : mode}.`;
-
-      await updateDoc(doc(db, 'orders', orderId), {
-        orderStatus: 'pending',
-        orderNumber,
-        observationsInternal: observations,
-        ...(mode !== 'later' ? { paymentMethod: mode } : {}),
-      });
-
-      setOrder(prev => prev ? { ...prev, orderStatus: 'pending', orderNumber } : prev);
+      setOrder(prev => prev ? { ...prev, orderStatus: 'pending', orderNumber: result.orderNumber } : prev);
 
       if (mode === 'transfer') {
         setStep('transfer');
@@ -209,10 +109,10 @@ export const SharedOrder: React.FC = () => {
     if (!order || !orderId) return;
     setProcessing(true);
     try {
-      const snapshot = await getCountFromServer(collection(db, 'orders'));
-      const orderNumber = snapshot.data().count;
+      const finalizeResult = await finalizeSharedOrder({ orderId, paymentMethod: 'mercadopago' });
+      const orderNumber = finalizeResult.orderNumber;
 
-      await finalizeOrder('mercadopago');
+      setOrder(prev => prev ? { ...prev, orderStatus: 'pending', orderNumber } : prev);
 
       const intentResult = await createMPPaymentIntent({
         type: 'catalog',
@@ -226,6 +126,7 @@ export const SharedOrder: React.FC = () => {
         title: `Pedido #${orderNumber} - Dualgi 3D`,
       });
       window.open(prefResult.initPoint, '_blank');
+      setStep('done');
     } catch (err) {
       console.error(err);
       alert('No se pudo iniciar el pago con Mercado Pago.');

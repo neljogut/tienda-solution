@@ -144,7 +144,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Image */}
       <div
-        className="aspect-[4/3] bg-slate-950 relative overflow-hidden flex-shrink-0"
+        className="aspect-[4/3] bg-slate-100 relative overflow-hidden flex-shrink-0"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
@@ -152,51 +152,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <>
             {/* Pulsing Skeleton Background while active image is loading */}
             {!loadedImages[images[activeIndex]] && (
-              <div className="absolute inset-0 bg-slate-900 animate-pulse flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-slate-700 border-t-slate-500 rounded-full animate-spin" />
+              <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
               </div>
             )}
             <div className="absolute inset-0 w-full h-full">
-              {images.map((imgUrl, idx) => {
-                const isCurrent = idx === activeIndex && loadedImages[imgUrl];
-                return (
-                  <div
-                    key={imgUrl}
-                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${
-                      isCurrent ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                    }`}
-                  >
-                    {/* Blurred background image */}
-                    <img
-                      src={imgUrl}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 select-none pointer-events-none opacity-45"
-                    />
-                    {/* Centered crisp contained image */}
-                    <img
-                      src={imgUrl}
-                      alt={`${product.name} - ${idx}`}
-                      onLoad={() => handleImageLoad(imgUrl)}
-                      ref={(el) => {
-                        if (el && el.complete && !loadedImages[imgUrl]) {
-                          setTimeout(() => {
-                            setLoadedImages((prev) => {
-                              if (prev[imgUrl]) return prev;
-                              return { ...prev, [imgUrl]: true };
-                            });
-                          }, 0);
-                        }
-                      }}
-                      className="absolute inset-0 w-full h-full object-contain p-3 transition-transform duration-700 ease-in-out group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </div>
-                );
-              })}
+              {images.map((imgUrl, idx) => (
+                <img
+                  key={imgUrl}
+                  src={imgUrl}
+                  alt={`${product.name} - ${idx}`}
+                  onLoad={() => handleImageLoad(imgUrl)}
+                  ref={(el) => {
+                    if (el && el.complete && !loadedImages[imgUrl]) {
+                      setTimeout(() => {
+                        setLoadedImages((prev) => {
+                          if (prev[imgUrl]) return prev;
+                          return { ...prev, [imgUrl]: true };
+                        });
+                      }, 0);
+                    }
+                  }}
+                  className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 ${
+                    idx === activeIndex && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                  }`}
+                  loading="lazy"
+                />
+              ))}
             </div>
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-slate-500">
+          <div className="absolute inset-0 flex items-center justify-center text-slate-300">
             <ShoppingCart size={40} />
           </div>
         )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, setDoc, addDoc, collection, getDocs, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -19,7 +19,7 @@ import {
   calculateResaleWholesalePrice,
   roundPriceUp10
 } from '../../services/pricingService';
-import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star, Package, Palette, Check } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star, Package, Palette, Check, Crop } from 'lucide-react';
 import { getProductImages } from '../../utils/productImages';
 import { NumericInput } from '../../components/NumericInput';
 import { uploadImageToImgBB } from '../../services/imageUploadService';
@@ -352,6 +352,15 @@ export const ProductForm: React.FC = () => {
   const [fetching, setFetching] = useState(!!id || !!duplicateId);
   const [images, setImages] = useState<ImageEntry[]>([]);
   const [mainImageUrl, setMainImageUrl] = useState<string>('');
+  
+  // Cropping State
+  const [croppingUrl, setCroppingUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offsetX, setOffsetX] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categorySortMode, setCategorySortMode] = useState<'manual' | 'alphabetical'>('manual');
@@ -574,6 +583,161 @@ export const ProductForm: React.FC = () => {
       setCalculated({ cost, retail, wholesale });
     }
   }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, formData.filamentLines, formData.supplyIds, formData.useManualPrice, formData.manualRetailPrice, settings3d, settingsResale, exchangeRate, inventoryMap]);
+
+  const handleStartCrop = (url: string) => {
+    setCroppingUrl(url);
+    setZoom(1);
+    setOffsetX(0);
+    setOffsetY(0);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - offsetX, y: e.clientY - offsetY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+    setOffsetX(e.clientX - dragStart.x);
+    setOffsetY(e.clientY - dragStart.y);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    setIsDragging(true);
+    setDragStart({ x: touch.clientX - offsetX, y: touch.clientY - offsetY });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    setOffsetX(touch.clientX - dragStart.x);
+    setOffsetY(touch.clientY - dragStart.y);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleApplyCrop = () => {
+    if (!croppingUrl) return;
+    const highResCanvas = document.createElement('canvas');
+    highResCanvas.width = 800;
+    highResCanvas.height = 600;
+    const ctx = highResCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.src = croppingUrl;
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.clearRect(0, 0, 800, 600);
+
+      const scale = 2.0;
+
+      const canvasRatio = 800 / 600;
+      const imgRatio = img.width / img.height;
+
+      let drawWidth, drawHeight;
+      if (imgRatio > canvasRatio) {
+        drawHeight = 600;
+        drawWidth = 600 * imgRatio;
+      } else {
+        drawWidth = 800;
+        drawHeight = 800 / imgRatio;
+      }
+
+      const w = drawWidth * zoom;
+      const h = drawHeight * zoom;
+
+      const x = (800 - w) / 2 + (offsetX * scale);
+      const y = (600 - h) / 2 + (offsetY * scale);
+
+      ctx.drawImage(img, x, y, w, h);
+
+      highResCanvas.toBlob((blob) => {
+        if (!blob) return;
+
+        const fileName = `cropped_${Date.now()}.jpg`;
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
+        const newUrl = URL.createObjectURL(file);
+
+        setImages((prev) =>
+          prev.map((entry) => {
+            if (entry.url === croppingUrl) {
+              if (entry.file) {
+                URL.revokeObjectURL(entry.url);
+              }
+              return { url: newUrl, file };
+            }
+            return entry;
+          })
+        );
+
+        if (mainImageUrl === croppingUrl) {
+          setMainImageUrl(newUrl);
+        }
+
+        setCroppingUrl(null);
+      }, 'image/jpeg', 0.92);
+    };
+  };
+
+  useEffect(() => {
+    if (!croppingUrl || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.src = croppingUrl;
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const canvasRatio = canvas.width / canvas.height;
+      const imgRatio = img.width / img.height;
+
+      let drawWidth, drawHeight;
+      if (imgRatio > canvasRatio) {
+        drawHeight = canvas.height;
+        drawWidth = canvas.height * imgRatio;
+      } else {
+        drawWidth = canvas.width;
+        drawHeight = canvas.width / imgRatio;
+      }
+
+      const w = drawWidth * zoom;
+      const h = drawHeight * zoom;
+
+      const x = (canvas.width - w) / 2 + offsetX;
+      const y = (canvas.height - h) / 2 + offsetY;
+
+      ctx.drawImage(img, x, y, w, h);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 3, 0);
+      ctx.lineTo(canvas.width / 3, canvas.height);
+      ctx.moveTo((canvas.width * 2) / 3, 0);
+      ctx.lineTo((canvas.width * 2) / 3, canvas.height);
+      ctx.moveTo(0, canvas.height / 3);
+      ctx.lineTo(canvas.width, canvas.height / 3);
+      ctx.moveTo(0, (canvas.height * 2) / 3);
+      ctx.lineTo(canvas.width, (canvas.height * 2) / 3);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+  }, [croppingUrl, zoom, offsetX, offsetY]);
 
   const handleImagesAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -1212,9 +1376,18 @@ export const ProductForm: React.FC = () => {
                 </label>
               )}
               {mainImageUrl && (
-                <span className="absolute top-2 left-2 badge badge-blue text-[10px] flex items-center gap-1">
-                  <Star size={10} className="fill-current" /> Principal
-                </span>
+                <>
+                  <span className="absolute top-2 left-2 badge badge-blue text-[10px] flex items-center gap-1">
+                    <Star size={10} className="fill-current" /> Principal
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStartCrop(mainImageUrl)}
+                    className="absolute bottom-2 right-2 btn-secondary !py-1 !px-2 text-xs flex items-center gap-1 shadow-md z-10 animate-fadeIn"
+                  >
+                    <Crop size={12} /> Adaptar
+                  </button>
+                </>
               )}
             </div>
 
@@ -1240,6 +1413,14 @@ export const ProductForm: React.FC = () => {
                           }`}
                         >
                           <Star size={12} className={isMain ? 'fill-current' : ''} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Recortar / Adaptar"
+                          onClick={() => handleStartCrop(img.url)}
+                          className="flex-1 py-1 flex items-center justify-center text-white hover:text-blue-300 border-x border-white/10"
+                        >
+                          <Crop size={12} />
                         </button>
                         <button
                           type="button"
@@ -1271,6 +1452,85 @@ export const ProductForm: React.FC = () => {
           </div>
         </div>
       </form>
+
+      {/* Manual Cropping Modal */}
+      {croppingUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="font-bold text-lg text-slate-800">Recortar / Adaptar Imagen</h3>
+              <button
+                type="button"
+                onClick={() => setCroppingUrl(null)}
+                className="text-slate-400 hover:text-slate-600 font-semibold"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <p className="text-xs text-slate-500 mb-3 text-center">
+                Arrastrá la imagen en el recuadro para moverla, y usá el control de zoom para adaptarla al tamaño de catálogo (4:3).
+              </p>
+              
+              <div className="relative border border-slate-200 rounded-xl overflow-hidden bg-slate-900 shadow-inner">
+                <canvas
+                  ref={canvasRef}
+                  width={400}
+                  height={300}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  className="cursor-move max-w-full block"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-slate-500 font-medium">
+                  <span>Zoom / Escala</span>
+                  <span>{zoom.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="4.0"
+                  step="0.02"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoom(1);
+                    setOffsetX(0);
+                    setOffsetY(0);
+                  }}
+                  className="btn-secondary !py-2 !px-4 text-sm"
+                >
+                  Restablecer
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyCrop}
+                  className="btn-primary !py-2 !px-4 text-sm"
+                >
+                  Aplicar Recorte
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

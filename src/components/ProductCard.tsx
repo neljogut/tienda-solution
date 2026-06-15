@@ -144,7 +144,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Image */}
       <div
-        className="aspect-[4/3] bg-slate-100 relative overflow-hidden flex-shrink-0"
+        className="aspect-[4/3] bg-white relative overflow-hidden flex-shrink-0"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
@@ -173,7 +173,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                       }, 0);
                     }
                   }}
-                  className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 ${
+                  className={`absolute inset-0 w-full h-full object-contain p-2.5 transition-all duration-700 ease-in-out group-hover:scale-105 ${
                     idx === activeIndex && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
                   }`}
                   loading="lazy"

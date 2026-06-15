@@ -376,18 +376,6 @@ export const Catalog: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-          {isAdminView && (
-            <div 
-              onClick={() => navigate('/admin/products/new')}
-              className="card border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/10 cursor-pointer flex flex-col items-center justify-center text-center p-6 min-h-[280px] group transition-all duration-300"
-            >
-              <div className="w-12 h-12 rounded-full bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center mb-3 transition-colors">
-                <Plus size={24} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-              </div>
-              <p className="font-bold text-slate-700 group-hover:text-blue-700 transition-colors text-sm sm:text-base">Nuevo Producto</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-[150px]">Creá y publicá un nuevo artículo en el catálogo</p>
-            </div>
-          )}
           {sortedProducts.map(product => (
             <ProductCard
               key={product.id}

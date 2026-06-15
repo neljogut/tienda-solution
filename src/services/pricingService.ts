@@ -62,9 +62,9 @@ function filamentCostArs(
   return product.weightGrams * filamentPricePerGramArs(undefined, settings, exchangeRate, inventoryMap);
 }
 
-export function roundPriceUp10(value: number): number {
+export function roundPriceUp100(value: number): number {
   if (isNaN(value) || !isFinite(value) || value <= 0) return 0;
-  return Math.ceil(value / 10) * 10;
+  return Math.ceil(value / 100) * 100;
 }
 
 export interface Cost3DBreakdown {
@@ -143,7 +143,7 @@ export function calculate3DRetailPrice(
   const isKeychain = !!product.isKeychain;
   const multiplier = isKeychain ? settings.multiplierRetailKeychain : settings.multiplierRetailNormal;
   const rawRetail = (subtotal + errorMargin) * multiplier + suppliesCost;
-  return roundPriceUp10(rawRetail);
+  return roundPriceUp100(rawRetail);
 }
 
 // Calculate wholesale price for a 3D product
@@ -159,7 +159,7 @@ export function calculate3DWholesalePrice(
     ? settings.wholesaleDiscountPercentKeychain
     : settings.wholesaleDiscountPercentNormal;
   const rawWholesale = retailPrice * (1 - discountPercent / 100);
-  return roundPriceUp10(rawWholesale);
+  return roundPriceUp100(rawWholesale);
 }
 
 // Calculate resale product prices
@@ -168,7 +168,7 @@ export function calculateResaleRetailPrice(
   settings: PricingSettingsResale
 ): number {
   const rawRetail = purchaseCost * (1 + settings.profitMarginPercent / 100);
-  return roundPriceUp10(rawRetail);
+  return roundPriceUp100(rawRetail);
 }
 
 export function calculateResaleWholesalePrice(
@@ -178,7 +178,7 @@ export function calculateResaleWholesalePrice(
   if (!settings.enableWholesale) return 0;
   const retailPrice = calculateResaleRetailPrice(purchaseCost, settings);
   const rawWholesale = retailPrice * (1 - settings.wholesaleDiscountPercent / 100);
-  return roundPriceUp10(rawWholesale);
+  return roundPriceUp100(rawWholesale);
 }
 
 // Get the effective price for a quantity considering tiers
@@ -356,7 +356,7 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
           const discountPercent = prod3d.isKeychain
             ? settings3d.wholesaleDiscountPercentKeychain
             : settings3d.wholesaleDiscountPercentNormal;
-          wholesale = roundPriceUp10(prod3d.manualRetailPrice * (1 - discountPercent / 100));
+          wholesale = roundPriceUp100(prod3d.manualRetailPrice * (1 - discountPercent / 100));
         } else {
           wholesale = calculate3DWholesalePrice(prod3d, settings3d, exchangeRate, inventoryMap);
         }
@@ -366,7 +366,7 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
         cost = purchaseCost;
         retail = calculateResaleRetailPrice(purchaseCost, settingsResale);
         if (prodResale.useManualPrice && prodResale.manualRetailPrice) {
-          wholesale = roundPriceUp10(prodResale.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
+          wholesale = roundPriceUp100(prodResale.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
         } else {
           wholesale = calculateResaleWholesalePrice(purchaseCost, settingsResale);
         }

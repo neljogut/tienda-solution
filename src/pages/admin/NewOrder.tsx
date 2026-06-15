@@ -13,7 +13,7 @@ import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, ShoppingBag, Share2, Copy, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getTierPrice, recalculateAllProductsInFirestore, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../../services/pricingService';
+import { getTierPrice, roundPriceUp100, recalculateAllProductsInFirestore, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
 import { useCartStore } from '../../store/cartStore';
 import { SearchableClientSelect } from '../../components/SearchableClientSelect';
@@ -379,14 +379,14 @@ export const NewOrder: React.FC = () => {
       if (product.calculatedWholesalePrice) {
         // Safeguard: if for some reason the wholesale price in DB is higher than manual retail, apply a default 20% discount
         if (product.useManualPrice && product.calculatedWholesalePrice > product.manualRetailPrice) {
-          return Math.ceil(product.manualRetailPrice * 0.8);
+          return roundPriceUp100(product.manualRetailPrice * 0.8);
         }
         return product.calculatedWholesalePrice;
       }
       
       // Dynamic fallback
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
-      return Math.ceil(basePrice * 0.8); // 20% default wholesale fallback if not calculated in DB
+      return roundPriceUp100(basePrice * 0.8); // 20% default wholesale fallback if not calculated in DB
     }
     
     // 2. Otherwise (minorista / trusted), apply tier pricing if available
@@ -997,7 +997,7 @@ export const NewOrder: React.FC = () => {
               const resolvedPriceTiers = product ? resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups) : [];
               const basePrice = product ? (product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice) : item.unitPrice;
               const itemQty = item.quantity === '' ? 0 : Number(item.quantity);
-              const wholesalePrice = product?.calculatedWholesalePrice || Math.ceil(basePrice * 0.8);
+              const wholesalePrice = product?.calculatedWholesalePrice || roundPriceUp100(basePrice * 0.8);
 
               return (
                 <div 

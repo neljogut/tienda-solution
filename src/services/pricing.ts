@@ -37,11 +37,11 @@ export const calculate3DPrice = (
     }
   }
 
-  // Round to integer
+  // Round to multiple of 100 for selling prices, keep cost as rounded integer
   return {
     cost: Math.round(realCost),
-    retailPrice: Math.round(retailPrice),
-    wholesalePrice: Math.round(wholesalePrice > 0 ? wholesalePrice : retailPrice),
+    retailPrice: Math.ceil(retailPrice / 100) * 100,
+    wholesalePrice: Math.ceil((wholesalePrice > 0 ? wholesalePrice : retailPrice) / 100) * 100,
     hasWholesale: wholesalePrice > 0
   };
 };
@@ -60,8 +60,8 @@ export const calculateResalePrice = (
 
   return {
     cost: Math.round(cost),
-    retailPrice: Math.round(retailPrice),
-    wholesalePrice: Math.round(wholesalePrice),
+    retailPrice: Math.ceil(retailPrice / 100) * 100,
+    wholesalePrice: Math.ceil(wholesalePrice / 100) * 100,
     hasWholesale: settings.enableWholesale
   };
 };

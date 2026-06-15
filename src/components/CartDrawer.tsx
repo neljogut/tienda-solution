@@ -5,7 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, collection, query, where, addDoc, writeBatch, getDoc, getCountFromServer } from 'firebase/firestore';
-import { roundPriceUp10, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
+import { roundPriceUp100, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
 import { SearchableClientSelect } from './SearchableClientSelect';
 import { NumericInput } from './NumericInput';
 import type { Client } from '../types/client';
@@ -216,7 +216,7 @@ export const CartDrawer: React.FC = () => {
         sum += item.price * item.quantity;
       } else if (appliesWholesale) {
         const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
-        const wholesalePrice = roundPriceUp10(item.basePrice * (1 - discountPercent / 100));
+        const wholesalePrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
         sum += wholesalePrice * item.quantity;
       } else {
         sum += item.basePrice * item.quantity;
@@ -281,7 +281,7 @@ export const CartDrawer: React.FC = () => {
           finalPrice = item.price;
         } else if (appliesWholesale) {
           const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
-          finalPrice = roundPriceUp10(item.basePrice * (1 - discountPercent / 100));
+          finalPrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
         } else {
           finalPrice = item.basePrice;
         }
@@ -521,7 +521,7 @@ export const CartDrawer: React.FC = () => {
           finalPrice = item.price;
         } else if (appliesWholesale) {
           const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
-          finalPrice = roundPriceUp10(item.basePrice * (1 - discountPercent / 100));
+          finalPrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
         } else {
           finalPrice = item.basePrice;
         }
@@ -738,7 +738,7 @@ export const CartDrawer: React.FC = () => {
 
                               const isKeychain = item.isKeychain === true;
                               const discountPercent = isKeychain ? discountPercentKeychain : discountPercentNormal;
-                              const wholesalePrice = roundPriceUp10(item.basePrice * (1 - discountPercent / 100));
+                              const wholesalePrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
 
                               if (item.price < item.basePrice) {
                                 return (

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { ProductType, PriceTier } from '../types/product';
 import type { Category } from '../types/category';
 import type { VariantGroup } from '../types/variantGroup';
-import { getTierPrice, roundPriceUp10, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
+import { getTierPrice, roundPriceUp100, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
 import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { PricingSettings3D } from '../types/settings';
@@ -118,12 +118,12 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
       if (item.isKeychain) {
         if (meetsKeychain) {
           const discountPrice = item.basePrice * (1 - discountPercentKeychain / 100);
-          return { ...item, price: roundPriceUp10(discountPrice) };
+          return { ...item, price: roundPriceUp100(discountPrice) };
         }
       } else {
         if (meetsNormal) {
           const discountPrice = item.basePrice * (1 - discountPercentNormal / 100);
-          return { ...item, price: roundPriceUp10(discountPrice) };
+          return { ...item, price: roundPriceUp100(discountPrice) };
         }
       }
     }

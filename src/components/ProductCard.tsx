@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon } from 'lucide-react';
+import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon, Pencil } from 'lucide-react';
 import { formatPrintTime } from '../utils/printTime';
 import { getProductImages } from '../utils/productImages';
 import { useAuth } from '../context/AuthContext';
@@ -240,13 +240,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             <Eye size={14} /> Ver
           </button>
-          {!isOutOfStock && (
+          {isAdminView ? (
             <button 
-              onClick={handleAddToCart}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                navigate(`/admin/products/${product.id}`);
+              }}
               className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
             >
-              <ShoppingCart size={14} /> Comprar
+              <Pencil size={14} /> Editar
             </button>
+          ) : (
+            !isOutOfStock && (
+              <button 
+                onClick={handleAddToCart}
+                className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
+              >
+                <ShoppingCart size={14} /> Comprar
+              </button>
+            )
           )}
         </div>
       </div>
@@ -273,6 +286,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 relative">
+            {/* Edit button (Admins only) */}
+            {isAdminView && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  navigate(`/admin/products/${product.id}`);
+                }}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-blue-600 transition-colors animate-fadeIn"
+                title="Editar producto"
+              >
+                <Pencil size={15} />
+              </button>
+            )}
+
             {/* Share button */}
             <button
               ref={shareButtonRef}

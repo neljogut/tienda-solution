@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, businessSettings 
       <div className="flex items-center gap-2">
         {/* Social Media Links inside Top Header */}
         {businessSettings && (
-          <div className="flex items-center gap-1 sm:gap-2 mr-2 border-r border-slate-200 pr-3">
+          <div className="hidden sm:flex items-center gap-1 sm:gap-2 mr-2 border-r border-slate-200 pr-3">
             {businessSettings.instagram && (
               <a
                 href={`https://instagram.com/${businessSettings.instagram.replace('@', '')}`}

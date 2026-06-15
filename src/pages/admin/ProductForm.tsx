@@ -1284,7 +1284,7 @@ export const ProductForm: React.FC = () => {
                   
                   {formData.priceTiers?.map((tier: any, index: number) => (
                     <div key={index} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <div className="flex-1 grid grid-cols-3 gap-2">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Min Cantidad</label>
                           <NumericInput

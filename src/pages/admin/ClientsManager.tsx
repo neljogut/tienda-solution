@@ -1779,7 +1779,7 @@ export const ClientsManager: React.FC = () => {
                         </button>
                       </div>
 
-                      <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[280px] overflow-y-auto">
+                      <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[280px] overflow-auto">
                         <table className="w-full text-left border-collapse min-w-[500px]">
                           <thead>
                             <tr className="bg-slate-100/80 border-b text-[9px] font-black text-slate-500 uppercase sticky top-0 z-10">

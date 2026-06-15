@@ -265,11 +265,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
       
       {/* Content */}
-      <div className="p-3 sm:p-4 flex flex-col flex-1">
+      <div className="p-2.5 sm:p-4 flex flex-col flex-1">
         <p className="text-[9px] sm:text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1">{product.category}</p>
         <h3 className="font-semibold text-slate-800 line-clamp-2 leading-snug mb-2 flex-1 text-xs sm:text-base">{product.name}</h3>
         
-        <div className="flex items-center justify-between gap-2 mt-auto">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mt-auto">
           <div>
             <div className="flex flex-col">
               <span className="text-base sm:text-xl font-bold text-slate-900 leading-tight">
@@ -294,10 +294,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   e.preventDefault();
                   navigate(`/admin/products/${product.id}`);
                 }}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-blue-600 transition-colors animate-fadeIn"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-blue-600 transition-colors animate-fadeIn"
                 title="Editar producto"
               >
-                <Pencil size={15} />
+                <Pencil size={14} className="sm:w-[15px] sm:h-[15px]" />
               </button>
             )}
 
@@ -305,10 +305,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <button
               ref={shareButtonRef}
               onClick={handleShare}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
               title="Compartir producto"
             >
-              <Share2 size={15} />
+              <Share2 size={14} className="sm:w-[15px] sm:h-[15px]" />
             </button>
 
             {/* Share popover */}
@@ -355,10 +355,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {!isOutOfStock && (
               <button
                 onClick={handleAddToCart}
-                className="p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-md shadow-blue-500/20"
+                className="p-1.5 sm:p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-md shadow-blue-500/20"
                 title="Añadir al carrito"
               >
-                <ShoppingCart size={15} />
+                <ShoppingCart size={14} className="sm:w-[15px] sm:h-[15px]" />
               </button>
             )}
           </div>

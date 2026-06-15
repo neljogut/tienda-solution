@@ -144,7 +144,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Image */}
       <div
-        className="aspect-[4/3] bg-white relative overflow-hidden flex-shrink-0"
+        className="aspect-[4/3] bg-slate-950 relative overflow-hidden flex-shrink-0"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
@@ -152,37 +152,51 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <>
             {/* Pulsing Skeleton Background while active image is loading */}
             {!loadedImages[images[activeIndex]] && (
-              <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+              <div className="absolute inset-0 bg-slate-900 animate-pulse flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-slate-700 border-t-slate-500 rounded-full animate-spin" />
               </div>
             )}
             <div className="absolute inset-0 w-full h-full">
-              {images.map((imgUrl, idx) => (
-                <img
-                  key={imgUrl}
-                  src={imgUrl}
-                  alt={`${product.name} - ${idx}`}
-                  onLoad={() => handleImageLoad(imgUrl)}
-                  ref={(el) => {
-                    if (el && el.complete && !loadedImages[imgUrl]) {
-                      setTimeout(() => {
-                        setLoadedImages((prev) => {
-                          if (prev[imgUrl]) return prev;
-                          return { ...prev, [imgUrl]: true };
-                        });
-                      }, 0);
-                    }
-                  }}
-                  className={`absolute inset-0 w-full h-full object-contain p-2.5 transition-all duration-700 ease-in-out group-hover:scale-105 ${
-                    idx === activeIndex && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                  }`}
-                  loading="lazy"
-                />
-              ))}
+              {images.map((imgUrl, idx) => {
+                const isCurrent = idx === activeIndex && loadedImages[imgUrl];
+                return (
+                  <div
+                    key={imgUrl}
+                    className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${
+                      isCurrent ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                    }`}
+                  >
+                    {/* Blurred background image */}
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 select-none pointer-events-none opacity-45"
+                    />
+                    {/* Centered crisp contained image */}
+                    <img
+                      src={imgUrl}
+                      alt={`${product.name} - ${idx}`}
+                      onLoad={() => handleImageLoad(imgUrl)}
+                      ref={(el) => {
+                        if (el && el.complete && !loadedImages[imgUrl]) {
+                          setTimeout(() => {
+                            setLoadedImages((prev) => {
+                              if (prev[imgUrl]) return prev;
+                              return { ...prev, [imgUrl]: true };
+                            });
+                          }, 0);
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full object-contain p-3 transition-transform duration-700 ease-in-out group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </div>
+                );
+              })}
             </div>
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+          <div className="absolute inset-0 flex items-center justify-center text-slate-500">
             <ShoppingCart size={40} />
           </div>
         )}
@@ -212,10 +226,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
         
         {/* Overlay on hover (Desktop only) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 hidden md:block" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 hidden md:block z-20" />
 
         {/* Top badges */}
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-10">
+        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-20">
           <span className={`badge text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5 ${product.type === '3d' ? 'badge-blue' : 'badge-green'}`}>
             <span className="hidden sm:inline">{product.type === '3d' ? 'Impresión 3D' : 'Artículos Varios'}</span>
             <span className="inline sm:hidden">{product.type === '3d' ? '3D' : 'Varios'}</span>
@@ -233,7 +247,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         {/* Bottom action on hover (Desktop only) */}
-        <div className="absolute bottom-2 left-2 right-2 opacity-0 md:group-hover:opacity-100 translate-y-2 md:group-hover:translate-y-0 transition-all duration-300 hidden md:flex gap-2">
+        <div className="absolute bottom-2 left-2 right-2 opacity-0 md:group-hover:opacity-100 translate-y-2 md:group-hover:translate-y-0 transition-all duration-300 hidden md:flex gap-2 z-30">
           <button 
             className="flex-1 py-2 rounded-xl bg-white/90 backdrop-blur-sm text-slate-800 text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-white transition-colors shadow-lg"
             onClick={(e) => { e.stopPropagation(); navigate(`/catalog/${product.id}`); }}

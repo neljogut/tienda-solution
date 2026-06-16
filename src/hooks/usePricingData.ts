@@ -67,7 +67,6 @@ export function usePricingData() {
           map[d.id] = d.data().name;
         });
         if (!map['3d']) map['3d'] = 'Impresión 3D';
-        if (!map['resale']) map['resale'] = 'Productos Varios';
         setProductTypes(map);
         markReady();
       }),

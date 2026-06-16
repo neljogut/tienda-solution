@@ -8,6 +8,7 @@ import type { Category } from '../../types/category';
 import type { VariantGroup } from '../../types/variantGroup';
 import { SearchableVariantGroupSelect } from '../../components/SearchableVariantGroupSelect';
 import { SearchableCategorySelect } from '../../components/SearchableCategorySelect';
+import { SearchableProductTypeSelect } from '../../components/SearchableProductTypeSelect';
 import { useAuth } from '../../context/AuthContext';
 
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../../types/settings';
@@ -418,27 +419,7 @@ export const ProductForm: React.FC = () => {
     return null;
   }, [formData.variantGroup, variantGroups]);
 
-  const [productTypes, setProductTypes] = useState<any[]>([]);
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'product_types'), (snap) => {
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string }));
-        const sorted = list.sort((a, b) => {
-          if (a.id === '3d') return -1;
-          if (b.id === '3d') return 1;
-          return a.name.localeCompare(b.name, 'es');
-        });
-        setProductTypes(sorted);
-      } else {
-        setProductTypes([
-          { id: '3d', name: 'Impresión 3D', isSystem: true },
-          { id: 'resale', name: 'Productos Varios', isSystem: false }
-        ]);
-      }
-    });
-    return () => unsub();
-  }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'categories'));
@@ -912,15 +893,11 @@ export const ProductForm: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Producto</label>
-                <select 
-                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                <SearchableProductTypeSelect
                   value={formData.type}
-                  onChange={e => setFormData({ ...formData, type: e.target.value as any })}
-                >
-                  {productTypes.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
+                  onChange={val => setFormData({ ...formData, type: val })}
+                  canManage={userData?.role === 'owner'}
+                />
               </div>
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>

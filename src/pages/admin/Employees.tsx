@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { DEFAULT_EMPLOYEE_PERMISSIONS } from '../../types/user';
 import type { UserData, UserPermissions } from '../../types/user';
@@ -354,9 +354,17 @@ export const Employees: React.FC = () => {
         // Sincronizar DNI con cliente
         const associatedUser = users.find(u => u.uid === selectedUserIdToPromote);
         if (associatedUser?.customerId && addRole === 'client') {
-          await updateDoc(doc(db, 'clients', associatedUser.customerId), {
-            dni: addDni.trim()
-          });
+          try {
+            const clientRef = doc(db, 'clients', associatedUser.customerId);
+            const clientSnap = await getDoc(clientRef);
+            if (clientSnap.exists()) {
+              await updateDoc(clientRef, {
+                dni: addDni.trim()
+              });
+            }
+          } catch (e) {
+            console.error("Error syncing DNI with client during promotion:", e);
+          }
         }
         
         // Reset
@@ -462,9 +470,17 @@ export const Employees: React.FC = () => {
 
       // Sincronizar DNI con clientes
       if (selectedUser.customerId) {
-        await updateDoc(doc(db, 'clients', selectedUser.customerId), {
-          dni: selectedRole === 'client' ? userDni.trim() : ''
-        });
+        try {
+          const clientRef = doc(db, 'clients', selectedUser.customerId);
+          const clientSnap = await getDoc(clientRef);
+          if (clientSnap.exists()) {
+            await updateDoc(clientRef, {
+              dni: selectedRole === 'client' ? userDni.trim() : ''
+            });
+          }
+        } catch (e) {
+          console.error("Error syncing DNI with client during save:", e);
+        }
       }
 
       setIsModalOpen(false);

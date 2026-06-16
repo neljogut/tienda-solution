@@ -1601,6 +1601,11 @@ export const ClientsManager: React.FC = () => {
                     }}
                   >
                     <option value="">Ninguno / Mío (Owner)</option>
+                    {form.employeeId && !employees.some(emp => emp.uid === form.employeeId) && (
+                      <option value={form.employeeId}>
+                        {form.employeeName || 'Colaborador Inactivo'} (Inactivo)
+                      </option>
+                    )}
                     {employees.map(emp => (
                       <option key={emp.uid} value={emp.uid}>
                         {emp.displayName || emp.email}

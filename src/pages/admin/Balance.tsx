@@ -193,7 +193,7 @@ export const Balance: React.FC = () => {
       .reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
       
     const orderResaleRevenue = order.items
-      .filter(item => item.type === 'resale')
+      .filter(item => item.type !== '3d')
       .reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
 
     const payRatio = order.totalAmount > 0 ? (order.paidAmount / order.totalAmount) : 0;

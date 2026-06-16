@@ -8,10 +8,12 @@ import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2, Plus, Power, PowerOff, Search, Copy } from 'lucide-react';
 import { formatPrintTime } from '../../utils/printTime';
 import { useAuth } from '../../context/AuthContext';
+import { usePricingData } from '../../hooks/usePricingData';
 
 
 export const ProductList: React.FC = () => {
   const { currentUser } = useAuth();
+  const { productTypes } = usePricingData();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -248,7 +250,7 @@ export const ProductList: React.FC = () => {
                         </td>
                         <td className="p-4">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${product.type === '3d' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                            {product.type === '3d' ? 'Impresión 3D' : 'Artículos Varios'}
+                            {product.type === '3d' ? 'Impresión 3D' : (productTypes[product.type] || 'Artículos Varios')}
                           </span>
                           {product.useManualPrice && (
                             <span className="ml-2 px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">
@@ -357,7 +359,7 @@ export const ProductList: React.FC = () => {
                           <h4 className="font-semibold text-slate-800 text-sm truncate">{product.name}</h4>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${product.type === '3d' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                              {product.type === '3d' ? 'Impresión 3D' : 'Artículos Varios'}
+                              {product.type === '3d' ? 'Impresión 3D' : (productTypes[product.type] || 'Artículos Varios')}
                             </span>
                             {product.useManualPrice && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">

@@ -35,6 +35,7 @@ import { PaymentResult } from './pages/client/PaymentResult';
 import { SharedOrder } from './pages/SharedOrder';
 import { MyBalance } from './pages/client/MyBalance';
 import { Liquidations } from './pages/admin/Liquidations';
+import { ProductTypes } from './pages/admin/ProductTypes';
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -193,6 +194,11 @@ function App() {
             <Route path="categories" element={
               <ProtectedRoute requiredPermission="viewCategories">
                 <Categories />
+              </ProtectedRoute>
+            } />
+            <Route path="admin/product-types" element={
+              <ProtectedRoute requiredPermission="viewCategories">
+                <ProductTypes />
               </ProtectedRoute>
             } />
             <Route path="pricing-settings" element={

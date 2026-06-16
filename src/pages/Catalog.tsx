@@ -24,7 +24,7 @@ export const Catalog: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedType, setSelectedType] = useState<string>('all');
+  // Type filter has been removed
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -188,8 +188,7 @@ export const Catalog: React.FC = () => {
     const matchesCategory =
       selectedCategory === 'all' ||
       (resolvedCategoryId && categoryFilterIds?.has(resolvedCategoryId));
-    const matchesType = selectedType === 'all' || p.type === selectedType;
-    return matchesSearch && matchesCategory && matchesType;
+    return matchesSearch && matchesCategory;
   });
 
   // Sort products by category position in the sorted tree, then by sales score
@@ -214,11 +213,10 @@ export const Catalog: React.FC = () => {
     });
   }, [filteredProducts, sortedCategories, salesScores, idRemap]);
 
-  const activeFilters = (selectedCategory !== 'all' ? 1 : 0) + (selectedType !== 'all' ? 1 : 0);
+  const activeFilters = (selectedCategory !== 'all' ? 1 : 0);
 
   const clearFilters = () => {
     navigate('/catalog');
-    setSelectedType('all');
     setSearchTerm('');
   };
 
@@ -451,16 +449,7 @@ export const Catalog: React.FC = () => {
             )}
           </div>
 
-          {/* Type filter */}
-          <select 
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="input w-full md:w-40 text-xs"
-          >
-            <option value="all">Todos los tipos</option>
-            <option value="3d">Impresión 3D</option>
-            <option value="resale">Artículos Varios</option>
-          </select>
+          {/* Type filter removed */}
 
           {activeFilters > 0 && (
             <button onClick={clearFilters} className="btn-ghost flex items-center gap-1 text-xs text-red-500 hover:text-red-700">

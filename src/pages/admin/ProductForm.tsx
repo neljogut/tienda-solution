@@ -418,6 +418,28 @@ export const ProductForm: React.FC = () => {
     return null;
   }, [formData.variantGroup, variantGroups]);
 
+  const [productTypes, setProductTypes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'product_types'), (snap) => {
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const sorted = list.sort((a, b) => {
+          if (a.id === '3d') return -1;
+          if (b.id === '3d') return 1;
+          return a.name.localeCompare(b.name, 'es');
+        });
+        setProductTypes(sorted);
+      } else {
+        setProductTypes([
+          { id: '3d', name: 'Impresión 3D', isSystem: true },
+          { id: 'resale', name: 'Productos Varios', isSystem: false }
+        ]);
+      }
+    });
+    return () => unsub();
+  }, []);
+
   useEffect(() => {
     const q = query(collection(db, 'categories'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -821,6 +843,16 @@ export const ProductForm: React.FC = () => {
           (l: SupplyLine) => l.supplyId && l.quantity > 0
         );
         productToSave.filamentIds = productToSave.filamentLines.map((l: FilamentLine) => l.supplyId);
+        // Clean up resale specific fields
+        delete productToSave.purchaseCost;
+      } else {
+        // Clean up 3D specific fields
+        delete productToSave.filamentLines;
+        delete productToSave.supplyIds;
+        delete productToSave.filamentIds;
+        delete productToSave.weightGrams;
+        delete productToSave.printTimeMinutes;
+        delete productToSave.isKeychain;
       }
 
       // Sanitize fields
@@ -847,7 +879,7 @@ export const ProductForm: React.FC = () => {
       if (isNew) {
         await addDoc(collection(db, 'products'), productToSave);
       } else if (id) {
-        await setDoc(doc(db, 'products', id), productToSave, { merge: true });
+        await setDoc(doc(db, 'products', id), productToSave);
       }
       navigate('/admin/products');
     } catch (error) {
@@ -884,10 +916,10 @@ export const ProductForm: React.FC = () => {
                   className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
                   value={formData.type}
                   onChange={e => setFormData({ ...formData, type: e.target.value as any })}
-                  disabled={!isNew}
                 >
-                  <option value="3d">Impresión 3D</option>
-                  <option value="resale">Artículos Varios</option>
+                  {productTypes.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="col-span-2 sm:col-span-1">

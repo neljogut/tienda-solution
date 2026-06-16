@@ -409,7 +409,7 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
       totalCostoDesgaste += breakdown.maintenance * qty;
       totalCostoLuz += breakdown.electricity * qty;
       totalCostoMargenError += breakdown.errorMargin * qty;
-    } else if (item.type === 'resale') {
+    } else if (item.type !== '3d') {
       const originalProd = productsDataMap.get(item.productId);
       const uCost = originalProd?.purchaseCost || item.unitCost || 0;
       const costoTotal = uCost * item.quantity;

@@ -367,7 +367,7 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
         } else {
           wholesale = calculate3DWholesalePrice(prod3d, settings3d, exchangeRate, inventoryMap);
         }
-      } else if (product.type === 'resale') {
+      } else {
         const prodResale = product as ProductResale;
         const purchaseCost = prodResale.purchaseCost || 0;
         cost = purchaseCost;

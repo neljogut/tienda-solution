@@ -1,4 +1,4 @@
-export type ProductType = '3d' | 'resale';
+export type ProductType = string;
 
 export interface PriceTier {
   minQty: number;

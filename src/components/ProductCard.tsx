@@ -6,6 +6,7 @@ import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon, Pencil, ChevronLef
 import { formatPrintTime } from '../utils/printTime';
 import { getProductImages } from '../utils/productImages';
 import { useAuth } from '../context/AuthContext';
+import { usePricingData } from '../hooks/usePricingData';
 
 interface ProductCardProps {
   product: Product;
@@ -24,6 +25,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const { addItem } = useCartStore();
   const { userData } = useAuth();
   const isOwner = userData?.role === 'owner';
+  const { productTypes } = usePricingData();
   
   const priceToDisplay = getRetailPrice
     ? getRetailPrice(product)
@@ -247,8 +249,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Top badges */}
         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-20">
           <span className={`badge text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5 ${product.type === '3d' ? 'badge-blue' : 'badge-green'}`}>
-            <span className="hidden sm:inline">{product.type === '3d' ? 'Impresión 3D' : 'Artículos Varios'}</span>
-            <span className="inline sm:hidden">{product.type === '3d' ? '3D' : 'Varios'}</span>
+            <span className="hidden sm:inline">{product.type === '3d' ? 'Impresión 3D' : (productTypes[product.type] || 'Artículos Varios')}</span>
+            <span className="inline sm:hidden">{product.type === '3d' ? '3D' : (productTypes[product.type] || 'Varios')}</span>
           </span>
           {isAdminView && product.useManualPrice && (
             <span className="badge badge-yellow text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5">Manual</span>

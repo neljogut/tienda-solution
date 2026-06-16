@@ -23,13 +23,17 @@ export function usePricingData() {
   const [settingsResale, setSettingsResale] = useState<PricingSettingsResale>(defaultResale);
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData>(FALLBACK_RATE);
   const [inventoryMap, setInventoryMap] = useState<Map<string, InventoryItem>>(new Map());
+  const [productTypes, setProductTypes] = useState<Record<string, string>>({
+    '3d': 'Impresión 3D',
+    'resale': 'Productos Varios'
+  });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let loaded = 0;
     const markReady = () => {
       loaded += 1;
-      if (loaded >= 4) setReady(true);
+      if (loaded >= 5) setReady(true);
     };
 
     const unsubs = [
@@ -57,6 +61,16 @@ export function usePricingData() {
         setInventoryMap(map);
         markReady();
       }),
+      onSnapshot(collection(db, 'product_types'), (snap) => {
+        const map: Record<string, string> = {};
+        snap.forEach((d) => {
+          map[d.id] = d.data().name;
+        });
+        if (!map['3d']) map['3d'] = 'Impresión 3D';
+        if (!map['resale']) map['resale'] = 'Productos Varios';
+        setProductTypes(map);
+        markReady();
+      }),
     ];
 
     return () => unsubs.forEach((u) => u());
@@ -74,5 +88,5 @@ export function usePricingData() {
     [settings3d, settingsResale, exchangeRate, inventoryMap]
   );
 
-  return { ready, settings3d, settingsResale, exchangeRate, inventoryMap, getRetailPrice, getCost };
+  return { ready, settings3d, settingsResale, exchangeRate, inventoryMap, productTypes, getRetailPrice, getCost };
 }

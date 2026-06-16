@@ -2,7 +2,7 @@
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'dualgi-3d-cache-v9';
+const CACHE_NAME = 'dualgi3de-cache-v9';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/pwa-192.png',
@@ -33,7 +33,7 @@ messaging.onBackgroundMessage((payload) => {
   const body = payload.notification?.body || payload.data?.body || '';
   const linkPath = payload.data?.linkPath || '/';
   const orderId = payload.data?.orderId || '';
-  const tag = payload.data?.notificationId || 'dualgi-notification';
+  const tag = payload.data?.notificationId || 'dualgi3de-notification';
 
   return self.registration.showNotification(title, {
     body,

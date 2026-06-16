@@ -13,6 +13,7 @@ import { MyOrders } from './pages/client/MyOrders';
 import { MyAccount } from './pages/client/MyAccount';
 import { ProductDetail } from './pages/ProductDetail';
 import { Dashboard } from './pages/Dashboard';
+import { getDefaultBusinessSettings } from './constants/defaults';
 import { ProductList } from './pages/admin/ProductList';
 import { ProductForm } from './pages/admin/ProductForm';
 import { Inventory } from './pages/admin/Inventory';
@@ -68,7 +69,7 @@ function App() {
       const data = snap.exists() ? snap.data() : null;
       
       // Update Title
-      document.title = data?.name ? `${data.name} · Impresión 3D y Regalos Personalizados` : 'Dualgi 3D · Impresión 3D y Regalos Personalizados';
+      document.title = data?.name ? `${data.name} · Impresión 3D y Regalos Personalizados` : `${getDefaultBusinessSettings().name} · Impresión 3D y Regalos Personalizados`;
       
       // Update Favicon
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;

@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Order, OrderItem } from '../types/order';
 import type { PaymentSettings, BusinessSettings } from '../types/settings';
-import { defaultPaymentSettings } from '../constants/defaults';
+import { defaultPaymentSettings, getDefaultBusinessSettings } from '../constants/defaults';
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { createMPPreference, createMPPaymentIntent } from '../services/mercadoPagoService';
 import { finalizeSharedOrder } from '../services/sharedOrderService';
@@ -20,6 +20,7 @@ export const SharedOrder: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
+  const [business, setBusiness] = useState<BusinessSettings | null>(null);
   const [businessWhatsapp, setBusinessWhatsapp] = useState<string | null>(null);
 
   const [step, setStep] = useState<Step>('summary');
@@ -63,6 +64,7 @@ export const SharedOrder: React.FC = () => {
         }
         if (businessSnap.exists()) {
           const biz = businessSnap.data() as BusinessSettings;
+          setBusiness(biz);
           if (biz.whatsapp) setBusinessWhatsapp(biz.whatsapp.replace(/\D/g, ''));
         }
       } catch (err) {
@@ -123,7 +125,7 @@ export const SharedOrder: React.FC = () => {
       });
       const prefResult = await createMPPreference({
         paymentIntentId: intentResult.paymentIntentId,
-        title: `Pedido #${orderNumber} - Dualgi 3D`,
+        title: `Pedido #${orderNumber} - ${business?.name || getDefaultBusinessSettings().name}`,
       });
       window.open(prefResult.initPoint, '_blank');
       setStep('done');

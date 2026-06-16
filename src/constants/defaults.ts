@@ -1,4 +1,4 @@
-import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings } from '../types/settings';
+import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings, BusinessSettings } from '../types/settings';
 
 export const default3D: PricingSettings3D = {
   "filamentPriceUsdKg": 9.68,
@@ -43,3 +43,36 @@ export const defaultPaymentSettings: PaymentSettings = {
     webhookConfigured: false,
   },
 };
+
+export const getDefaultBusinessSettings = (): BusinessSettings => {
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  if (projectId === 'solution-3d') {
+    return {
+      name: 'Solution 3D',
+      ownerName: 'Solution 3D',
+      phone: '',
+      email: 'contacto@solution3d.com',
+      address: '',
+      city: 'Venado Tuerto',
+      province: 'Santa Fe',
+      cuit: '',
+      socialMedia: '@solution3d',
+      description: 'Impresión 3D y Modelado Digital',
+      imgbbApiKey: ''
+    };
+  }
+  return {
+    name: 'Dualgi 3D',
+    ownerName: 'Maxi',
+    phone: '+54 9 11 1234-5678',
+    email: 'contacto@dualgi3d.com',
+    address: 'Calle Falsa 123',
+    city: 'Buenos Aires',
+    province: 'CABA',
+    cuit: '20-12345678-9',
+    socialMedia: '@dualgi3d',
+    description: 'Materializando tus ideas en 3D',
+    imgbbApiKey: ''
+  };
+};
+

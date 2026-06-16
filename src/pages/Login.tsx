@@ -4,6 +4,7 @@ import { auth, db } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { getDefaultBusinessSettings } from '../constants/defaults';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -48,11 +49,11 @@ export const Login: React.FC = () => {
           ) : (
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
               <span className="text-white text-3xl font-bold">
-                {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : 'D'}
+                {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : getDefaultBusinessSettings().name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
-          <h2 className="text-2xl font-bold text-slate-800">{businessSettings?.name || 'Dualgi 3D'}</h2>
+          <h2 className="text-2xl font-bold text-slate-800">{businessSettings?.name || getDefaultBusinessSettings().name}</h2>
           <p className="text-slate-500 text-sm mt-1">Plataforma de Gestión y Venta</p>
         </div>
 

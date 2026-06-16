@@ -3,25 +3,13 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, firebaseConfig, app, getFunctionsRegion } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { BusinessSettings, PaymentSettings } from '../../types/settings';
-import { defaultPaymentSettings } from '../../constants/defaults';
+import { defaultPaymentSettings, getDefaultBusinessSettings } from '../../constants/defaults';
 import {
   Building2, Save, Image, X, Phone, Mail, MapPin, Landmark, Clipboard, Link,
   CreditCard, Loader2, CheckCircle, AlertCircle, RefreshCw,
 } from 'lucide-react';
 
-const defaultBusinessSettings: BusinessSettings = {
-  name: 'Dualgi 3D',
-  ownerName: 'Maxi',
-  phone: '+54 9 11 1234-5678',
-  email: 'contacto@dualgi3d.com',
-  address: 'Calle Falsa 123',
-  city: 'Buenos Aires',
-  province: 'CABA',
-  cuit: '20-12345678-9',
-  socialMedia: '@dualgi3d',
-  description: 'Materializando tus ideas en 3D',
-  imgbbApiKey: ''
-};
+const defaultBusinessSettings: BusinessSettings = getDefaultBusinessSettings();
 
 export const BusinessSettingsPage: React.FC = () => {
   const [formData, setFormData] = useState<BusinessSettings>(defaultBusinessSettings);

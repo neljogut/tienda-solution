@@ -12,6 +12,7 @@ import {
   RefreshCw, ShoppingBag, CreditCard, Award, 
   Sparkles, ShieldCheck
 } from 'lucide-react';
+import { getDefaultBusinessSettings } from '../../constants/defaults';
 
 const defaultSettings3D: PricingSettings3D = {
   filamentPriceUsdKg: 20,
@@ -28,18 +29,7 @@ const defaultSettings3D: PricingSettings3D = {
   wholesaleThresholdGramsKeychain: 100,
 };
 
-const defaultBusinessSettings: BusinessSettings = {
-  name: 'Dualgi 3D',
-  ownerName: 'Maxi',
-  phone: '+54 9 11 1234-5678',
-  email: 'contacto@dualgi3d.com',
-  address: 'Calle Falsa 123',
-  city: 'Buenos Aires',
-  province: 'CABA',
-  cuit: '20-12345678-9',
-  socialMedia: '@dualgi3d',
-  description: 'Materializando tus ideas en 3D'
-};
+const defaultBusinessSettings: BusinessSettings = getDefaultBusinessSettings();
 
 export const Balance: React.FC = () => {
   const { hasPermission } = useAuth();

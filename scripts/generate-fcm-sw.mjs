@@ -38,7 +38,7 @@ const swContent = `/* Auto-generado por scripts/generate-fcm-sw.mjs — no edita
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'dualgi-3d-cache-v9';
+const CACHE_NAME = '${firebaseConfig.projectId || 'dualgi3de'}-cache-v9';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/pwa-192.png',
@@ -62,7 +62,7 @@ messaging.onBackgroundMessage((payload) => {
   const body = payload.notification?.body || payload.data?.body || '';
   const linkPath = payload.data?.linkPath || '/';
   const orderId = payload.data?.orderId || '';
-  const tag = payload.data?.notificationId || 'dualgi-notification';
+  const tag = payload.data?.notificationId || '${firebaseConfig.projectId || 'dualgi3de'}-notification';
 
   return self.registration.showNotification(title, {
     body,
@@ -161,3 +161,34 @@ self.addEventListener('fetch', (e) => {
 
 fs.writeFileSync(outPath, swContent, 'utf8');
 console.log(`generate-fcm-sw: sw.js generado para proyecto ${firebaseConfig.projectId || '(sin projectId)'}`);
+
+// Generar public/manifest.json dinámicamente
+const manifestPath = path.join(rootDir, 'public', 'manifest.json');
+const businessName = env.VITE_BUSINESS_NAME || 'Dualgi 3D';
+const manifestContent = {
+  "name": `${businessName} · Impresiones 3D`,
+  "short_name": businessName,
+  "description": "Catálogo, venta y personalización de impresiones 3D, llaveros y regalos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+};
+fs.writeFileSync(manifestPath, JSON.stringify(manifestContent, null, 2), 'utf8');
+console.log(`generate-fcm-sw: manifest.json generado con el nombre de negocio "${businessName}"`);
+

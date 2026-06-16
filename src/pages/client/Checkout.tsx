@@ -10,8 +10,8 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useCartStore } from '../../store/cartStore';
 import type { Client } from '../../types/client';
-import type { DepositSettings, PaymentSettings } from '../../types/settings';
-import { defaultDeposit, defaultPaymentSettings } from '../../constants/defaults';
+import type { DepositSettings, PaymentSettings, BusinessSettings } from '../../types/settings';
+import { defaultDeposit, defaultPaymentSettings, getDefaultBusinessSettings } from '../../constants/defaults';
 import { NumericInput } from '../../components/NumericInput';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import { createCatalogOrderClient } from '../../services/catalogOrderService';
@@ -40,6 +40,7 @@ export const Checkout: React.FC = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [depositSettings, setDepositSettings] = useState<DepositSettings>(defaultDeposit);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -108,13 +109,17 @@ export const Checkout: React.FC = () => {
           }
         }
 
-        const [depositSnap, paymentsSnap] = await Promise.all([
+        const [depositSnap, paymentsSnap, businessSnap] = await Promise.all([
           getDoc(doc(db, 'settings', 'deposit')),
           getDoc(doc(db, 'settings', 'payments')),
+          getDoc(doc(db, 'settings', 'business')),
         ]);
         if (depositSnap.exists()) setDepositSettings(depositSnap.data() as DepositSettings);
         if (paymentsSnap.exists()) {
           setPaymentSettings({ ...defaultPaymentSettings, ...paymentsSnap.data() } as PaymentSettings);
+        }
+        if (businessSnap.exists()) {
+          setBusinessSettings(businessSnap.data() as BusinessSettings);
         }
       } finally {
         setLoading(false);
@@ -231,7 +236,7 @@ export const Checkout: React.FC = () => {
           // 3. Create MP Preference
           const prefResult = await createMPPreference({
             paymentIntentId: intentResult.paymentIntentId,
-            title: `Pedido #${String(result.orderNumber).padStart(5, '0')} - Dualgi 3D`,
+            title: `Pedido #${String(result.orderNumber).padStart(5, '0')} - ${businessSettings?.name || getDefaultBusinessSettings().name}`,
           });
 
           clearCart();
@@ -273,7 +278,7 @@ export const Checkout: React.FC = () => {
 
         const prefResult = await createMPPreference({
           paymentIntentId: intentResult.paymentIntentId,
-          title: `Pago Saldo Cuenta Corriente - Dualgi 3D`,
+          title: `Pago Saldo Cuenta Corriente - ${businessSettings?.name || getDefaultBusinessSettings().name}`,
         });
 
         window.open(prefResult.initPoint, '_blank');

@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CheckCircle2, Clock, Truck, XCircle, Plus, FileDown, FileText, Loader2, Edit2, X, Trash2, AlertCircle, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { generateClientPDF, generateInternalPDF } from '../../services/pdfService';
 import { notifyClientOrderChanges } from '../../services/notificationService';
+import { getDefaultBusinessSettings } from '../../constants/defaults';
 import { NumericInput } from '../../components/NumericInput';
 
 const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
@@ -25,18 +26,7 @@ const PAYMENT_STATUS_OPTIONS: { value: PaymentStatus; label: string }[] = [
   { value: 'paid', label: 'Pagado' },
 ];
 
-const defaultBusinessSettings: BusinessSettings = {
-  name: 'Dualgi 3D',
-  ownerName: 'Maxi',
-  phone: '+54 9 11 1234-5678',
-  email: 'contacto@dualgi3d.com',
-  address: 'Calle Falsa 123',
-  city: 'Buenos Aires',
-  province: 'CABA',
-  cuit: '20-12345678-9',
-  socialMedia: '@dualgi3d',
-  description: 'Materializando tus ideas en 3D'
-};
+const defaultBusinessSettings: BusinessSettings = getDefaultBusinessSettings();
 
 function resolvePaymentAmounts(
   totalAmount: number,

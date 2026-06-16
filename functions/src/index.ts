@@ -18,7 +18,12 @@ function getFirestoreRegion(): string {
   return "southamerica-east1";
 }
 
-const HOSTING_URL = process.env.HOSTING_URL || "https://dualgi3de.web.app";
+const getHostingUrl = () => {
+  if (process.env.HOSTING_URL) return process.env.HOSTING_URL;
+  const project = process.env.GCLOUD_PROJECT || "dualgi3de";
+  return `https://${project}.web.app`;
+};
+const HOSTING_URL = getHostingUrl();
 
 type Role = "owner" | "employee" | "client";
 
@@ -494,11 +499,21 @@ export const createMercadoPagoPreference = onCall({ region: getFirestoreRegion()
   const client = new MercadoPagoConfig({accessToken});
   const preference = new Preference(client);
 
+  let businessName = (process.env.GCLOUD_PROJECT || "dualgi3de") === "solution-3d" ? "Solution 3D" : "Dualgi 3D";
+  try {
+    const bizSnap = await db.collection("settings").doc("business").get();
+    if (bizSnap.exists) {
+      businessName = bizSnap.get("name") || businessName;
+    }
+  } catch (err) {
+    console.error("Error fetching business name:", err);
+  }
+
   const preferenceBody = {
     items: [
       {
         id: payload.paymentIntentId,
-        title: payload.title || "Pedido Dualgi 3D",
+        title: payload.title || `Pedido ${businessName}`,
         quantity: 1,
         unit_price: amount,
         currency_id: "ARS",

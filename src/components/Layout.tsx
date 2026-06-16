@@ -11,6 +11,7 @@ import { ForcePasswordChange } from './ForcePasswordChange';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { BusinessSettings } from '../types/settings';
+import { getDefaultBusinessSettings } from '../constants/defaults';
 
 export const Layout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -57,7 +58,7 @@ export const Layout: React.FC = () => {
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 flex flex-col justify-between">
           <div className="mx-auto max-w-7xl w-full p-4 sm:p-6 lg:p-8 flex-1">
-            {userData?.role === 'owner' && (!businessSettings || businessSettings.name === 'Dualgi 3D') && (
+            {userData?.role === 'owner' && (!businessSettings || businessSettings.name === getDefaultBusinessSettings().name) && (
               <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between text-xs text-amber-800 animate-fadeIn shadow-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">⚠️</span>

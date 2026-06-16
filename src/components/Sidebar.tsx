@@ -9,6 +9,7 @@ import {
   Building2, UserCog, X, Tag, ShoppingCart, User, CreditCard,
   ChevronRight, LogOut, History
 } from 'lucide-react';
+import { getDefaultBusinessSettings } from '../constants/defaults';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -132,13 +133,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             ) : (
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                 <span className="text-white font-black text-sm">
-                  {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : 'D'}
+                  {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : getDefaultBusinessSettings().name.charAt(0).toUpperCase()}
                 </span>
               </div>
             )}
             <div>
               <h1 className="text-white font-bold text-base leading-tight truncate max-w-[140px]">
-                {businessSettings?.name || 'Dualgi 3D'}
+                {businessSettings?.name || getDefaultBusinessSettings().name}
               </h1>
               <p className="text-slate-500 text-[10px] font-medium tracking-wider">PLATFORM</p>
             </div>

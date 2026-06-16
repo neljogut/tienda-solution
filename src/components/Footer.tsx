@@ -1,5 +1,6 @@
 import React from 'react';
 import type { BusinessSettings } from '../types/settings';
+import { getDefaultBusinessSettings } from '../constants/defaults';
 
 interface FooterProps {
   settings: BusinessSettings | null;
@@ -7,8 +8,8 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ settings }) => {
   const currentYear = new Date().getFullYear();
-  const name = settings?.name || 'Dualgi 3D';
-  const desc = settings?.description || 'Materializando tus ideas en 3D';
+  const name = settings?.name || getDefaultBusinessSettings().name;
+  const desc = settings?.description || getDefaultBusinessSettings().description;
 
   const formatWhatsappLink = (num: string) => {
     // Strip non-digits

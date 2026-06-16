@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { Filament, Supply, InventoryMovementType } from '../../types/inventory';
 import { getFilamentPriceUsdKg, hasCustomFilamentPrice } from '../../types/inventory';
 import type { PricingSettings3D, BusinessSettings } from '../../types/settings';
-import { default3D } from '../../constants/defaults';
+import { default3D, getDefaultBusinessSettings } from '../../constants/defaults';
 import { recalculateAllProductsInFirestore } from '../../services/pricingService';
 import { generateInventoryOrderPDF } from '../../services/pdfService';
 import { 
@@ -50,18 +50,7 @@ export const Inventory: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [sortByFilament, setSortByFilament] = useState<'colorMaterial' | 'stock' | 'brand'>('colorMaterial');
   const [sortOrderFilament, setSortOrderFilament] = useState<'asc' | 'desc'>('asc');
-  const [business, setBusiness] = useState<BusinessSettings>({
-    name: 'Dualgi 3D',
-    ownerName: 'Maxi',
-    phone: '+54 9 11 1234-5678',
-    email: 'contacto@dualgi3d.com',
-    address: 'Calle Falsa 123',
-    city: 'Buenos Aires',
-    province: 'CABA',
-    cuit: '20-12345678-9',
-    socialMedia: '@dualgi3d',
-    description: 'Materializando tus ideas en 3D'
-  });
+  const [business, setBusiness] = useState<BusinessSettings>(getDefaultBusinessSettings());
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
   const { currentUser } = useAuth();

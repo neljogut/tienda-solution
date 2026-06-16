@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   setDoc,
@@ -17,15 +18,23 @@ export async function resolveCustomerId(
   presetCustomerId?: string
 ): Promise<string> {
   if (presetCustomerId?.trim()) {
-    await syncClientUserLink(presetCustomerId.trim(), currentUser.uid);
-    return presetCustomerId.trim();
+    const presetDoc = await getDoc(doc(db, 'clients', presetCustomerId.trim()));
+    if (presetDoc.exists()) {
+      await syncClientUserLink(presetCustomerId.trim(), currentUser.uid);
+      return presetCustomerId.trim();
+    }
   }
 
   let resolvedCustomerId = userData?.customerId || '';
 
   if (resolvedCustomerId) {
-    await syncClientUserLink(resolvedCustomerId, currentUser.uid);
-    return resolvedCustomerId;
+    const clientDoc = await getDoc(doc(db, 'clients', resolvedCustomerId));
+    if (clientDoc.exists()) {
+      await syncClientUserLink(resolvedCustomerId, currentUser.uid);
+      return resolvedCustomerId;
+    } else {
+      resolvedCustomerId = '';
+    }
   }
 
   const clientQuery = query(collection(db, 'clients'), where('userId', '==', currentUser.uid));

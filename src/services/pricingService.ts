@@ -263,7 +263,8 @@ export function deepestTierScopeCategoryId(
  */
 export function aggregatedQtyByScope(
   items: Array<{ priceTiers?: PriceTier[]; categoryId?: string; variantGroup?: string; quantity: number | '' }>,
-  categories: Category[]
+  categories: Category[],
+  variantGroups?: VariantGroup[]
 ): Map<string, number> {
   const scopeMap = new Map<string, number>();
 
@@ -271,7 +272,13 @@ export function aggregatedQtyByScope(
     const qty = item.quantity === '' ? 0 : Number(item.quantity);
     if (qty < 1) continue;
 
-    const resolvedTiers = resolveInheritedPriceTiers(item.priceTiers, item.categoryId, categories);
+    const resolvedTiers = resolveInheritedPriceTiers(
+      item.priceTiers,
+      item.categoryId,
+      categories,
+      item.variantGroup,
+      variantGroups
+    );
     if (!resolvedTiers || resolvedTiers.length === 0) continue; // no tiers → skip
 
     const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);

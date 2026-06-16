@@ -73,7 +73,8 @@ function recalculateCartItems(items: CartItem[]): CartItem[] {
       variantGroup: i.variantGroup,
       quantity: i.quantity,
     })),
-    allCategories
+    allCategories,
+    allVariantGroups
   );
 
   // 3. Calculate total weight of 3D products (excluding those with tiers)

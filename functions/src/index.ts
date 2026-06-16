@@ -44,16 +44,30 @@ async function getMercadoPagoAccessToken(): Promise<string> {
 }
 
 async function resolveCustomerId(uid: string, userData: Record<string, unknown>): Promise<string> {
-  let customerId = userData.customerId as string | undefined;
-  if (customerId) return customerId;
+  const customerId = userData.customerId as string | undefined;
+  if (customerId) {
+    const clientSnap = await db.collection("clients").doc(customerId).get();
+    if (clientSnap.exists) {
+      return customerId;
+    }
+  }
 
   const byUser = await db.collection("clients").where("userId", "==", uid).limit(1).get();
-  if (!byUser.empty) return byUser.docs[0].id;
+  if (!byUser.empty) {
+    const resolved = byUser.docs[0].id;
+    await db.collection("users").doc(uid).update({ customerId: resolved });
+    return resolved;
+  }
 
   const email = userData.email as string | undefined;
   if (email) {
     const byEmail = await db.collection("clients").where("email", "==", email).limit(1).get();
-    if (!byEmail.empty) return byEmail.docs[0].id;
+    if (!byEmail.empty) {
+      const resolved = byEmail.docs[0].id;
+      await db.collection("clients").doc(resolved).update({ userId: uid });
+      await db.collection("users").doc(uid).update({ customerId: resolved });
+      return resolved;
+    }
   }
 
   throw new HttpsError("failed-precondition", "No se encontró el perfil de cliente vinculado.");

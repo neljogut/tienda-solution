@@ -604,10 +604,20 @@ export const ClientsManager: React.FC = () => {
       };
 
       // Handle user accounts mapping updates
-      if (targetClient.userId) {
-        targetUpdates.userId = targetClient.userId;
-      } else if (sourceClient.userId) {
-        targetUpdates.userId = sourceClient.userId;
+      let resolvedUserId = targetClient.userId || sourceClient.userId || '';
+
+      // Find all users in users collection where customerId == mergeSourceId
+      const usersQuery = query(collection(db, 'users'), where('customerId', '==', mergeSourceId));
+      const usersSnap = await getDocs(usersQuery);
+      usersSnap.forEach(u => {
+        batch.update(doc(db, 'users', u.id), { customerId: mergeTargetId });
+        if (!resolvedUserId) {
+          resolvedUserId = u.id;
+        }
+      });
+
+      if (resolvedUserId) {
+        targetUpdates.userId = resolvedUserId;
       }
 
       if (sourceClient.userId) {

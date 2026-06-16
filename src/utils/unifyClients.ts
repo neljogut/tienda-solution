@@ -44,7 +44,9 @@ export const unifyClientsAndOrders = async (): Promise<{ success: boolean; messa
     for (const user of users) {
       if (user.role !== 'client') continue;
 
-      let linkedClient = getClientByUserId(user.uid) || getClientByEmail(user.email);
+      let linkedClient = (user.customerId ? clients.find(c => c.id === user.customerId) : null) ||
+                         getClientByUserId(user.uid) ||
+                         getClientByEmail(user.email);
 
       if (linkedClient) {
         let needsUpdate = false;

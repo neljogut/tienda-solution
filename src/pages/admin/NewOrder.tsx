@@ -407,7 +407,8 @@ export const NewOrder: React.FC = () => {
           quantity: item.quantity,
         };
       }),
-      categories
+      categories,
+      variantGroups
     );
 
     // 2. Calculate total weight of 3D products (excluding those with tiers)

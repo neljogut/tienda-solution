@@ -10,6 +10,7 @@ import { SearchableClientSelect } from './SearchableClientSelect';
 import { NumericInput } from './NumericInput';
 import type { Client } from '../types/client';
 import type { Category } from '../types/category';
+import type { VariantGroup } from '../types/variantGroup';
 
 interface QuantityInputProps {
   productId: string;
@@ -88,6 +89,7 @@ export const CartDrawer: React.FC = () => {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
 
   const discountPercentNormal = pricingSettings?.wholesaleDiscountPercentNormal ?? 15;
   const discountPercentKeychain = pricingSettings?.wholesaleDiscountPercentKeychain ?? 10;
@@ -150,6 +152,15 @@ export const CartDrawer: React.FC = () => {
       setCategories(cats);
     });
 
+    // 7. Variant groups listener
+    const unsubVariantGroups = onSnapshot(collection(db, 'variantGroups'), (snap) => {
+      const groups: VariantGroup[] = [];
+      snap.forEach((d) => {
+        groups.push({ id: d.id, ...d.data() } as VariantGroup);
+      });
+      setVariantGroups(groups);
+    });
+
     return () => {
       unsubPricing();
       unsubDeposit();
@@ -157,6 +168,7 @@ export const CartDrawer: React.FC = () => {
       unsubClients();
       unsubSession();
       unsubCategories();
+      unsubVariantGroups();
     };
   }, [isDrawerOpen, userData]);
 
@@ -611,7 +623,8 @@ export const CartDrawer: React.FC = () => {
       variantGroup: i.variantGroup,
       quantity: i.quantity,
     })),
-    categories
+    categories,
+    variantGroups
   );
 
   return (

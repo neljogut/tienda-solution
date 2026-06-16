@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon, Pencil } from 'lucide-react';
+import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatPrintTime } from '../utils/printTime';
 import { getProductImages } from '../utils/productImages';
 import { useAuth } from '../context/AuthContext';
@@ -188,27 +188,57 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         {images.length > 1 && (
-          <div
-            className="absolute top-2 right-2 flex gap-1 z-20 bg-black/40 backdrop-blur-sm rounded-full px-1.5 py-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {images.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                aria-label={`Imagen ${idx + 1}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveIndex(idx);
-                }}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === activeIndex
-                    ? 'bg-white scale-110'
-                    : 'bg-white/40 hover:bg-white/70'
-                }`}
-              />
-            ))}
-          </div>
+          <>
+            {/* Left navigation arrow */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
+              }}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-7 h-7 rounded-full bg-black/45 backdrop-blur-sm text-white flex items-center justify-center transition-all duration-200 opacity-70 md:opacity-0 md:group-hover:opacity-100 hover:bg-black/70 active:scale-95 shadow-md border border-white/10"
+              title="Imagen anterior"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Right navigation arrow */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setActiveIndex((prev) => (prev + 1) % images.length);
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-7 h-7 rounded-full bg-black/45 backdrop-blur-sm text-white flex items-center justify-center transition-all duration-200 opacity-70 md:opacity-0 md:group-hover:opacity-100 hover:bg-black/70 active:scale-95 shadow-md border border-white/10"
+              title="Siguiente imagen"
+            >
+              <ChevronRight size={16} />
+            </button>
+
+            <div
+              className="absolute top-2 right-2 flex gap-1 z-20 bg-black/40 backdrop-blur-sm rounded-full px-1.5 py-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  aria-label={`Imagen ${idx + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveIndex(idx);
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    idx === activeIndex
+                      ? 'bg-white scale-110'
+                      : 'bg-white/40 hover:bg-white/70'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
         )}
         
         {/* Overlay on hover (Desktop only) */}

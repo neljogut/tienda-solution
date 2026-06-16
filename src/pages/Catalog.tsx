@@ -106,10 +106,11 @@ export const Catalog: React.FC = () => {
       setSelectedCategory(categoryId);
       setExpandedCategories(prev => {
         const next = new Set(prev);
-        let current = canonicalCategories.find(c => c.id === categoryId);
+        let current: Category | undefined = canonicalCategories.find(c => c.id === categoryId);
         while (current && current.parentId) {
           next.add(current.parentId);
-          current = canonicalCategories.find(c => c.id === current.parentId);
+          const parentId = current.parentId;
+          current = canonicalCategories.find(c => c.id === parentId);
         }
         return next;
       });

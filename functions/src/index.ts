@@ -2,6 +2,8 @@ import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {MercadoPagoConfig, Preference, Payment} from "mercadopago";
 import {allocatePaymentFifo, allocatePaymentToOrder} from "./paymentAllocation.js";
 import {db} from "./admin.js";
+import * as fs from "fs";
+import * as path from "path";
 
 export {sendNotificationPush} from "./pushNotifications.js";
 export {notifyStaffOnNewOrder} from "./orderNotifications.js";
@@ -720,5 +722,184 @@ export const testMercadoPagoConnection = onCall({ region: getFirestoreRegion() }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido";
     return {ok: false, message: `Error de conexión: ${msg}`};
+  }
+});
+
+let cachedHtml: string | null = null;
+
+async function getIndexHtmlTemplate(): Promise<string> {
+  if (cachedHtml) return cachedHtml;
+
+  // Try local paths first (useful for emulators)
+  const localPaths = [
+    path.join(__dirname, "..", "dist", "index.html"),
+    path.join(__dirname, "..", "..", "dist", "index.html"),
+    path.join(__dirname, "index.html"),
+  ];
+
+  for (const p of localPaths) {
+    try {
+      if (fs.existsSync(p)) {
+        cachedHtml = fs.readFileSync(p, "utf8");
+        return cachedHtml;
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  // Fallback to fetching over HTTP
+  try {
+    const res = await fetch(`${HOSTING_URL}/index.html`);
+    if (res.ok) {
+      cachedHtml = await res.text();
+      return cachedHtml;
+    }
+  } catch (err) {
+    console.error("Failed to fetch index.html from hosting:", err);
+  }
+
+  // Absolute fallback
+  return `<!DOCTYPE html><html><head><title>Catálogo</title></head><body><div id="root"></div></body></html>`;
+}
+
+function replaceMetaTags(
+  html: string,
+  title: string,
+  description: string,
+  imageUrl: string,
+  url: string
+): string {
+  let result = html;
+
+  // Replace title tag
+  result = result.replace(/<title>.*?<\/title>/gi, `<title>${title}</title>`);
+
+  // Helper to replace or insert meta tag
+  const replaceOrInsertMeta = (nameOrProperty: string, value: string, isProperty = false) => {
+    const attr = isProperty ? "property" : "name";
+    const regex = new RegExp(`<meta\\s+[^>]*${attr}=["']${nameOrProperty}["'][^>]*content=["'][^"']*["'][^>]*>`, "gi");
+    const regex2 = new RegExp(`<meta\\s+[^>]*content=["'][^"']*["'][^>]*${attr}=["']${nameOrProperty}["'][^>]*>`, "gi");
+    
+    const replacement = `<meta ${attr}="${nameOrProperty}" content="${value}" />`;
+    
+    if (regex.test(result)) {
+      result = result.replace(regex, replacement);
+    } else if (regex2.test(result)) {
+      result = result.replace(regex2, replacement);
+    } else {
+      // Insert right before </head> if it doesn't exist
+      result = result.replace("</head>", `${replacement}\n</head>`);
+    }
+  };
+
+  // Replace standard description
+  replaceOrInsertMeta("description", description);
+
+  // Replace Open Graph tags
+  replaceOrInsertMeta("og:title", title, true);
+  replaceOrInsertMeta("og:description", description, true);
+  replaceOrInsertMeta("og:image", imageUrl, true);
+  replaceOrInsertMeta("og:url", url, true);
+
+  // Replace Twitter tags
+  replaceOrInsertMeta("twitter:title", title);
+  replaceOrInsertMeta("twitter:description", description);
+  replaceOrInsertMeta("twitter:image", imageUrl);
+
+  return result;
+}
+
+export const serveDynamicMeta = onRequest({cors: false, region: getFirestoreRegion()}, async (req, res) => {
+  const pathStr = req.path || "";
+  
+  let title = "";
+  let description = "";
+  let imageUrl = "";
+  const requestUrl = `${HOSTING_URL}${pathStr}`;
+
+  // Fetch business settings first to get fallbacks
+  let businessName = (process.env.GCLOUD_PROJECT || "dualgi3de") === "solution-3d" ? "Solution 3D" : "Dualgi 3D";
+  let businessLogo = "";
+  let businessDesc = "Servicios de impresión 3D de alta precisión y regalos personalizados.";
+
+  try {
+    const bizSnap = await db.collection("settings").doc("business").get();
+    if (bizSnap.exists) {
+      businessName = bizSnap.get("name") || businessName;
+      businessLogo = bizSnap.get("logoUrl") || "";
+      businessDesc = bizSnap.get("description") || businessDesc;
+    }
+  } catch (err) {
+    console.error("Error fetching business settings:", err);
+  }
+
+  if (businessLogo && !businessLogo.startsWith("http")) {
+    businessLogo = `${HOSTING_URL}${businessLogo}`;
+  }
+  if (!businessLogo) {
+    businessLogo = `${HOSTING_URL}/favicon.svg`;
+  }
+
+  // Set default fallbacks
+  title = `${businessName} · Impresión 3D`;
+  description = businessDesc;
+  imageUrl = businessLogo;
+
+  try {
+    // 1. Is it a category path? /catalog/category/:categoryId
+    const categoryMatch = pathStr.match(/^\/catalog\/category\/([a-zA-Z0-9_-]+)/);
+    if (categoryMatch) {
+      const categoryId = categoryMatch[1];
+      const catSnap = await db.collection("categories").doc(categoryId).get();
+      if (catSnap.exists) {
+        const categoryName = catSnap.get("name") || "Categoría";
+        title = `${categoryName} · ${businessName}`;
+        description = `Explorá todos los productos en la categoría ${categoryName} en ${businessName}.`;
+        
+        // Fetch the first product in this category to use as the image preview
+        const prodSnap = await db.collection("products")
+          .where("categoryId", "==", categoryId)
+          .where("isActive", "==", true)
+          .limit(1)
+          .get();
+        
+        if (!prodSnap.empty) {
+          const firstProduct = prodSnap.docs[0].data();
+          imageUrl = firstProduct.mainImage || businessLogo;
+        }
+      }
+    } else {
+      // 2. Is it a product path? /catalog/:productId
+      const productMatch = pathStr.match(/^\/catalog\/([a-zA-Z0-9_-]+)/);
+      if (productMatch) {
+        const productId = productMatch[1];
+        if (productId !== "category") {
+          const prodSnap = await db.collection("products").doc(productId).get();
+          if (prodSnap.exists) {
+            const product = prodSnap.data()!;
+            title = `${product.name} · ${businessName}`;
+            description = product.description || `Comprá ${product.name} al mejor precio en ${businessName}.`;
+            imageUrl = product.mainImage || businessLogo;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error generating dynamic metadata:", err);
+  }
+
+  // Load index.html template and inject values
+  try {
+    const template = await getIndexHtmlTemplate();
+    const filledHtml = replaceMetaTags(template, title, description, imageUrl, requestUrl);
+    
+    // Set headers
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=600");
+    res.status(200).send(filledHtml);
+  } catch (err) {
+    console.error("Error serving index template:", err);
+    res.status(500).send("Internal Server Error");
   }
 });

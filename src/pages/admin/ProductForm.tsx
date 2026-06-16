@@ -423,7 +423,7 @@ export const ProductForm: React.FC = () => {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'product_types'), (snap) => {
       if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string }));
         const sorted = list.sort((a, b) => {
           if (a.id === '3d') return -1;
           if (b.id === '3d') return 1;

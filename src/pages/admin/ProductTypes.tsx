@@ -3,7 +3,7 @@ import { collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where }
 import { db } from '../../firebase';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+
 
 interface ProductTypeDoc {
   id: string;
@@ -14,7 +14,7 @@ interface ProductTypeDoc {
 
 export const ProductTypes: React.FC = () => {
   const navigate = useNavigate();
-  const { userData } = useAuth();
+
   const [types, setTypes] = useState<ProductTypeDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

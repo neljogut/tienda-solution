@@ -95,6 +95,8 @@ function App() {
             <Route index element={<Navigate to="/catalog" replace />} />
             <Route path="catalog" element={<Catalog />} />
             <Route path="catalog/category/:categoryId" element={<Catalog />} />
+            <Route path="catalog/type/:typeId" element={<Catalog />} />
+            <Route path="catalog/type/:typeId/category/:categoryId" element={<Catalog />} />
             <Route path="catalog/:id" element={<ProductDetail />} />
             <Route path="shared-order/:orderId" element={<SharedOrder />} />
             

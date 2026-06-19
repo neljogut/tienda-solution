@@ -62,7 +62,7 @@ export const ProductDetail: React.FC = () => {
   
   const isAdminView = userData?.role === 'owner' || hasPermission('viewManualPrices');
   const isOwner = userData?.role === 'owner';
-  const { getRetailPrice } = usePricingData();
+  const { getRetailPrice, settings3d } = usePricingData();
 
   const price = product ? getRetailPrice(product) : 0;
   const isOutOfStock = product ? (product.stock !== undefined && product.stock <= 0) : false;
@@ -74,6 +74,22 @@ export const ProductDetail: React.FC = () => {
     }
     return product.calculatedWholesalePrice || Math.ceil(price * 0.8);
   }, [product, price]);
+
+  const { rawRetailProfit, rawWholesaleProfit, netRetailProfit, netWholesaleProfit, effectiveCommPercent } = React.useMemo(() => {
+    const commPercent = settings3d?.employeeCommissionPercent ?? 10;
+    const is3D = product?.type === '3d';
+    const effComm = is3D ? commPercent : 0;
+    const cost = product?.calculatedCost || 0;
+    const rawRetail = price - cost;
+    const rawWholesale = wholesalePrice - cost;
+    return {
+      rawRetailProfit: rawRetail,
+      rawWholesaleProfit: rawWholesale,
+      netRetailProfit: rawRetail * (1 - effComm / 100),
+      netWholesaleProfit: rawWholesale * (1 - effComm / 100),
+      effectiveCommPercent: effComm
+    };
+  }, [product, price, wholesalePrice, settings3d]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -352,7 +368,7 @@ export const ProductDetail: React.FC = () => {
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <LockIcon /> Detalles Internos (Solo Administrador)
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {isOwner && (
               <>
                 <div>
@@ -361,11 +377,31 @@ export const ProductDetail: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-slate-400 text-sm">Ganancia Minorista</p>
-                  <p className="text-xl font-bold text-emerald-400">${(price - (product.calculatedCost || 0)).toLocaleString('es-AR')}</p>
+                  <p className="text-xl font-bold text-emerald-400">${rawRetailProfit.toLocaleString('es-AR')}</p>
                 </div>
                 <div>
                   <p className="text-slate-400 text-sm">Ganancia Mayorista</p>
-                  <p className="text-xl font-bold text-amber-400">${(wholesalePrice - (product.calculatedCost || 0)).toLocaleString('es-AR')}</p>
+                  <p className="text-xl font-bold text-amber-400">${rawWholesaleProfit.toLocaleString('es-AR')}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400/90 text-sm font-semibold flex flex-col">
+                    <span>G. Minorista</span>
+                    <span className="text-[10px] text-slate-400 font-normal leading-tight">(Neto Colab.)</span>
+                  </p>
+                  <p className="text-xl font-bold text-emerald-400 mt-1" title={`Descontada comisión de colaborador del ${effectiveCommPercent}%`}>
+                    ${netRetailProfit.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </p>
+                  {effectiveCommPercent > 0 && <span className="text-[9px] text-slate-500">-{effectiveCommPercent}% colab.</span>}
+                </div>
+                <div>
+                  <p className="text-slate-400/90 text-sm font-semibold flex flex-col">
+                    <span>G. Mayorista</span>
+                    <span className="text-[10px] text-slate-400 font-normal leading-tight">(Neto Colab.)</span>
+                  </p>
+                  <p className="text-xl font-bold text-amber-400 mt-1" title={`Descontada comisión de colaborador del ${effectiveCommPercent}%`}>
+                    ${netWholesaleProfit.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </p>
+                  {effectiveCommPercent > 0 && <span className="text-[9px] text-slate-500">-{effectiveCommPercent}% colab.</span>}
                 </div>
               </>
             )}

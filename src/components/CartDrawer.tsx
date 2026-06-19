@@ -326,18 +326,24 @@ export const CartDrawer: React.FC = () => {
 
       const totalCost = resolvedOrderItems.reduce((sum, item) => sum + item.unitCost * item.quantity, 0);
 
-      // 3. Commission settings
-      let employeeId = activeClient.employeeId || undefined;
-      let employeeName = activeClient.employeeName || undefined;
-
-      if (userData?.role === 'employee') {
-        employeeId = userData.uid;
-        employeeName = userData.displayName || 'Vendedor';
-      }
+      const isEmployeeCreator = userData?.role === 'employee';
+      let employeeId = isEmployeeCreator ? userData.uid : (activeClient?.employeeId || undefined);
+      let employeeName = isEmployeeCreator ? (userData.displayName || userData.email || 'Colaborador') : (activeClient?.employeeName || undefined);
 
       const commissionPercent = pricingSettings?.employeeCommissionPercent ?? 10;
       const totalProfit = totalAmount - totalCost;
-      const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+      
+      let commissionAmount: number | undefined = undefined;
+      if (employeeId) {
+        if (isEmployeeCreator) {
+          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
+        } else {
+          const profit3D = resolvedOrderItems
+            .filter(item => item.type === '3d')
+            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
+        }
+      }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
       const orderData = {
@@ -567,10 +573,22 @@ export const CartDrawer: React.FC = () => {
       const totalCost = resolvedOrderItems.reduce((sum, item) => sum + item.unitCost * item.quantity, 0);
       const totalProfit = totalAmount - totalCost;
 
-      const employeeId = activeClient?.employeeId;
-      const employeeName = activeClient?.employeeName;
+      const isEmployeeCreator = userData?.role === 'employee';
+      const employeeId = isEmployeeCreator ? userData.uid : activeClient?.employeeId;
+      const employeeName = isEmployeeCreator ? (userData.displayName || userData.email || 'Colaborador') : activeClient?.employeeName;
       const commissionPercent = pricingSettings?.employeeCommissionPercent ?? 10;
-      const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+      
+      let commissionAmount: number | undefined = undefined;
+      if (employeeId) {
+        if (isEmployeeCreator) {
+          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
+        } else {
+          const profit3D = resolvedOrderItems
+            .filter(item => item.type === '3d')
+            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
+        }
+      }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
       const draftData = {

@@ -58,7 +58,8 @@ export const getDefaultBusinessSettings = (): BusinessSettings => {
       cuit: '',
       socialMedia: '@solution3d',
       description: 'Impresión 3D y Modelado Digital',
-      imgbbApiKey: ''
+      imgbbApiKey: '',
+      showEstimatedDeliveryDateToClient: true
     };
   }
   return {
@@ -72,7 +73,8 @@ export const getDefaultBusinessSettings = (): BusinessSettings => {
     cuit: '20-12345678-9',
     socialMedia: '@dualgi3d',
     description: 'Materializando tus ideas en 3D',
-    imgbbApiKey: ''
+    imgbbApiKey: '',
+    showEstimatedDeliveryDateToClient: true
   };
 };
 

@@ -11,12 +11,13 @@ import { dedupeCategories, resolveCategoryId, getCategoryTreeIds, getSortedCateg
 import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
 import type { CashSession, PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, ShoppingBag, Share2, Copy, CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, ShoppingBag, Share2, Copy, CheckCircle2, X, CalendarDays } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice, roundPriceUp100, recalculateAllProductsInFirestore, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
 import { useCartStore } from '../../store/cartStore';
 import { SearchableClientSelect } from '../../components/SearchableClientSelect';
+import { estimateDeliveryTime } from '../../utils/deliveryEstimator';
 
 interface DrawerQuantityInputProps {
   productId: string;
@@ -119,6 +120,28 @@ export const NewOrder: React.FC = () => {
   // Transfer client cart items if they exist
   const clientCart = useCartStore();
   const [cartTransferred, setCartTransferred] = useState(false);
+  
+  // Delivery Estimation
+  const [estimatedDelivery, setEstimatedDelivery] = useState<{ days: number; date: Date | null; explanation: string } | null>(null);
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setEstimatedDelivery(null);
+      return;
+    }
+    const itemsForEst = cartItems.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      type: item.type
+    }));
+    estimateDeliveryTime(itemsForEst).then(res => {
+      setEstimatedDelivery({
+        days: res.estimatedDays,
+        date: res.estimatedDate,
+        explanation: res.explanation
+      });
+    }).catch(console.error);
+  }, [cartItems]);
 
   useEffect(() => {
     if (products.length > 0 && clientCart.items.length > 0 && !cartTransferred) {
@@ -565,6 +588,7 @@ export const NewOrder: React.FC = () => {
   // Order totals
   const totalAmount = cartItems.reduce((acc, item) => acc + (item.unitPrice * ((item.quantity as any) === '' ? 0 : Number(item.quantity))), 0);
   const totalCost = cartItems.reduce((acc, item) => acc + (item.unitCost * ((item.quantity as any) === '' ? 0 : Number(item.quantity))), 0);
+  const totalProfit = totalAmount - totalCost;
   const paidAmountAmt = paidAmount === '' ? 0 : Number(paidAmount);
   const pendingAmount = Math.max(0, totalAmount - paidAmountAmt);
 
@@ -609,11 +633,22 @@ export const NewOrder: React.FC = () => {
 
       const sanitizedItems = cartItems.map(item => ({ ...item, quantity: Number(item.quantity) }));
 
-      const totalProfit = totalAmount - totalCost;
-      const employeeId = activeClient?.employeeId;
-      const employeeName = activeClient?.employeeName;
+      const isEmployeeCreator = userData?.role === 'employee';
+      const employeeId = isEmployeeCreator ? userData.uid : activeClient?.employeeId;
+      const employeeName = isEmployeeCreator ? (userData.displayName || userData.email || 'Colaborador') : activeClient?.employeeName;
       const commissionPercent = pricing3dSettings?.employeeCommissionPercent ?? 10;
-      const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+      
+      let commissionAmount: number | undefined = undefined;
+      if (employeeId) {
+        if (isEmployeeCreator) {
+          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
+        } else {
+          const profit3D = sanitizedItems
+            .filter(item => item.type === '3d')
+            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
+        }
+      }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
       const orderData: Omit<Order, 'id'> = {
@@ -633,6 +668,7 @@ export const NewOrder: React.FC = () => {
         exchangeRateDate: new Date().toISOString(),
         totalCost,
         totalProfit,
+        deliveryDate: estimatedDelivery && estimatedDelivery.date ? estimatedDelivery.date.toISOString() : undefined,
         ...(employeeId ? {
           commissionEmployeeId: employeeId,
           commissionEmployeeName: employeeName || 'Colaborador',
@@ -822,11 +858,22 @@ export const NewOrder: React.FC = () => {
       const exchangeRateSnap = await getDoc(doc(db, 'settings', 'exchangeRate'));
       const currentExchangeRate = exchangeRateSnap.exists() ? (exchangeRateSnap.data() as ExchangeRateData).currentUsdToArs : exchangeRate;
 
-      const totalProfit = totalAmount - totalCost;
-      const employeeId = activeClient?.employeeId;
-      const employeeName = activeClient?.employeeName;
+      const isEmployeeCreator = userData?.role === 'employee';
+      const employeeId = isEmployeeCreator ? userData.uid : activeClient?.employeeId;
+      const employeeName = isEmployeeCreator ? (userData.displayName || userData.email || 'Colaborador') : activeClient?.employeeName;
       const commissionPercent = pricing3dSettings?.employeeCommissionPercent ?? 10;
-      const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+      
+      let commissionAmount: number | undefined = undefined;
+      if (employeeId) {
+        if (isEmployeeCreator) {
+          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
+        } else {
+          const profit3D = sanitizedItems
+            .filter(item => item.type === '3d')
+            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
+        }
+      }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
       const draftData = {
@@ -846,6 +893,7 @@ export const NewOrder: React.FC = () => {
         exchangeRateDate: new Date().toISOString(),
         totalCost,
         totalProfit,
+        deliveryDate: estimatedDelivery && estimatedDelivery.date ? estimatedDelivery.date.toISOString() : undefined,
         sharedAt: new Date().toISOString(),
         ...(employeeId ? {
           commissionEmployeeId: employeeId,
@@ -1244,6 +1292,24 @@ export const NewOrder: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {/* Estimated Delivery Date */}
+            {estimatedDelivery && estimatedDelivery.date && (
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 animate-fadeIn space-y-1">
+                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
+                  <CalendarDays size={12} className="text-indigo-500" /> Fecha Estimada de Entrega (con margen)
+                </p>
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <span className="font-bold text-indigo-700">
+                    {estimatedDelivery.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                  <span className="font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full text-[10px]">
+                    ~{estimatedDelivery.days} {estimatedDelivery.days === 1 ? 'día' : 'días'}
+                  </span>
+                </div>
+                <p className="text-[9px] text-slate-400 leading-normal pt-0.5">{estimatedDelivery.explanation}</p>
+              </div>
+            )}
 
             {/* Observation Fields */}
             <div className="space-y-2">

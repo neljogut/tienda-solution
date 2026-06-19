@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   ShoppingBag, Landmark, Loader2, Copy, Check,
-  Shield, AlertCircle, ArrowLeft, CreditCard,
+  Shield, AlertCircle, ArrowLeft, CreditCard, Calendar,
 } from 'lucide-react';
 import { createMPPaymentIntent, createMPPreference } from '../../services/mercadoPagoService';
 import { db } from '../../firebase';
@@ -13,6 +13,7 @@ import type { Client } from '../../types/client';
 import type { DepositSettings, PaymentSettings, BusinessSettings } from '../../types/settings';
 import { defaultDeposit, defaultPaymentSettings, getDefaultBusinessSettings } from '../../constants/defaults';
 import { NumericInput } from '../../components/NumericInput';
+import { estimateDeliveryTime, type EstimationResult } from '../../utils/deliveryEstimator';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import { createCatalogOrderClient } from '../../services/catalogOrderService';
 import { finalizeCheckoutWithWhatsApp, finalizeBalancePaymentWithWhatsApp } from '../../services/checkoutFinalize';
@@ -53,6 +54,7 @@ export const Checkout: React.FC = () => {
   const [confirmedPayAmount, setConfirmedPayAmount] = useState(0);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'mercadopago'>('transfer');
+  const [deliveryEstimation, setDeliveryEstimation] = useState<EstimationResult | null>(null);
   const checkoutInProgressRef = useRef(false);
 
   const cartTotal = getTotalPrice();
@@ -138,6 +140,26 @@ export const Checkout: React.FC = () => {
       setAmountChoice('deposit');
     }
   }, [bypassDeposit, minDeposit, totalDue, mode, transferStep]);
+
+  useEffect(() => {
+    if (mode === 'catalog' && items.length > 0) {
+      estimateDeliveryTime(
+        items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          type: item.type,
+        }))
+      )
+        .then((res) => {
+          setDeliveryEstimation(res);
+        })
+        .catch((err) => {
+          console.error('Error estimating delivery time:', err);
+        });
+    } else {
+      setDeliveryEstimation(null);
+    }
+  }, [items, mode]);
 
   const handleDepositBlur = () => {
     if (depositAmount === '' || minDeposit >= totalDue) return;
@@ -510,6 +532,30 @@ export const Checkout: React.FC = () => {
           </div>
         )}
       </div>
+
+      {mode === 'catalog' && businessSettings?.showEstimatedDeliveryDateToClient !== false && deliveryEstimation?.estimatedDate && (
+        <div className="card p-5 border border-slate-200/80 shadow-sm bg-blue-50/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-blue-100/70 text-blue-600 rounded-lg mt-0.5">
+              <Calendar size={18} />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Fecha de Entrega Estimada</h3>
+              <p className="text-lg font-black text-blue-600 mt-0.5">
+                {deliveryEstimation.estimatedDate.toLocaleDateString('es-AR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-1 leading-normal font-medium">
+                (sujeta a tiempos de fabricación, armado y calidad)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {mode === 'catalog' && (
         <div className="card p-5 border border-slate-200/80 space-y-3">

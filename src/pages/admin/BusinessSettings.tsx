@@ -6,7 +6,7 @@ import type { BusinessSettings, PaymentSettings } from '../../types/settings';
 import { defaultPaymentSettings, getDefaultBusinessSettings } from '../../constants/defaults';
 import {
   Building2, Save, Image, X, Phone, Mail, MapPin, Landmark, Clipboard, Link,
-  CreditCard, Loader2, CheckCircle, AlertCircle, RefreshCw,
+  CreditCard, Loader2, CheckCircle, AlertCircle, RefreshCw, Calendar,
 } from 'lucide-react';
 
 const defaultBusinessSettings: BusinessSettings = getDefaultBusinessSettings();
@@ -281,6 +281,31 @@ export const BusinessSettingsPage: React.FC = () => {
               <p className="text-[10px] text-slate-400 leading-relaxed">
                 Esta clave se usa para subir las imágenes del catálogo a ImgBB de forma automática (evitando lentitud en la carga y el almacenamiento en base64). Podés conseguir una clave gratuita en <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">api.imgbb.com</a>.
               </p>
+            </div>
+          </div>
+
+          {/* Fecha de Entrega Estimada */}
+          <div className="card p-5 border border-slate-200/80 shadow-sm space-y-4 animate-fadeIn">
+            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 border-b pb-2">
+              <Calendar size={16} className="text-blue-500" />
+              Fecha de Entrega Estimada
+            </h3>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <label className="text-xs font-bold text-slate-600">Mostrar fecha al cliente</label>
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">
+                  Permite mostrar al cliente la fecha estimada de entrega (calculada por la cola de impresión) en Checkout y Pedido Compartido.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={formData.showEstimatedDeliveryDateToClient !== false}
+                  onChange={e => setFormData({ ...formData, showEstimatedDeliveryDateToClient: e.target.checked })}
+                />
+                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
             </div>
           </div>
         </div>

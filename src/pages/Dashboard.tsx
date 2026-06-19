@@ -123,6 +123,13 @@ export const Dashboard: React.FC = () => {
   const salesToday = useMemo(() => todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0), [todayOrders]);
   const salesMonth = useMemo(() => monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0), [monthOrders]);
   const totalPending = useMemo(() => activeOrders.reduce((sum, o) => sum + (o.pendingAmount || 0), 0), [activeOrders]);
+  const profitMonth = useMemo(() => {
+    return monthOrders.reduce((sum, o) => {
+      const orderProfit = o.totalProfit || 0;
+      const commission = o.commissionAmount || 0;
+      return sum + (orderProfit - commission);
+    }, 0);
+  }, [monthOrders]);
 
   // Order status counts (all orders, including cancelled for the status breakdown)
   const pendingOrders = useMemo(() => userOrders.filter(o => o.orderStatus === 'pending').length, [userOrders]);
@@ -259,7 +266,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${userData?.role === 'owner' ? 'xl:grid-cols-7' : 'xl:grid-cols-6'} gap-4`}>
         <StatCard title="Ventas del Día" value={`$${salesToday.toLocaleString('es-AR')}`} icon={DollarSign} color="emerald" />
         <StatCard title="Ventas del Mes" value={`$${salesMonth.toLocaleString('es-AR')}`} icon={TrendingUp} color="blue" />
         <StatCard title="Pendiente de Cobro" value={`$${totalPending.toLocaleString('es-AR')}`} icon={Wallet} color="amber" />
@@ -276,6 +283,9 @@ export const Dashboard: React.FC = () => {
           icon={Clock} 
           color="indigo" 
         />
+        {userData?.role === 'owner' && (
+          <StatCard title="Ganancia del Mes" value={`$${profitMonth.toLocaleString('es-AR')}`} icon={TrendingUp} color="emerald" />
+        )}
       </div>
 
       {/* Order Status Row */}

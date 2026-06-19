@@ -10,6 +10,7 @@ import { db } from '../firebase';
 import type { CartItem } from '../store/cartStore';
 import type { User } from 'firebase/auth';
 import { resolveCustomerId } from './clientResolver';
+import { estimateDeliveryTime } from '../utils/deliveryEstimator';
 
 export interface CreateCatalogOrderResult {
   orderId: string;
@@ -79,8 +80,22 @@ export async function createCatalogOrderClient(
     : 10;
 
   const totalProfit = totalAmount - totalCost;
-  const commissionAmount = employeeId ? Number((totalProfit * (commissionPercent / 100)).toFixed(2)) : undefined;
+  let commissionAmount: number | undefined = undefined;
+  if (employeeId) {
+    const profit3D = orderItems
+      .filter(item => item.type === '3d')
+      .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+    commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
+  }
   const commissionPaidStatus = employeeId ? 'pending' : undefined;
+
+  const estResult = await estimateDeliveryTime(
+    orderItems.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      type: item.type
+    }))
+  );
 
   const newOrder = {
     orderNumber,
@@ -99,6 +114,7 @@ export async function createCatalogOrderClient(
     exchangeRateDate: new Date().toISOString(),
     totalCost,
     totalProfit,
+    deliveryDate: estResult.estimatedDate ? estResult.estimatedDate.toISOString() : undefined,
     ...(employeeId ? {
       commissionEmployeeId: employeeId,
       commissionEmployeeName: employeeName || 'Colaborador',

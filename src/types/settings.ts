@@ -50,6 +50,7 @@ export interface BusinessSettings {
   whatsapp?: string;
   categorySortMode?: 'manual' | 'alphabetical';
   imgbbApiKey?: string;
+  showEstimatedDeliveryDateToClient?: boolean;
 }
 
 export interface BankTransferSettings {

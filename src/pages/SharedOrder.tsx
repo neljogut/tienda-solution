@@ -8,7 +8,7 @@ import { defaultPaymentSettings, getDefaultBusinessSettings } from '../constants
 import { copyToClipboard } from '../utils/copyToClipboard';
 import { createMPPreference, createMPPaymentIntent } from '../services/mercadoPagoService';
 import { finalizeSharedOrder } from '../services/sharedOrderService';
-import { ShoppingBag, Landmark, CheckCircle2, Copy, Check, ArrowRight, Loader2, Package, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Landmark, CheckCircle2, Copy, Check, ArrowRight, Loader2, Package, AlertCircle, Calendar } from 'lucide-react';
 
 type Step = 'summary' | 'transfer' | 'done';
 type PayMode = 'later' | 'transfer' | 'mercadopago';
@@ -306,6 +306,29 @@ export const SharedOrder: React.FC = () => {
             <span className="text-xl font-bold text-blue-600">${order.totalAmount.toLocaleString('es-AR')}</span>
           </div>
         </div>
+
+        {/* Estimated Delivery Date */}
+        {order.deliveryDate && business?.showEstimatedDeliveryDateToClient !== false && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-start gap-3 animate-fadeIn">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl mt-0.5">
+              <Calendar size={18} />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha de Entrega Estimada</h3>
+              <p className="text-base font-black text-blue-600 mt-0.5">
+                {new Date(order.deliveryDate).toLocaleDateString('es-AR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-1 leading-normal font-medium">
+                (sujeta a tiempos de fabricación, armado y calidad)
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Observations */}
         {order.observationsPublic && (

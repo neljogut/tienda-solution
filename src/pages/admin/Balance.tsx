@@ -211,8 +211,51 @@ export const Balance: React.FC = () => {
       signalsResale += orderResaleRevenue * payRatio;
     }
 
+    // 1. Calculate commission shares for each item in this order
+    const commAmount = order.commissionAmount || 0;
+    const itemCommShares: Record<number, number> = {};
+
+    if (commAmount > 0) {
+      const commPercent = order.commissionPercent || 10;
+      const order3DProfit = order.items
+        .filter(item => item.type === '3d')
+        .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+      const orderResaleProfit = order.items
+        .filter(item => item.type !== '3d')
+        .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
+      const orderTotalProfit = order3DProfit + orderResaleProfit;
+
+      let commissionOnResale = false;
+      if (orderResaleProfit > 0) {
+        const max3DCommission = order3DProfit * (commPercent / 100) + 0.5;
+        if (commAmount > max3DCommission) {
+          commissionOnResale = true;
+        }
+      }
+
+      const totalEligibleProfit = commissionOnResale ? orderTotalProfit : order3DProfit;
+
+      order.items.forEach((item, index) => {
+        const isEligible = commissionOnResale || item.type === '3d';
+        if (isEligible && totalEligibleProfit > 0) {
+          const itemProfit = item.unitProfit * item.quantity;
+          itemCommShares[index] = commAmount * (itemProfit / totalEligibleProfit);
+        } else {
+          itemCommShares[index] = 0;
+        }
+      });
+    } else {
+      order.items.forEach((_, index) => {
+        itemCommShares[index] = 0;
+      });
+    }
+
     // Process items for cost breakdowns
-    order.items.forEach(item => {
+    order.items.forEach((item, index) => {
+      const itemProfitRaw = item.unitProfit * item.quantity;
+      const itemCommShare = itemCommShares[index] || 0;
+      const itemProfitAdjusted = itemProfitRaw - itemCommShare;
+
       // Product Stats
       if (!productStats[item.productId]) {
         productStats[item.productId] = { name: item.name, quantity: 0, revenue: 0, cost: 0, profit: 0 };
@@ -220,14 +263,14 @@ export const Balance: React.FC = () => {
       productStats[item.productId].quantity += item.quantity;
       productStats[item.productId].revenue += item.unitPrice * item.quantity;
       productStats[item.productId].cost += item.unitCost * item.quantity;
-      productStats[item.productId].profit += item.unitProfit * item.quantity;
+      productStats[item.productId].profit += itemProfitAdjusted;
 
       const itemCostTotal = item.unitCost * item.quantity;
 
       if (item.type === '3d') {
         revenue3D += item.unitPrice * item.quantity;
         cost3D += itemCostTotal;
-        profit3D += item.unitProfit * item.quantity;
+        profit3D += itemProfitAdjusted;
 
         const originalProd = products.find(p => p.id === item.productId);
         if (originalProd && originalProd.type === '3d') {
@@ -261,7 +304,7 @@ export const Balance: React.FC = () => {
       } else {
         revenueResale += item.unitPrice * item.quantity;
         costResale += itemCostTotal;
-        profitResale += item.unitProfit * item.quantity;
+        profitResale += itemProfitAdjusted;
       }
     });
   });
@@ -611,7 +654,7 @@ export const Balance: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between font-bold text-slate-800 border-t pt-1.5 mt-2">
-                    <span>Ganancia Bruta:</span>
+                    <span>Ganancia Real:</span>
                     <span>${profitResale.toLocaleString('es-AR')}</span>
                   </div>
                 </div>

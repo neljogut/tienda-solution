@@ -20,6 +20,10 @@ export interface OrderItem {
   
   imageUrl?: string;
   isManualPrice: boolean;
+
+  // Print tracking (only for 3D items)
+  printedQty?: number;    // Units already printed
+  printingQty?: number;   // Units currently printing
 }
 
 export interface Order {
@@ -63,4 +67,11 @@ export interface Order {
   commissionPercent?: number;
   commissionAmount?: number;
   commissionPaidStatus?: 'pending' | 'paid';
+
+  // Print progress summary
+  printProgress?: {
+    totalItems3D: number;
+    printedItems3D: number;
+    printingItems3D: number;
+  };
 }

@@ -72,3 +72,8 @@ export interface PaymentSettings {
   bankTransfer: BankTransferSettings;
   mercadopago: MercadoPagoSettings;
 }
+
+export interface PrintQueueSettings {
+  printerCount: number;        // Cantidad de impresoras (para paralelismo)
+  workHoursPerDay: number;     // Horas de trabajo por día (para estimar fechas)
+}

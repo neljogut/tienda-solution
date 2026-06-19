@@ -7,7 +7,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users, Receipt, 
   Warehouse, ArrowLeftRight, DollarSign, BarChart3, Settings,
   Building2, UserCog, X, Tag, ShoppingCart, User, CreditCard,
-  ChevronRight, LogOut, History, Layers
+  ChevronRight, LogOut, History, Layers, Printer
 } from 'lucide-react';
 import { getDefaultBusinessSettings } from '../constants/defaults';
 
@@ -65,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       title: 'Ventas',
       items: [
         { label: 'Pedidos', icon: Receipt, path: '/orders', permission: 'viewOrders' },
+        { label: 'Impresiones', icon: Printer, path: '/print-queue', requiredRole: 'owner' },
         { label: 'Clientes', icon: Users, path: '/clients', permission: 'viewClients' },
         { label: 'Cuentas Ctes.', icon: CreditCard, path: '/accounts', permission: 'viewAccounts' },
         { label: 'Liquidaciones', icon: ArrowLeftRight, path: '/admin/liquidations', requiredRole: 'owner' },

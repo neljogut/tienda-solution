@@ -1,4 +1,4 @@
-import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings, BusinessSettings } from '../types/settings';
+import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings, BusinessSettings, PrintQueueSettings } from '../types/settings';
 
 export const default3D: PricingSettings3D = {
   "filamentPriceUsdKg": 9.68,
@@ -76,3 +76,7 @@ export const getDefaultBusinessSettings = (): BusinessSettings => {
   };
 };
 
+export const defaultPrintQueue: PrintQueueSettings = {
+  printerCount: 1,
+  workHoursPerDay: 8,
+};

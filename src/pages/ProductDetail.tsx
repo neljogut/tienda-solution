@@ -360,8 +360,12 @@ export const ProductDetail: React.FC = () => {
                   <p className="text-xl font-bold">${product.calculatedCost?.toLocaleString('es-AR')}</p>
                 </div>
                 <div>
-                  <p className="text-slate-400 text-sm">Ganancia Estimada</p>
+                  <p className="text-slate-400 text-sm">Ganancia Minorista</p>
                   <p className="text-xl font-bold text-emerald-400">${(price - (product.calculatedCost || 0)).toLocaleString('es-AR')}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">Ganancia Mayorista</p>
+                  <p className="text-xl font-bold text-amber-400">${(wholesalePrice - (product.calculatedCost || 0)).toLocaleString('es-AR')}</p>
                 </div>
               </>
             )}

@@ -36,6 +36,7 @@ import { SharedOrder } from './pages/SharedOrder';
 import { MyBalance } from './pages/client/MyBalance';
 import { Liquidations } from './pages/admin/Liquidations';
 import { ProductTypes } from './pages/admin/ProductTypes';
+import { PrintQueue } from './pages/admin/PrintQueue';
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -226,6 +227,11 @@ function App() {
             <Route path="admin/liquidations" element={
               <ProtectedRoute requiredRole="owner">
                 <Liquidations />
+              </ProtectedRoute>
+            } />
+            <Route path="print-queue" element={
+              <ProtectedRoute requiredRole="owner">
+                <PrintQueue />
               </ProtectedRoute>
             } />
             

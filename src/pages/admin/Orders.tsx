@@ -730,33 +730,70 @@ export const Orders: React.FC = () => {
                             <tr className="bg-slate-50/50">
                               <td colSpan={8} className="p-6 border-t border-b border-slate-100">
                                 <div className="space-y-4 max-w-4xl">
-                                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Package size={14} className="text-slate-400" />
-                                    Detalle de Productos
-                                  </h4>
-                                  <div className="divide-y divide-slate-100 bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
-                                    {order.items.map((item, idx) => (
-                                      <div key={idx} className="p-4 flex items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden border border-slate-100 flex-shrink-0 flex">
-                                            {item.imageUrl ? (
-                                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover m-auto" />
-                                            ) : (
-                                              <Package size={22} className="text-slate-400 m-auto" />
-                                            )}
-                                          </div>
-                                          <div>
-                                            <p className="font-bold text-slate-800 text-sm">{item.name}</p>
-                                            <p className="text-xs text-slate-400 mt-0.5">Precio Unitario: ${item.unitPrice.toLocaleString('es-AR')}</p>
-                                          </div>
+                                  {(() => {
+                                    const items3D = order.items.filter(item => item.type === '3d');
+                                    const totalItems3D = items3D.reduce((acc, item) => acc + item.quantity, 0);
+                                    const printedItems3D = items3D.reduce((acc, item) => acc + (item.printedQty || 0), 0);
+                                    const printingItems3D = items3D.reduce((acc, item) => acc + (item.printingQty || 0), 0);
+                                    return (
+                                      <>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Package size={14} className="text-slate-400" />
+                                            Detalle de Productos
+                                          </h4>
+                                          {totalItems3D > 0 && (
+                                            <div className="flex items-center gap-2 text-xs">
+                                              <span className="text-slate-500 font-medium">Progreso Impresión:</span>
+                                              <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                                {printedItems3D} de {totalItems3D} piezas
+                                              </span>
+                                              {printingItems3D > 0 && (
+                                                <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                                                  {printingItems3D} imprimiéndose
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
-                                        <div className="text-right">
-                                          <p className="font-semibold text-slate-600">Cant: {item.quantity}</p>
-                                          <p className="font-bold text-slate-800 text-sm mt-0.5">${(item.unitPrice * item.quantity).toLocaleString('es-AR')}</p>
+                                        <div className="divide-y divide-slate-100 bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
+                                          {order.items.map((item, idx) => (
+                                            <div key={idx} className="p-4 flex items-center justify-between gap-4">
+                                              <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden border border-slate-100 flex-shrink-0 flex">
+                                                  {item.imageUrl ? (
+                                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover m-auto" />
+                                                  ) : (
+                                                    <Package size={22} className="text-slate-400 m-auto" />
+                                                  )}
+                                                </div>
+                                                <div>
+                                                  <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                                  <p className="text-xs text-slate-400 mt-0.5">Precio Unitario: ${item.unitPrice.toLocaleString('es-AR')}</p>
+                                                  {item.type === '3d' && (
+                                                    <div className="mt-1 flex items-center gap-2">
+                                                      <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                                        Impresión: {item.printedQty || 0} / {item.quantity}
+                                                      </span>
+                                                      {item.printingQty && item.printingQty > 0 ? (
+                                                        <span className="text-[9px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full animate-pulse">
+                                                          {item.printingQty} en proceso
+                                                        </span>
+                                                      ) : null}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="font-semibold text-slate-600">Cant: {item.quantity}</p>
+                                                <p className="font-bold text-slate-800 text-sm mt-0.5">${(item.unitPrice * item.quantity).toLocaleString('es-AR')}</p>
+                                              </div>
+                                            </div>
+                                          ))}
                                         </div>
-                                      </div>
-                                    ))}
-                                  </div>
+                                      </>
+                                    );
+                                  })()}
                                   
                                   {order.observationsPublic && (
                                     <div className="bg-blue-50/50 border border-blue-100/50 rounded-xl p-3 flex gap-2 text-slate-600 text-xs">
@@ -927,36 +964,70 @@ export const Orders: React.FC = () => {
                       </div>
 
                       {/* Mobile Collapsed Items */}
-                      {isExpanded && (
-                        <div className="space-y-3 mt-3 pt-3 border-t border-slate-100 bg-slate-50/50 p-3 rounded-xl">
-                          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Productos:</h4>
-                          <div className="space-y-2">
-                            {order.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-center gap-2 bg-white p-2 rounded-lg border border-slate-200/60">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="w-8 h-8 bg-slate-100 rounded overflow-hidden flex-shrink-0 flex">
-                                    {item.imageUrl ? (
-                                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover m-auto" />
-                                    ) : (
-                                      <Package size={16} className="text-slate-400 m-auto" />
+                      {(() => {
+                        const items3D = order.items.filter(item => item.type === '3d');
+                        const totalItems3D = items3D.reduce((acc, item) => acc + item.quantity, 0);
+                        const printedItems3D = items3D.reduce((acc, item) => acc + (item.printedQty || 0), 0);
+                        const printingItems3D = items3D.reduce((acc, item) => acc + (item.printingQty || 0), 0);
+                        return (
+                          isExpanded && (
+                            <div className="space-y-3 mt-3 pt-3 border-t border-slate-100 bg-slate-50/50 p-3 rounded-xl">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Productos:</h4>
+                                {totalItems3D > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
+                                      Imp: {printedItems3D} / {totalItems3D}
+                                    </span>
+                                    {printingItems3D > 0 && (
+                                      <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                                        {printingItems3D} proc.
+                                      </span>
                                     )}
                                   </div>
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-slate-800 text-xs truncate">{item.name}</p>
-                                    <p className="text-[10px] text-slate-400">{item.quantity} x ${item.unitPrice.toLocaleString('es-AR')}</p>
-                                  </div>
-                                </div>
-                                <span className="font-bold text-slate-800 whitespace-nowrap">${(item.unitPrice * item.quantity).toLocaleString('es-AR')}</span>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                          {order.observationsPublic && (
-                            <div className="text-[11px] text-slate-500 italic border-l-2 border-blue-400 pl-2 mt-2">
-                              {order.observationsPublic}
+                              <div className="space-y-2">
+                                {order.items.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between items-center gap-2 bg-white p-2 rounded-lg border border-slate-200/60">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="w-8 h-8 bg-slate-100 rounded overflow-hidden flex-shrink-0 flex">
+                                        {item.imageUrl ? (
+                                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover m-auto" />
+                                        ) : (
+                                          <Package size={16} className="text-slate-400 m-auto" />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-slate-800 text-xs truncate">{item.name}</p>
+                                        <p className="text-[10px] text-slate-400">{item.quantity} x ${item.unitPrice.toLocaleString('es-AR')}</p>
+                                        {item.type === '3d' && (
+                                          <div className="mt-1 flex items-center gap-1">
+                                            <span className="text-[8px] font-semibold text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded-full">
+                                              Imp: {item.printedQty || 0} / {item.quantity}
+                                            </span>
+                                            {item.printingQty && item.printingQty > 0 ? (
+                                              <span className="text-[8px] text-blue-600 bg-blue-50 px-1 py-0.2 rounded-full animate-pulse">
+                                                {item.printingQty} proc.
+                                              </span>
+                                            ) : null}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <span className="font-bold text-slate-800 whitespace-nowrap">${(item.unitPrice * item.quantity).toLocaleString('es-AR')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {order.observationsPublic && (
+                                <div className="text-[11px] text-slate-500 italic border-l-2 border-blue-400 pl-2 mt-2">
+                                  {order.observationsPublic}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      )}
+                          )
+                        );
+                      })()}
                     </div>
                   );
                 })

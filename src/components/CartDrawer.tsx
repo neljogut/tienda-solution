@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft, AlertCircle, Info, CreditCard, User, Sparkles, Loader2, ShoppingCart, Share2, Copy, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft, AlertCircle, Info, CreditCard, User, Sparkles, Loader2, ShoppingCart, Share2, Copy, CheckCircle2, Calendar } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, collection, query, where, addDoc, writeBatch, getDoc, getCountFromServer } from 'firebase/firestore';
+import { estimateDeliveryTime, type EstimationResult } from '../utils/deliveryEstimator';
 import { roundPriceUp100, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
 import { SearchableClientSelect } from './SearchableClientSelect';
 import { NumericInput } from './NumericInput';
@@ -88,6 +89,8 @@ export const CartDrawer: React.FC = () => {
   const [depositSettings, setDepositSettings] = useState<any>(null);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
+  const [businessSettings, setBusinessSettings] = useState<any>(null);
+  const [deliveryEstimation, setDeliveryEstimation] = useState<EstimationResult | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
 
@@ -161,16 +164,43 @@ export const CartDrawer: React.FC = () => {
       setVariantGroups(groups);
     });
 
-    return () => {
-      unsubPricing();
-      unsubDeposit();
-      unsubRate();
-      unsubClients();
-      unsubSession();
-      unsubCategories();
-      unsubVariantGroups();
-    };
-  }, [isDrawerOpen, userData]);
+    // 8. Business settings listener
+    const unsubBusiness = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) setBusinessSettings(snap.data());
+    });
+ 
+     return () => {
+       unsubPricing();
+       unsubDeposit();
+       unsubRate();
+       unsubClients();
+       unsubSession();
+       unsubCategories();
+       unsubVariantGroups();
+       unsubBusiness();
+     };
+   }, [isDrawerOpen, userData]);
+
+  // Estimate delivery time reactively
+  useEffect(() => {
+    if (items.length > 0) {
+      estimateDeliveryTime(
+        items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          type: item.type,
+        }))
+      )
+        .then((res) => {
+          setDeliveryEstimation(res);
+        })
+        .catch((err) => {
+          console.error('Error estimating delivery time in CartDrawer:', err);
+        });
+    } else {
+      setDeliveryEstimation(null);
+    }
+  }, [items]);
 
   // Reset drawer state on close/open
   useEffect(() => {
@@ -858,8 +888,30 @@ export const CartDrawer: React.FC = () => {
               </div>
 
               {/* Bottom bar Step 1 */}
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
-                <div className="flex justify-between items-center mb-4">
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0 space-y-3">
+                {businessSettings?.showEstimatedDeliveryDateToClient !== false && deliveryEstimation?.estimatedDate && (
+                  <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 p-2.5 rounded-xl text-xs text-slate-700 animate-fadeIn">
+                    <Calendar size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-slate-800">
+                        Fecha de Entrega Estimada:
+                      </p>
+                      <p className="font-semibold text-blue-600 mt-0.5">
+                        {deliveryEstimation.estimatedDate.toLocaleDateString('es-AR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                      <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
+                        (sujeta a tiempos de fabricación, armado y calidad)
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mb-1">
                   <span className="text-slate-600 font-medium">Total a pagar:</span>
                   <span className="text-2xl font-bold text-emerald-600">
                     ${(getTotalPrice() || 0).toLocaleString('es-AR')}

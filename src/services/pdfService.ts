@@ -353,8 +353,13 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
       if (fLines.length > 0) {
         fLines.forEach((fl: any) => {
           const inv = suppliesMap.get(fl.supplyId);
-          const priceKgUsd = inv?.priceUsdKg || globalFilPriceUsd;
-          const cost = (fl.grams / 1000) * (priceKgUsd * rate) * item.quantity;
+          
+          const isCustom = inv && (inv.priceUsdKg ?? 0) > 0;
+          const priceKg = isCustom ? inv.priceUsdKg! : globalFilPriceUsd;
+          const currency = isCustom ? (inv.priceCurrency ?? 'USD') : (pricingSettings3d.filamentPriceCurrency ?? 'USD');
+          
+          const priceKgArs = currency === 'USD' ? (priceKg * rate) : priceKg;
+          const cost = (fl.grams / 1000) * priceKgArs * item.quantity;
           totalCostoFilamento += cost;
           filamentRows.push({
             productName: item.name,
@@ -362,7 +367,7 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
             filDescription: inv?.brand || 'PLA',
             filBrand: inv?.brand || 'PLA',
             grams: fl.grams * item.quantity,
-            precioKg: priceKgUsd * rate,
+            precioKg: priceKgArs,
             costo: cost
           });
         });

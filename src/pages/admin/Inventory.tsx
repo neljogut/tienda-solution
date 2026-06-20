@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where, addDoc, updateDoc, doc, deleteDoc
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import type { Filament, Supply, InventoryMovementType } from '../../types/inventory';
-import { getFilamentPriceUsdKg, hasCustomFilamentPrice } from '../../types/inventory';
+import { hasCustomFilamentPrice } from '../../types/inventory';
 import type { PricingSettings3D, BusinessSettings } from '../../types/settings';
 import { default3D, getDefaultBusinessSettings } from '../../constants/defaults';
 import { recalculateAllProductsInFirestore } from '../../services/pricingService';
@@ -752,7 +752,17 @@ export const Inventory: React.FC = () => {
                       </td>
                       <td className="p-4 text-right">
                         <p className="font-bold text-slate-800">
-                          U$D {getFilamentPriceUsdKg(f, pricing3D.filamentPriceUsdKg).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {(() => {
+                            const isCustom = hasCustomFilamentPrice(f);
+                            const currency = isCustom ? (f.priceCurrency ?? 'USD') : (pricing3D.filamentPriceCurrency ?? 'USD');
+                            const priceVal = isCustom ? f.priceUsdKg! : pricing3D.filamentPriceUsdKg;
+                            return (
+                              <>
+                                {currency === 'USD' ? 'U$D' : '$'}{' '}
+                                {priceVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </>
+                            );
+                          })()}
                         </p>
                         {!hasCustomFilamentPrice(f) && (
                           <p className="text-[9px] text-blue-500 font-semibold">Parámetros</p>
@@ -870,9 +880,19 @@ export const Inventory: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Precio USD/Kg</span>
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Precio/Kg</span>
                         <span className="font-bold text-slate-800">
-                          U$D {getFilamentPriceUsdKg(f, pricing3D.filamentPriceUsdKg).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {(() => {
+                            const isCustom = hasCustomFilamentPrice(f);
+                            const currency = isCustom ? (f.priceCurrency ?? 'USD') : (pricing3D.filamentPriceCurrency ?? 'USD');
+                            const priceVal = isCustom ? f.priceUsdKg! : pricing3D.filamentPriceUsdKg;
+                            return (
+                              <>
+                                {currency === 'USD' ? 'U$D' : '$'}{' '}
+                                {priceVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </>
+                            );
+                          })()}
                         </span>
                         {!hasCustomFilamentPrice(f) && (
                           <span className="block text-[8px] text-blue-500 font-bold">Global Parámetros</span>
@@ -1175,7 +1195,7 @@ export const Inventory: React.FC = () => {
           item={editingItem} 
           onClose={() => setIsModalOpen(false)} 
           userId={currentUser?.uid || 'system'}
-          defaultFilamentPriceUsdKg={pricing3D.filamentPriceUsdKg}
+          pricing3D={pricing3D}
         />
       )}
 
@@ -1198,14 +1218,15 @@ const InventoryModal = ({
   item, 
   onClose,
   userId,
-  defaultFilamentPriceUsdKg,
+  pricing3D,
 }: { 
   type: 'filaments' | 'supplies'; 
   item: any; 
   onClose: () => void;
   userId: string;
-  defaultFilamentPriceUsdKg: number;
+  pricing3D: PricingSettings3D;
 }) => {
+  const defaultFilamentPriceUsdKg = pricing3D.filamentPriceUsdKg;
   const [formData, setFormData] = useState<any>(
     item
       ? {
@@ -1213,6 +1234,7 @@ const InventoryModal = ({
           minStockGrams: item.minStockGrams ?? 200,
           minStock: item.minStock ?? 2,
           priceUsdKg: hasCustomFilamentPrice(item) ? item.priceUsdKg : 0,
+          priceCurrency: item.priceCurrency ?? 'USD',
         }
       : { 
           type: type === 'filaments' ? 'filament' : 'supply',
@@ -1222,6 +1244,7 @@ const InventoryModal = ({
           initialWeightGrams: 1000,
           availableWeightGrams: 1000,
           priceUsdKg: 0,
+          priceCurrency: 'USD',
           minStockGrams: 200,
           currentStock: 10,
           minStock: 2,
@@ -1271,6 +1294,9 @@ const InventoryModal = ({
         dataToSave.priceUsdKg = useCustomFilamentPrice
           ? (dataToSave.priceUsdKg === '' ? 0 : Number(dataToSave.priceUsdKg))
           : 0;
+        dataToSave.priceCurrency = useCustomFilamentPrice
+          ? (formData.priceCurrency ?? 'USD')
+          : 'USD';
         dataToSave.minStockGrams = dataToSave.minStockGrams === '' ? 0 : Number(dataToSave.minStockGrams);
         dataToSave.availableWeightGrams = dataToSave.availableWeightGrams === '' ? 0 : Number(dataToSave.availableWeightGrams);
         if (!item?.id) {
@@ -1479,28 +1505,59 @@ const InventoryModal = ({
                       const checked = e.target.checked;
                       setUseCustomFilamentPrice(checked);
                       if (!checked) {
-                        setFormData({ ...formData, priceUsdKg: 0 });
+                        setFormData({ ...formData, priceUsdKg: 0, priceCurrency: 'USD' });
                       } else if (!formData.priceUsdKg) {
-                        setFormData({ ...formData, priceUsdKg: defaultFilamentPriceUsdKg });
+                        setFormData({ ...formData, priceUsdKg: defaultFilamentPriceUsdKg, priceCurrency: pricing3D.filamentPriceCurrency ?? 'USD' });
                       }
                     }}
                   />
                   <label htmlFor="useCustomFilamentPrice" className="font-bold text-slate-600 cursor-pointer text-sm">
-                    Usar precio personalizado (USD/Kg)
+                    Usar precio personalizado
                   </label>
                 </div>
                 {useCustomFilamentPrice ? (
-                  <div>
-                    <label className="input-label font-bold text-slate-500 uppercase">Precio USD/Kg (Costo)</label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="input-label font-bold text-slate-500 uppercase mb-0">Precio Personalizado (Costo)</label>
+                      <div className="flex bg-slate-200 rounded-lg p-0.5 text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, priceCurrency: 'USD' })}
+                          className={`px-2 py-0.5 rounded-md transition-all ${
+                            (formData.priceCurrency ?? 'USD') === 'USD'
+                              ? 'bg-white text-blue-600 shadow-sm'
+                              : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          USD
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, priceCurrency: 'ARS' })}
+                          className={`px-2 py-0.5 rounded-md transition-all ${
+                            (formData.priceCurrency ?? 'USD') === 'ARS'
+                              ? 'bg-white text-emerald-600 shadow-sm'
+                              : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          ARS
+                        </button>
+                      </div>
+                    </div>
                     <div className="relative mt-1">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-semibold">U$D</span>
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-semibold">
+                        {(formData.priceCurrency ?? 'USD') === 'USD' ? 'U$D' : '$'}
+                      </span>
                       <NumericInput
                         allowDecimals
                         required
-                        className="input w-full pl-10"
+                        className="input w-full pl-12 pr-16"
                         value={formData.priceUsdKg}
                         onChange={val => setFormData({ ...formData, priceUsdKg: val })}
                       />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                        / kg
+                      </span>
                     </div>
                   </div>
                 ) : (
@@ -1508,7 +1565,8 @@ const InventoryModal = ({
                     Usa el precio global de{' '}
                     <strong>Parámetros de precios</strong>:{' '}
                     <span className="text-blue-600 font-bold">
-                      U$D {defaultFilamentPriceUsdKg.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg
+                      {(pricing3D.filamentPriceCurrency ?? 'USD') === 'USD' ? 'U$D' : '$'}{' '}
+                      {defaultFilamentPriceUsdKg.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg
                     </span>
                   </p>
                 )}

@@ -15,7 +15,12 @@ export const calculate3DPrice = (
   const timeMins = product.printTimeMinutes || 0;
   const isKeychain = !!product.isKeychain;
 
-  const costFilament = (weight / 1000) * settings.filamentPriceUsdKg * exchangeRate;
+  const filamentCurrency = settings.filamentPriceCurrency ?? 'USD';
+  const filamentPriceArsKg = filamentCurrency === 'USD' 
+    ? settings.filamentPriceUsdKg * exchangeRate 
+    : settings.filamentPriceUsdKg;
+
+  const costFilament = (weight / 1000) * filamentPriceArsKg;
   const costElectricity = (timeMins / 60) * (settings.printerWatts / 1000) * settings.kwhPriceArs;
   const costMaintenance = (timeMins / 60) * (settings.estimatedSparesCostArs / settings.printerLifespanHours);
   

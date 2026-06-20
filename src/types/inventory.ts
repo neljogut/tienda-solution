@@ -12,6 +12,7 @@ export interface Filament {
   availableWeightGrams: number;
   /** 0 o ausente = usar precio global de Parámetros de precios */
   priceUsdKg?: number;
+  priceCurrency?: 'USD' | 'ARS';
   provider: string;
   purchaseDate: string;
   minStockGrams: number;
@@ -81,4 +82,16 @@ export function getFilamentPriceUsdKg(
   defaultUsdKg: number
 ): number {
   return hasCustomFilamentPrice(filament) ? filament.priceUsdKg! : defaultUsdKg;
+}
+
+export function getFilamentPriceAndCurrency(
+  filament: Pick<Filament, 'priceUsdKg' | 'priceCurrency'>,
+  defaultPrice: number,
+  defaultCurrency: 'USD' | 'ARS' = 'USD'
+): { price: number; currency: 'USD' | 'ARS' } {
+  const hasCustom = hasCustomFilamentPrice(filament);
+  return {
+    price: hasCustom ? filament.priceUsdKg! : defaultPrice,
+    currency: hasCustom ? (filament.priceCurrency ?? 'USD') : defaultCurrency,
+  };
 }

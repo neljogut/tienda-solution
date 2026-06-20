@@ -2,6 +2,7 @@ import type { PricingSettings3D, PricingSettingsResale, DepositSettings, Payment
 
 export const default3D: PricingSettings3D = {
   "filamentPriceUsdKg": 9.68,
+  "filamentPriceCurrency": "USD",
   "kwhPriceArs": 150,
   "printerWatts": 120,
   "printerLifespanHours": 4320,

@@ -1,7 +1,6 @@
 import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../types/settings';
 import type { Product, Product3D, ProductResale, PriceTier, FilamentLine, SupplyLine } from '../types/product';
 import type { Category } from '../types/category';
-import { getFilamentPriceUsdKg } from '../types/inventory';
 import { doc, getDoc, getDocs, collection, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { default3D, defaultResale } from '../constants/defaults';
@@ -9,10 +8,11 @@ import { default3D, defaultResale } from '../constants/defaults';
 type InventoryItem = {
   type?: string;
   priceUsdKg?: number;
+  priceCurrency?: 'USD' | 'ARS';
   unitCostArs?: number;
 };
 
-/** USD/kg del filamento: personalizado si existe, si no el de Parámetros de precios. */
+/** Costo en ARS por gramo de filamento, aplicando tipo de cambio únicamente si corresponde a USD. */
 function filamentPricePerGramArs(
   filamentId: string | undefined,
   settings: PricingSettings3D,
@@ -20,11 +20,12 @@ function filamentPricePerGramArs(
   inventoryMap?: Map<string, InventoryItem>
 ): number {
   const item = filamentId ? inventoryMap?.get(filamentId) : undefined;
-  const usdKg = getFilamentPriceUsdKg(
-    { priceUsdKg: item?.priceUsdKg },
-    settings.filamentPriceUsdKg
-  );
-  return (usdKg * exchangeRate.currentUsdToArs) / 1000;
+  const hasCustom = item && (item.priceUsdKg ?? 0) > 0;
+  const priceKg = hasCustom ? item.priceUsdKg! : settings.filamentPriceUsdKg;
+  const currency = hasCustom ? (item.priceCurrency ?? 'USD') : (settings.filamentPriceCurrency ?? 'USD');
+  
+  const priceArsKg = currency === 'USD' ? (priceKg * exchangeRate.currentUsdToArs) : priceKg;
+  return priceArsKg / 1000;
 }
 
 function suppliesCostArs(

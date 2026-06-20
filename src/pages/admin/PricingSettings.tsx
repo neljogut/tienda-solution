@@ -199,9 +199,7 @@ export const PricingSettings: React.FC = () => {
     currentRate
   );
 
-  // ─── Field helpers ─────────────────────────────────────────────────────────
-
-  const update3D = (field: keyof PricingSettings3D, value: number) =>
+  const update3D = (field: keyof PricingSettings3D, value: any) =>
     setSettings3D((prev) => ({ ...prev, [field]: value }));
 
   const updateResale = (field: keyof PricingSettingsResale, value: number | boolean) =>
@@ -340,14 +338,53 @@ export const PricingSettings: React.FC = () => {
               Costos de Producción
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              <FieldCard
-                label="Precio Filamento (USD/Kg)"
-                icon={<DollarSign size={16} />}
-                value={settings3D.filamentPriceUsdKg}
-                onChange={(v) => update3D('filamentPriceUsdKg', v)}
-                suffix="USD"
-                step={0.5}
-              />
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 hover:border-blue-200 hover:shadow-sm transition-all group">
+                <label className="flex items-center justify-between text-sm font-medium text-slate-600 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 group-hover:text-blue-500 transition-colors"><DollarSign size={16} /></span>
+                    Precio Filamento
+                  </div>
+                  {/* Currency Selector toggle */}
+                  <div className="flex bg-slate-200 rounded-lg p-0.5 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => update3D('filamentPriceCurrency', 'USD')}
+                      className={`px-2 py-0.5 rounded-md transition-all ${
+                        (settings3D.filamentPriceCurrency ?? 'USD') === 'USD'
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      USD
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => update3D('filamentPriceCurrency', 'ARS')}
+                      className={`px-2 py-0.5 rounded-md transition-all ${
+                        (settings3D.filamentPriceCurrency ?? 'USD') === 'ARS'
+                          ? 'bg-white text-emerald-600 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      ARS
+                    </button>
+                  </div>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                    {(settings3D.filamentPriceCurrency ?? 'USD') === 'USD' ? 'U$D' : '$'}
+                  </span>
+                  <NumericInput
+                    allowDecimals
+                    className="w-full border border-slate-200 rounded-lg p-2.5 pl-12 pr-16 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-slate-800 font-semibold text-sm"
+                    value={settings3D.filamentPriceUsdKg}
+                    onChange={(v) => update3D('filamentPriceUsdKg', v)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                    / kg
+                  </span>
+                </div>
+              </div>
               <FieldCard
                 label="Precio KWh (ARS)"
                 icon={<Zap size={16} />}

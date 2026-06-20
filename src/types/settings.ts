@@ -1,5 +1,6 @@
 export interface PricingSettings3D {
   filamentPriceUsdKg: number;
+  filamentPriceCurrency?: 'USD' | 'ARS';
   kwhPriceArs: number;
   printerWatts: number;
   printerLifespanHours: number;

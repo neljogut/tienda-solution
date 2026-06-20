@@ -99,6 +99,19 @@ export const Catalog: React.FC = () => {
     return scores;
   }, [orders, products]);
 
+  const soldQuantities = useMemo(() => {
+    const counts: Record<string, number> = {};
+    orders.forEach((order) => {
+      if (order.orderStatus === 'cancelled') return;
+      order.items?.forEach((item: any) => {
+        const pId = item.productId;
+        if (!pId) return;
+        counts[pId] = (counts[pId] || 0) + (item.quantity || 0);
+      });
+    });
+    return counts;
+  }, [orders]);
+
   const { canonical: canonicalCategories, idRemap } = useMemo(
     () => dedupeCategories(categories),
     [categories]
@@ -719,6 +732,7 @@ export const Catalog: React.FC = () => {
               isAdminView={isAdminView}
               getRetailPrice={getRetailPrice}
               getCost={getCost}
+              salesCount={soldQuantities[product.id] || 0}
             />
           ))}
         </div>

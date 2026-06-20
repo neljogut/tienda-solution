@@ -364,52 +364,126 @@ export const ProductDetail: React.FC = () => {
       </div>
 
       {isAdminView && (
-        <div className="mt-12 p-6 bg-slate-800 rounded-2xl text-white">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <LockIcon /> Detalles Internos (Solo Administrador)
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-            {isOwner && (
-              <>
-                <div>
-                  <p className="text-slate-400 text-sm">Costo Calculado</p>
-                  <p className="text-xl font-bold">${product.calculatedCost?.toLocaleString('es-AR')}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">Ganancia Minorista</p>
-                  <p className="text-xl font-bold text-emerald-400">${rawRetailProfit.toLocaleString('es-AR')}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">Ganancia Mayorista</p>
-                  <p className="text-xl font-bold text-amber-400">${rawWholesaleProfit.toLocaleString('es-AR')}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400/90 text-sm font-semibold flex flex-col">
-                    <span>G. Minorista</span>
-                    <span className="text-[10px] text-slate-400 font-normal leading-tight">(Neto Colab.)</span>
-                  </p>
-                  <p className="text-xl font-bold text-emerald-400 mt-1" title={`Descontada comisión de colaborador del ${effectiveCommPercent}%`}>
-                    ${netRetailProfit.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                  </p>
-                  {effectiveCommPercent > 0 && <span className="text-[9px] text-slate-500">-{effectiveCommPercent}% colab.</span>}
-                </div>
-                <div>
-                  <p className="text-slate-400/90 text-sm font-semibold flex flex-col">
-                    <span>G. Mayorista</span>
-                    <span className="text-[10px] text-slate-400 font-normal leading-tight">(Neto Colab.)</span>
-                  </p>
-                  <p className="text-xl font-bold text-amber-400 mt-1" title={`Descontada comisión de colaborador del ${effectiveCommPercent}%`}>
-                    ${netWholesaleProfit.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                  </p>
-                  {effectiveCommPercent > 0 && <span className="text-[9px] text-slate-500">-{effectiveCommPercent}% colab.</span>}
-                </div>
-              </>
-            )}
+        <div className="mt-12 p-6 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200/60">
+            <div className="p-2 bg-slate-200/60 text-slate-600 rounded-xl">
+              <LockIcon />
+            </div>
             <div>
-              <p className="text-slate-400 text-sm">Precio Mayorista (Auto)</p>
-              <p className="text-xl font-bold text-blue-400">${product.calculatedWholesalePrice?.toLocaleString('es-AR')}</p>
+              <h3 className="text-lg font-bold text-slate-850">
+                Detalles Internos
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Información exclusiva para administradores</p>
             </div>
           </div>
+          
+          {!isOwner ? (
+            <div className="p-5 bg-white border border-slate-200/60 rounded-xl shadow-xs max-w-md animate-fadeIn">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Información de Precios</h4>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Precio Público</p>
+                  <p className="text-2xl font-black text-slate-800 mt-1">${price.toLocaleString('es-AR')}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Precio Mayorista</p>
+                  <p className="text-2xl font-black text-slate-800 mt-1">${wholesalePrice.toLocaleString('es-AR')}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn">
+              {/* CARD 1: Costo y Estructura */}
+              <div className="p-5 bg-white border border-slate-200/60 rounded-xl shadow-xs flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Estructura de Costo</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-slate-500 text-xs font-semibold">Costo Calculado</p>
+                      <p className="text-2xl font-black text-slate-800 mt-1">
+                        ${product.calculatedCost?.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-xs font-semibold">Tipo de Artículo</p>
+                      <p className="text-sm font-bold text-slate-700 mt-1">
+                        {product.type === '3d' ? 'Impresión 3D' : 'Reventa / Stock'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {product.type === '3d' && (
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100">
+                      Comisión Colab: {effectiveCommPercent}%
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 2: Minorista */}
+              <div className="p-5 bg-emerald-50/20 border border-emerald-100/80 rounded-xl space-y-4 shadow-xs">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700/80">Canal Minorista</h4>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-slate-500 text-xs font-semibold">Precio Público (Venta)</p>
+                    <p className="text-2xl font-black text-slate-800 mt-1">${price.toLocaleString('es-AR')}</p>
+                  </div>
+                  <div className="pt-3 border-t border-emerald-100/50">
+                    <p className="text-slate-500 text-xs font-semibold">Ganancia Directa</p>
+                    <p className="text-xl font-extrabold text-emerald-600 mt-1">${rawRetailProfit.toLocaleString('es-AR')}</p>
+                  </div>
+                  {effectiveCommPercent > 0 && (
+                    <div className="pt-3 border-t border-emerald-100 bg-emerald-500/5 -mx-5 px-5 py-3 rounded-b-xl">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-emerald-800 text-xs font-extrabold">Ganancia Real</p>
+                          <p className="text-[10px] text-emerald-600/80 font-bold leading-tight">(Neto Colaborador)</p>
+                        </div>
+                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                          -{effectiveCommPercent}%
+                        </span>
+                      </div>
+                      <p className="text-2xl font-black text-emerald-800 mt-1.5">
+                        ${netRetailProfit.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CARD 3: Mayorista */}
+              <div className="p-5 bg-amber-50/20 border border-amber-100/80 rounded-xl space-y-4 shadow-xs">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-700/80">Canal Mayorista</h4>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-slate-500 text-xs font-semibold">Precio Mayorista {product.priceTiers && product.priceTiers.length > 0 ? '(Tramos)' : '(Auto)'}</p>
+                    <p className="text-2xl font-black text-slate-800 mt-1">${wholesalePrice.toLocaleString('es-AR')}</p>
+                  </div>
+                  <div className="pt-3 border-t border-amber-100/50">
+                    <p className="text-slate-500 text-xs font-semibold">Ganancia Directa</p>
+                    <p className="text-xl font-extrabold text-amber-600 mt-1">${rawWholesaleProfit.toLocaleString('es-AR')}</p>
+                  </div>
+                  {effectiveCommPercent > 0 && (
+                    <div className="pt-3 border-t border-amber-100 bg-amber-500/5 -mx-5 px-5 py-3 rounded-b-xl">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-amber-800 text-xs font-extrabold">Ganancia Real</p>
+                          <p className="text-[10px] text-amber-600/80 font-bold leading-tight">(Neto Colaborador)</p>
+                        </div>
+                        <span className="text-[9px] font-black text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200">
+                          -{effectiveCommPercent}%
+                        </span>
+                      </div>
+                      <p className="text-2xl font-black text-amber-800 mt-1.5">
+                        ${netWholesaleProfit.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

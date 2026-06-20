@@ -13,6 +13,7 @@ interface ProductCardProps {
   isAdminView?: boolean;
   getRetailPrice?: (product: Product) => number;
   getCost?: (product: Product) => number;
+  salesCount?: number;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -20,6 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isAdminView = false,
   getRetailPrice,
   getCost,
+  salesCount,
 }) => {
   const navigate = useNavigate();
   const { addItem } = useCartStore();
@@ -261,6 +263,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {isOutOfStock && (
           <div className={`absolute top-2 z-20 ${images.length > 1 ? 'left-2' : 'right-2'}`}>
             <span className="badge badge-red text-[10px]">Sin Stock</span>
+          </div>
+        )}
+
+        {/* Sold badge (Owner only) */}
+        {isOwner && salesCount !== undefined && salesCount > 0 && (
+          <div className={`absolute z-20 ${images.length > 1 ? 'top-10 right-2' : 'top-2 right-2'}`}>
+            <span className="badge badge-purple text-[8px] sm:text-[10px] px-1.5 py-0.5 sm:px-2 sm:py-0.5 shadow-sm">
+              {salesCount} vend.
+            </span>
           </div>
         )}
 

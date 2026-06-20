@@ -95,12 +95,10 @@ async function main() {
       if (item.type === '3d') {
         const printTime = productTimes[item.productId] || 0;
         const printed = item.printedQty || 0;
-        const printing = item.printingQty || 0;
-        const pending = item.quantity - printed - printing;
+        const pending = Math.max(0, item.quantity - printed);
         
-        const remainingUnits = pending + printing * 0.5;
-        if (remainingUnits > 0) {
-          remainingMinutes += remainingUnits * printTime;
+        if (pending > 0) {
+          remainingMinutes += pending * printTime;
         }
       }
     });

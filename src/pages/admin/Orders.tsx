@@ -249,12 +249,10 @@ export const Orders: React.FC = () => {
             if (item.type === '3d') {
               const printTime = productTimes[item.productId] || 0;
               const printed = item.printedQty || 0;
-              const printing = item.printingQty || 0;
-              const pending = item.quantity - printed - printing;
+              const pending = Math.max(0, item.quantity - printed);
               
-              const remainingUnits = pending + printing * 0.5;
-              if (remainingUnits > 0) {
-                remainingMinutes += remainingUnits * printTime;
+              if (pending > 0) {
+                remainingMinutes += pending * printTime;
               }
             }
           });
@@ -847,7 +845,6 @@ export const Orders: React.FC = () => {
                                     const items3D = order.items.filter(item => item.type === '3d');
                                     const totalItems3D = items3D.reduce((acc, item) => acc + item.quantity, 0);
                                     const printedItems3D = items3D.reduce((acc, item) => acc + (item.printedQty || 0), 0);
-                                    const printingItems3D = items3D.reduce((acc, item) => acc + (item.printingQty || 0), 0);
                                     return (
                                       <>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -861,11 +858,6 @@ export const Orders: React.FC = () => {
                                               <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
                                                 {printedItems3D} de {totalItems3D} piezas
                                               </span>
-                                              {printingItems3D > 0 && (
-                                                <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
-                                                  {printingItems3D} imprimiéndose
-                                                </span>
-                                              )}
                                             </div>
                                           )}
                                         </div>
@@ -888,11 +880,6 @@ export const Orders: React.FC = () => {
                                                       <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
                                                         Impresión: {item.printedQty || 0} / {item.quantity}
                                                       </span>
-                                                      {item.printingQty && item.printingQty > 0 ? (
-                                                        <span className="text-[9px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full animate-pulse">
-                                                          {item.printingQty} en proceso
-                                                        </span>
-                                                      ) : null}
                                                     </div>
                                                   )}
                                                 </div>
@@ -1094,12 +1081,10 @@ export const Orders: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Mobile Collapsed Items */}
                       {(() => {
                         const items3D = order.items.filter(item => item.type === '3d');
                         const totalItems3D = items3D.reduce((acc, item) => acc + item.quantity, 0);
                         const printedItems3D = items3D.reduce((acc, item) => acc + (item.printedQty || 0), 0);
-                        const printingItems3D = items3D.reduce((acc, item) => acc + (item.printingQty || 0), 0);
                         return (
                           isExpanded && (
                             <div className="space-y-3 mt-3 pt-3 border-t border-slate-100 bg-slate-50/50 p-3 rounded-xl">
@@ -1110,11 +1095,6 @@ export const Orders: React.FC = () => {
                                     <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
                                       Imp: {printedItems3D} / {totalItems3D}
                                     </span>
-                                    {printingItems3D > 0 && (
-                                      <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
-                                        {printingItems3D} proc.
-                                      </span>
-                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1137,11 +1117,6 @@ export const Orders: React.FC = () => {
                                             <span className="text-[8px] font-semibold text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded-full">
                                               Imp: {item.printedQty || 0} / {item.quantity}
                                             </span>
-                                            {item.printingQty && item.printingQty > 0 ? (
-                                              <span className="text-[8px] text-blue-600 bg-blue-50 px-1 py-0.2 rounded-full animate-pulse">
-                                                {item.printingQty} proc.
-                                              </span>
-                                            ) : null}
                                           </div>
                                         )}
                                       </div>

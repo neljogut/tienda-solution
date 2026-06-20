@@ -122,22 +122,18 @@ export const PrintQueue: React.FC = () => {
 
         let totalUnits = 0;
         let printedUnits = 0;
-        let printingUnits = 0;
         let remainingMinutes = 0;
 
         const itemsWithPrintTimes: PrintItem[] = items3D.map((item) => {
           const product = products[item.productId];
           const printTime = product?.printTimeMinutes || 0;
           const printed = item.printedQty || 0;
-          const printing = item.printingQty || 0;
-          const pending = item.quantity - printed - printing;
+          const pending = Math.max(0, item.quantity - printed);
 
           totalUnits += item.quantity;
           printedUnits += printed;
-          printingUnits += printing;
 
-          // Printing units count for 50% remaining print time
-          const itemRem = pending * printTime + printing * 0.5 * printTime;
+          const itemRem = pending * printTime;
           remainingMinutes += itemRem;
 
           return {
@@ -147,14 +143,14 @@ export const PrintQueue: React.FC = () => {
             imageUrl: item.imageUrl,
             quantity: item.quantity,
             printedQty: printed,
-            printingQty: printing,
+            printingQty: 0,
             pendingQty: pending,
             printTimeMinutes: printTime,
             remainingMinutes: itemRem,
           };
         });
 
-        const pendingUnits = totalUnits - printedUnits - printingUnits;
+        const pendingUnits = totalUnits - printedUnits;
 
         return {
           orderId: order.id,
@@ -163,7 +159,7 @@ export const PrintQueue: React.FC = () => {
           date: order.date,
           totalUnits,
           printedUnits,
-          printingUnits,
+          printingUnits: 0,
           pendingUnits,
           remainingMinutes,
           items: itemsWithPrintTimes,
@@ -190,10 +186,9 @@ export const PrintQueue: React.FC = () => {
 
   // Calculate global totals
   const totals = useMemo(() => {
-    let pending = 0, printing = 0, printed = 0, totalMinutes = 0;
+    let pending = 0, printed = 0, totalMinutes = 0;
     for (const g of orderGroups) {
       pending += g.pendingUnits;
-      printing += g.printingUnits;
       printed += g.printedUnits;
       totalMinutes += g.remainingMinutes;
     }
@@ -203,31 +198,30 @@ export const PrintQueue: React.FC = () => {
     const estimatedDays = settings.workHoursPerDay > 0
       ? adjustedMinutes / 60 / settings.workHoursPerDay
       : 0;
-    return { pending, printing, printed, totalMinutes, adjustedMinutes, estimatedDays };
+    return { pending, printing: 0, printed, totalMinutes, adjustedMinutes, estimatedDays };
   }, [orderGroups, settings]);
 
-  // Update a single item's printed/printing counts in Firestore
+  // Update a single item's printed counts in Firestore
   const updateItemPrint = useCallback(async (
-    orderId: string, itemIndex: number, newPrinted: number, newPrinting: number,
+    orderId: string, itemIndex: number, newPrinted: number,
   ) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
     const newItems = [...order.items];
-    newItems[itemIndex] = { ...newItems[itemIndex], printedQty: newPrinted, printingQty: newPrinting };
+    newItems[itemIndex] = { ...newItems[itemIndex], printedQty: newPrinted, printingQty: 0 };
 
-    let totalItems3D = 0, printedItems3D = 0, printingItems3D = 0;
+    let totalItems3D = 0, printedItems3D = 0;
     for (const item of newItems) {
       if (item.type === '3d') {
         totalItems3D += item.quantity;
         printedItems3D += item.printedQty || 0;
-        printingItems3D += item.printingQty || 0;
       }
     }
 
     await updateDoc(doc(db, 'orders', orderId), {
       items: newItems,
-      printProgress: { totalItems3D, printedItems3D, printingItems3D },
+      printProgress: { totalItems3D, printedItems3D, printingItems3D: 0 },
     });
   }, [orders]);
 
@@ -236,23 +230,8 @@ export const PrintQueue: React.FC = () => {
     if (!order) return;
     const item = order.items[itemIndex];
     const printed = item.printedQty || 0;
-    const printing = item.printingQty || 0;
     if (printed >= item.quantity) return;
-    if (printing > 0) {
-      updateItemPrint(orderId, itemIndex, printed + 1, printing - 1);
-    } else {
-      updateItemPrint(orderId, itemIndex, printed + 1, printing);
-    }
-  }, [orders, updateItemPrint]);
-
-  const markOnePrinting = useCallback((orderId: string, itemIndex: number) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-    const item = order.items[itemIndex];
-    const printed = item.printedQty || 0;
-    const printing = item.printingQty || 0;
-    if (item.quantity - printed - printing <= 0) return;
-    updateItemPrint(orderId, itemIndex, printed, printing + 1);
+    updateItemPrint(orderId, itemIndex, printed + 1);
   }, [orders, updateItemPrint]);
 
   const unmarkOnePrinted = useCallback((orderId: string, itemIndex: number) => {
@@ -260,19 +239,8 @@ export const PrintQueue: React.FC = () => {
     if (!order) return;
     const item = order.items[itemIndex];
     const printed = item.printedQty || 0;
-    const printing = item.printingQty || 0;
     if (printed <= 0) return;
-    updateItemPrint(orderId, itemIndex, printed - 1, printing);
-  }, [orders, updateItemPrint]);
-
-  const unmarkOnePrinting = useCallback((orderId: string, itemIndex: number) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-    const item = order.items[itemIndex];
-    const printed = item.printedQty || 0;
-    const printing = item.printingQty || 0;
-    if (printing <= 0) return;
-    updateItemPrint(orderId, itemIndex, printed, printing - 1);
+    updateItemPrint(orderId, itemIndex, printed - 1);
   }, [orders, updateItemPrint]);
 
   // Save settings
@@ -365,20 +333,13 @@ export const PrintQueue: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-amber-600 mb-1">
             <CircleDot size={16} />
             <span className="text-xs font-semibold uppercase tracking-wider">Pendientes</span>
           </div>
           <p className="text-2xl font-bold text-slate-800">{totals.pending}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-blue-600 mb-1">
-            <Loader2 size={16} />
-            <span className="text-xs font-semibold uppercase tracking-wider">Imprimiendo</span>
-          </div>
-          <p className="text-2xl font-bold text-slate-800">{totals.printing}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-emerald-600 mb-1">
@@ -411,14 +372,9 @@ export const PrintQueue: React.FC = () => {
               <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500"
                 style={{ width: `${(totals.printed / totalPiecesInQueue) * 100}%` }} />
             )}
-            {totals.printing > 0 && (
-              <div className="bg-gradient-to-r from-blue-400 to-blue-500 transition-all duration-500"
-                style={{ width: `${(totals.printing / totalPiecesInQueue) * 100}%` }} />
-            )}
           </div>
           <div className="flex gap-4 mt-2 text-xs text-slate-500">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Impresos</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Imprimiendo</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-200" /> Pendientes</span>
           </div>
         </div>
@@ -440,7 +396,7 @@ export const PrintQueue: React.FC = () => {
           </h2>
           {ordersWithEstimates.map(group => {
             const isExpanded = expandedOrders.has(group.orderId);
-            const allDone = group.pendingUnits === 0 && group.printingUnits === 0;
+            const allDone = group.pendingUnits === 0;
 
             return (
               <div key={group.orderId} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${allDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
@@ -460,13 +416,11 @@ export const PrintQueue: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                       {group.pendingUnits > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{group.pendingUnits} pend.</span>}
-                      {group.printingUnits > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{group.printingUnits} impr.</span>}
                       {group.printedUnits > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{group.printedUnits} listos</span>}
                       <span className="text-slate-400">· Recibido: {new Date(group.date).toLocaleDateString('es-AR')}</span>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden flex mt-2 max-w-xs">
                       {group.printedUnits > 0 && <div className="bg-emerald-500 transition-all duration-300" style={{ width: `${(group.printedUnits / group.totalUnits) * 100}%` }} />}
-                      {group.printingUnits > 0 && <div className="bg-blue-500 transition-all duration-300" style={{ width: `${(group.printingUnits / group.totalUnits) * 100}%` }} />}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -491,7 +445,7 @@ export const PrintQueue: React.FC = () => {
                 {isExpanded && (
                   <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
                     {group.items.map(item => {
-                      const pending = item.quantity - item.printedQty - item.printingQty;
+                      const pending = item.quantity - item.printedQty;
                       return (
                         <div key={`${group.orderId}-${item.productId}`} className="bg-white rounded-xl border border-slate-200/60 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
@@ -522,24 +476,8 @@ export const PrintQueue: React.FC = () => {
                                   <Minus size={10} />
                                 </button>
                                 <span className="text-xs font-bold text-emerald-700 min-w-[16px] text-center">{item.printedQty}</span>
-                                <button onClick={() => markOnePrinted(group.orderId, item.itemIndex)} disabled={item.printedQty + item.printingQty >= item.quantity}
+                                <button onClick={() => markOnePrinted(group.orderId, item.itemIndex)} disabled={item.printedQty >= item.quantity}
                                   className="w-5 h-5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                                  <Plus size={10} />
-                                </button>
-                              </div>
-                            </div>
-                            {/* Printing control */}
-                            <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-2 py-1">
-                              <Loader2 size={12} className="text-blue-600" />
-                              <span className="text-[11px] font-medium text-blue-700">Imprimiendo</span>
-                              <div className="flex items-center gap-1 ml-1">
-                                <button onClick={() => unmarkOnePrinting(group.orderId, item.itemIndex)} disabled={item.printingQty <= 0}
-                                  className="w-5 h-5 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                                  <Minus size={10} />
-                                </button>
-                                <span className="text-xs font-bold text-blue-700 min-w-[16px] text-center">{item.printingQty}</span>
-                                <button onClick={() => markOnePrinting(group.orderId, item.itemIndex)} disabled={pending <= 0}
-                                  className="w-5 h-5 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                   <Plus size={10} />
                                 </button>
                               </div>
@@ -570,7 +508,7 @@ export const PrintQueue: React.FC = () => {
       )}
 
       {/* Summary box */}
-      {ordersWithEstimates.some(e => e.pendingUnits > 0 || e.printingUnits > 0) && (
+      {ordersWithEstimates.some(e => e.pendingUnits > 0) && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mt-6">
           <p className="text-sm text-indigo-800 flex items-start gap-2">
             <TrendingUp size={16} className="flex-shrink-0 mt-0.5" />

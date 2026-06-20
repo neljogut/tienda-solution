@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { 
   ShoppingCart, Package, Clock, Truck, CheckCircle2, XCircle, 
-  ChevronDown, ChevronUp, Tag
+  ChevronDown, ChevronUp, Tag, CalendarDays
 } from 'lucide-react';
 import type { Order } from '../../types/order';
+import type { BusinessSettings } from '../../types/settings';
 
 export const MyOrders: React.FC = () => {
   const { currentUser, userData } = useAuth();
@@ -15,6 +16,21 @@ export const MyOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
+
+  useEffect(() => {
+    const fetchBusinessSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'business'));
+        if (docSnap.exists()) {
+          setBusinessSettings(docSnap.data() as BusinessSettings);
+        }
+      } catch (err) {
+        console.error('Error fetching business settings:', err);
+      }
+    };
+    fetchBusinessSettings();
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -162,6 +178,8 @@ export const MyOrders: React.FC = () => {
     );
   }
 
+  const showDeliveryDate = businessSettings?.showEstimatedDeliveryDateToClient !== false;
+
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
       {/* Header */}
@@ -195,6 +213,7 @@ export const MyOrders: React.FC = () => {
                     <th className="p-4 w-10"></th>
                     <th className="p-4">Nº Pedido</th>
                     <th className="p-4">Fecha</th>
+                    {showDeliveryDate && <th className="p-4">Entrega</th>}
                     <th className="p-4">Estado</th>
                     <th className="p-4">Pago</th>
                     <th className="p-4 text-right">Total</th>
@@ -225,6 +244,25 @@ export const MyOrders: React.FC = () => {
                               minute: '2-digit'
                             })}
                           </td>
+                          {showDeliveryDate && (
+                            <td className="p-4 text-slate-500 font-medium">
+                              {order.orderStatus === 'delivered' ? (
+                                <span className="inline-flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full p-1" title="Entregado">
+                                  <CheckCircle2 size={13} className="stroke-[2.5]" />
+                                </span>
+                              ) : order.deliveryDate ? (
+                                <span className="font-semibold text-slate-700">
+                                  {new Date(order.deliveryDate).toLocaleDateString('es-AR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                          )}
                           <td className="p-4">{getStatusBadge(order.orderStatus)}</td>
                           <td className="p-4">
                             <div>
@@ -245,7 +283,7 @@ export const MyOrders: React.FC = () => {
                         {/* Collapsed Items details */}
                         {isExpanded && (
                           <tr className="bg-slate-50/50">
-                            <td colSpan={6} className="p-6 border-t border-b border-slate-100">
+                            <td colSpan={showDeliveryDate ? 7 : 6} className="p-6 border-t border-b border-slate-100">
                               <div className="space-y-4 max-w-4xl">
                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                                   <Package size={14} className="text-slate-400" />
@@ -319,6 +357,23 @@ export const MyOrders: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-1.5">
                       {getStatusBadge(order.orderStatus)}
                       {getPaymentBadge(order.paymentStatus)}
+                      {showDeliveryDate && (
+                        order.orderStatus === 'delivered' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-semibold border border-emerald-100">
+                            <CheckCircle2 size={11} className="stroke-[2.5]" />
+                            <span>Entregado</span>
+                          </span>
+                        ) : order.deliveryDate ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium border border-slate-200">
+                            <CalendarDays size={11} className="text-slate-400" />
+                            <span>Entrega: {new Date(order.deliveryDate).toLocaleDateString('es-AR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}</span>
+                          </span>
+                        ) : null
+                      )}
                     </div>
 
                     {/* Row 3: Partial Payment detail */}

@@ -3,7 +3,7 @@ import { collection, onSnapshot, query, deleteDoc, doc, updateDoc, getDocs } fro
 import { db } from '../../firebase';
 import type { Product } from '../../types/product';
 import type { Category } from '../../types/category';
-import { dedupeCategories, resolveCategoryId, getSortedCategoryTree } from '../../utils/categories';
+import { dedupeCategories, resolveCategoryId, getSortedCategoryTree, getCategoryTreeIds } from '../../utils/categories';
 import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2, Plus, Power, PowerOff, Search, Copy } from 'lucide-react';
 import { formatPrintTime } from '../../utils/printTime';
@@ -60,25 +60,18 @@ export const ProductList: React.FC = () => {
     fetchOrders();
   }, [currentUser]);
 
-  const salesScores = useMemo(() => {
-    const scores: Record<string, number> = {};
+  const soldQuantities = useMemo(() => {
+    const counts: Record<string, number> = {};
     orders.forEach((order) => {
       if (order.orderStatus === 'cancelled') return;
       order.items?.forEach((item: any) => {
         const pId = item.productId;
         if (!pId) return;
-        
-        const prod = products.find(p => p.id === pId);
-        const isLlavero = prod
-          ? (prod.type === '3d' && (prod as any).isKeychain)
-          : (item.isKeychain || item.category?.toLowerCase() === 'llaveros');
-          
-        const contribution = isLlavero ? 1 : (item.quantity || 0);
-        scores[pId] = (scores[pId] || 0) + contribution;
+        counts[pId] = (counts[pId] || 0) + (item.quantity || 0);
       });
     });
-    return scores;
-  }, [orders, products]);
+    return counts;
+  }, [orders]);
 
   const { canonical: canonicalCategories, idRemap } = useMemo(
     () => dedupeCategories(categories),
@@ -91,15 +84,36 @@ export const ProductList: React.FC = () => {
     return products.filter(p => p.name.toLowerCase().includes(term));
   }, [products, searchTerm]);
 
+  // Find category IDs belonging to the "Llaveros" tree (case-insensitive)
+  const llaverosCatIds = useMemo(() => {
+    const ids = new Set<string>();
+    const llaverosRoot = canonicalCategories.find(
+      c => c.name.toLowerCase().trim() === 'llaveros'
+    );
+    if (llaverosRoot) {
+      const treeIds = getCategoryTreeIds(canonicalCategories, llaverosRoot.id);
+      treeIds.forEach(id => ids.add(id));
+    }
+    return ids;
+  }, [canonicalCategories]);
+
   // Compute category sales totals
   const categorySalesTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     products.forEach((p) => {
       const catId = resolveCategoryId(p.categoryId, idRemap) ?? 'sin_categoria';
-      totals[catId] = (totals[catId] || 0) + (salesScores[p.id] || 0);
+      const resolvedCatId = resolveCategoryId(p.categoryId, idRemap) ?? '';
+      
+      const isLlavero = (p.type === '3d' && (p as any).isKeychain) ||
+                        (resolvedCatId && llaverosCatIds.has(resolvedCatId));
+      
+      const qty = soldQuantities[p.id] || 0;
+      const score = isLlavero ? (qty > 0 ? 1 : 0) : qty;
+      
+      totals[catId] = (totals[catId] || 0) + score;
     });
     return totals;
-  }, [products, salesScores, idRemap]);
+  }, [products, soldQuantities, idRemap, llaverosCatIds]);
 
   // Sort canonical categories using DFS tree helper to preserve parent-child hierarchy
   const sortedCategories = useMemo(() => {
@@ -115,11 +129,11 @@ export const ProductList: React.FC = () => {
       groups.get(categoryId)!.push(product);
     }
 
-    // Sort products inside each category by individual sales score
+    // Sort products inside each category by actual physical sold count
     for (const list of groups.values()) {
       list.sort((a, b) => {
-        const scoreA = salesScores[a.id] || 0;
-        const scoreB = salesScores[b.id] || 0;
+        const scoreA = soldQuantities[a.id] || 0;
+        const scoreB = soldQuantities[b.id] || 0;
         if (scoreA !== scoreB) return scoreB - scoreA;
         return a.name.localeCompare(b.name, 'es');
       });
@@ -152,7 +166,7 @@ export const ProductList: React.FC = () => {
           products: items,
         };
       });
-  }, [filteredProducts, canonicalCategories, idRemap, categorySalesTotals, salesScores]);
+  }, [filteredProducts, canonicalCategories, idRemap, sortedCategories, soldQuantities]);
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
     await updateDoc(doc(db, 'products', id), { isActive: !currentStatus });

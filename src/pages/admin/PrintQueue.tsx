@@ -9,32 +9,36 @@ import type { PrintQueueSettings } from '../../types/settings';
 import {
   Printer, Clock, CalendarDays, Settings2, Package,
   ChevronDown, ChevronRight, CheckCircle2, Loader2,
-  CircleDot, TrendingUp, Minus, Plus, Save
+  CircleDot, TrendingUp, Minus, Plus, Save, User
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-interface OrderBreakdown {
+interface PrintItem {
+  itemIndex: number;
+  name: string;
+  productId: string;
+  imageUrl?: string;
+  quantity: number;
+  printedQty: number;
+  printingQty: number;
+  pendingQty: number;
+  printTimeMinutes: number;
+  remainingMinutes: number;
+}
+
+interface OrderGroup {
   orderId: string;
   orderNumber: number;
   customerName: string;
-  orderDate: string;
-  itemIndex: number;
-  total: number;
-  printed: number;
-  printing: number;
-}
-
-interface ProductGroup {
-  productId: string;
-  productName: string;
-  imageUrl?: string;
-  printTimeMinutes: number;
+  date: string;
   totalUnits: number;
   printedUnits: number;
   printingUnits: number;
   pendingUnits: number;
-  orders: OrderBreakdown[];
+  remainingMinutes: number;
+  items: PrintItem[];
+  estimatedDate?: string;
 }
 
 const formatTime = (minutes: number): string => {
@@ -65,7 +69,7 @@ export const PrintQueue: React.FC = () => {
   const [settings, setSettings] = useState<PrintQueueSettings>(defaultPrintQueue);
   const [editSettings, setEditSettings] = useState<{ printerCount: number | ''; workHoursPerDay: number | ''; }>(defaultPrintQueue);
   const [showSettings, setShowSettings] = useState(false);
-  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +85,7 @@ export const PrintQueue: React.FC = () => {
     return () => unsub();
   }, []);
 
-  // Load orders (pending + processing) in real-time
+  // Load orders (pending + processing) in real-time sorted chronologically (oldest first)
   useEffect(() => {
     const q = query(
       collection(db, 'orders'),
@@ -109,73 +113,89 @@ export const PrintQueue: React.FC = () => {
     return () => unsub();
   }, []);
 
-  // Build product groups
-  const productGroups = useMemo<ProductGroup[]>(() => {
-    const groupMap = new Map<string, ProductGroup>();
+  // Build order groups with 3D items only
+  const orderGroups = useMemo<OrderGroup[]>(() => {
+    return orders
+      .map(order => {
+        const items3D = order.items.filter(item => item.type === '3d');
+        if (items3D.length === 0) return null;
 
-    for (const order of orders) {
-      for (let idx = 0; idx < order.items.length; idx++) {
-        const item = order.items[idx];
-        if (item.type !== '3d') continue;
+        let totalUnits = 0;
+        let printedUnits = 0;
+        let printingUnits = 0;
+        let remainingMinutes = 0;
 
-        const product = products[item.productId];
-        const printTime = product?.printTimeMinutes || 0;
+        const itemsWithPrintTimes: PrintItem[] = items3D.map((item) => {
+          const product = products[item.productId];
+          const printTime = product?.printTimeMinutes || 0;
+          const printed = item.printedQty || 0;
+          const printing = item.printingQty || 0;
+          const pending = item.quantity - printed - printing;
 
-        if (!groupMap.has(item.productId)) {
-          groupMap.set(item.productId, {
+          totalUnits += item.quantity;
+          printedUnits += printed;
+          printingUnits += printing;
+
+          // Printing units count for 50% remaining print time
+          const itemRem = pending * printTime + printing * 0.5 * printTime;
+          remainingMinutes += itemRem;
+
+          return {
+            itemIndex: order.items.indexOf(item),
+            name: item.name,
             productId: item.productId,
-            productName: item.name,
             imageUrl: item.imageUrl,
+            quantity: item.quantity,
+            printedQty: printed,
+            printingQty: printing,
+            pendingQty: pending,
             printTimeMinutes: printTime,
-            totalUnits: 0,
-            printedUnits: 0,
-            printingUnits: 0,
-            pendingUnits: 0,
-            orders: [],
-          });
-        }
+            remainingMinutes: itemRem,
+          };
+        });
 
-        const group = groupMap.get(item.productId)!;
-        if (printTime > 0) group.printTimeMinutes = printTime;
-        if (item.imageUrl && !group.imageUrl) group.imageUrl = item.imageUrl;
+        const pendingUnits = totalUnits - printedUnits - printingUnits;
 
-        const printed = item.printedQty || 0;
-        const printing = item.printingQty || 0;
-        const pending = item.quantity - printed - printing;
-
-        group.totalUnits += item.quantity;
-        group.printedUnits += printed;
-        group.printingUnits += printing;
-        group.pendingUnits += pending;
-
-        group.orders.push({
+        return {
           orderId: order.id,
           orderNumber: order.orderNumber,
           customerName: order.customerName,
-          orderDate: order.date,
-          itemIndex: idx,
-          total: item.quantity,
-          printed,
-          printing,
-        });
-      }
-    }
-
-    return Array.from(groupMap.values()).sort((a, b) => {
-      const aRemaining = (a.pendingUnits + a.printingUnits) * a.printTimeMinutes;
-      const bRemaining = (b.pendingUnits + b.printingUnits) * b.printTimeMinutes;
-      return bRemaining - aRemaining;
-    });
+          date: order.date,
+          totalUnits,
+          printedUnits,
+          printingUnits,
+          pendingUnits,
+          remainingMinutes,
+          items: itemsWithPrintTimes,
+        };
+      })
+      .filter((g): g is OrderGroup => g !== null);
   }, [orders, products]);
 
-  // Calculate totals
+  // Compute estimates and cumulative queue dates
+  const ordersWithEstimates = useMemo<OrderGroup[]>(() => {
+    let cumulativeMinutes = 0;
+    return orderGroups.map(group => {
+      cumulativeMinutes += group.remainingMinutes;
+      const adjusted = settings.printerCount > 1 ? cumulativeMinutes / settings.printerCount : cumulativeMinutes;
+      const days = settings.workHoursPerDay > 0 ? adjusted / 60 / settings.workHoursPerDay : 0;
+      const estDate = new Date();
+      estDate.setDate(estDate.getDate() + Math.ceil(days));
+      return {
+        ...group,
+        estimatedDate: formatDate(estDate),
+      };
+    });
+  }, [orderGroups, settings]);
+
+  // Calculate global totals
   const totals = useMemo(() => {
     let pending = 0, printing = 0, printed = 0, totalMinutes = 0;
-    for (const g of productGroups) {
+    for (const g of orderGroups) {
       pending += g.pendingUnits;
       printing += g.printingUnits;
       printed += g.printedUnits;
-      totalMinutes += (g.pendingUnits + g.printingUnits * 0.5) * g.printTimeMinutes;
+      totalMinutes += g.remainingMinutes;
     }
     const adjustedMinutes = settings.printerCount > 1
       ? totalMinutes / settings.printerCount
@@ -184,50 +204,9 @@ export const PrintQueue: React.FC = () => {
       ? adjustedMinutes / 60 / settings.workHoursPerDay
       : 0;
     return { pending, printing, printed, totalMinutes, adjustedMinutes, estimatedDays };
-  }, [productGroups, settings]);
+  }, [orderGroups, settings]);
 
-  // Calculate per-order estimates
-  const orderEstimates = useMemo(() => {
-    const orderMap = new Map<string, { orderId: string; orderNumber: number; customerName: string; date: string; totalItems3D: number; printed: number; printing: number; totalMinutes: number }>();
-
-    for (const g of productGroups) {
-      for (const o of g.orders) {
-        if (!orderMap.has(o.orderId)) {
-          orderMap.set(o.orderId, {
-            orderId: o.orderId, orderNumber: o.orderNumber, customerName: o.customerName,
-            date: o.orderDate, totalItems3D: 0, printed: 0, printing: 0, totalMinutes: 0,
-          });
-        }
-        const entry = orderMap.get(o.orderId)!;
-        entry.totalItems3D += o.total;
-        entry.printed += o.printed;
-        entry.printing += o.printing;
-        entry.totalMinutes += (o.total - o.printed - o.printing) * g.printTimeMinutes;
-      }
-    }
-
-    const sorted = Array.from(orderMap.values()).sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    let cumulativeMinutes = 0;
-    return sorted.map(o => {
-      const remaining = o.totalItems3D - o.printed - o.printing;
-      cumulativeMinutes += o.totalMinutes;
-      const adjusted = settings.printerCount > 1 ? cumulativeMinutes / settings.printerCount : cumulativeMinutes;
-      const days = settings.workHoursPerDay > 0 ? adjusted / 60 / settings.workHoursPerDay : 0;
-      const estDate = new Date();
-      estDate.setDate(estDate.getDate() + Math.ceil(days));
-      return {
-        orderId: o.orderId, orderNumber: o.orderNumber, customerName: o.customerName,
-        totalItems3D: o.totalItems3D, printed: o.printed, printing: o.printing,
-        remaining, remainingMinutes: o.totalMinutes, estimatedDate: formatDate(estDate),
-        cumulativeMinutes: adjusted,
-      };
-    });
-  }, [productGroups, settings]);
-
-  // Update a single item's printed/printing counts
+  // Update a single item's printed/printing counts in Firestore
   const updateItemPrint = useCallback(async (
     orderId: string, itemIndex: number, newPrinted: number, newPrinting: number,
   ) => {
@@ -315,11 +294,11 @@ export const PrintQueue: React.FC = () => {
     }
   };
 
-  const toggleProduct = (productId: string) => {
-    setExpandedProducts(prev => {
+  const toggleOrder = (orderId: string) => {
+    setExpandedOrders(prev => {
       const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
       return next;
     });
   };
@@ -332,8 +311,8 @@ export const PrintQueue: React.FC = () => {
     );
   }
 
-  const total = totals.pending + totals.printing + totals.printed;
-  const hasItems = total > 0;
+  const totalPiecesInQueue = totals.pending + totals.printing + totals.printed;
+  const hasItems = totalPiecesInQueue > 0;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -345,7 +324,7 @@ export const PrintQueue: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Cola de Impresión</h1>
-            <p className="text-sm text-slate-500">Gestión de impresiones 3D pendientes</p>
+            <p className="text-sm text-slate-500">Gestión de impresiones 3D por pedido</p>
           </div>
         </div>
         <button
@@ -425,16 +404,16 @@ export const PrintQueue: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
           <div className="flex items-center justify-between text-sm text-slate-600 mb-2">
             <span>Progreso General</span>
-            <span className="font-semibold">{totals.printed}/{total} piezas</span>
+            <span className="font-semibold">{totals.printed}/{totalPiecesInQueue} piezas</span>
           </div>
           <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
             {totals.printed > 0 && (
               <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500"
-                style={{ width: `${(totals.printed / total) * 100}%` }} />
+                style={{ width: `${(totals.printed / totalPiecesInQueue) * 100}%` }} />
             )}
             {totals.printing > 0 && (
               <div className="bg-gradient-to-r from-blue-400 to-blue-500 transition-all duration-500"
-                style={{ width: `${(totals.printing / total) * 100}%` }} />
+                style={{ width: `${(totals.printing / totalPiecesInQueue) * 100}%` }} />
             )}
           </div>
           <div className="flex gap-4 mt-2 text-xs text-slate-500">
@@ -445,7 +424,7 @@ export const PrintQueue: React.FC = () => {
         </div>
       )}
 
-      {/* Product Groups */}
+      {/* Main List */}
       {!hasItems ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
@@ -457,35 +436,33 @@ export const PrintQueue: React.FC = () => {
       ) : (
         <div className="space-y-3">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <Package size={18} /> Productos por Imprimir
+            <Package size={18} /> Pedidos por Imprimir
           </h2>
-          {productGroups.map(group => {
-            const isExpanded = expandedProducts.has(group.productId);
-            const remainingMinutes = (group.pendingUnits + group.printingUnits * 0.5) * group.printTimeMinutes;
+          {ordersWithEstimates.map(group => {
+            const isExpanded = expandedOrders.has(group.orderId);
             const allDone = group.pendingUnits === 0 && group.printingUnits === 0;
 
             return (
-              <div key={group.productId} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${allDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
-                {/* Product header */}
-                <button onClick={() => toggleProduct(group.productId)}
+              <div key={group.orderId} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${allDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
+                {/* Order header */}
+                <button onClick={() => toggleOrder(group.orderId)}
                   className="w-full flex items-center gap-3 p-4 hover:bg-slate-50/50 transition-colors text-left">
-                  {group.imageUrl ? (
-                    <img src={group.imageUrl} alt={group.productName} className="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                      <Package className="text-slate-400" size={20} />
-                    </div>
-                  )}
+                  <div className="p-2.5 bg-slate-100 text-slate-700 rounded-xl flex-shrink-0">
+                    <User size={20} className="text-slate-500" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-slate-800 truncate">{group.productName}</h3>
-                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full flex-shrink-0">x{group.totalUnits}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold text-slate-800">Pedido #{group.orderNumber}</h3>
+                      <span className="text-xs text-slate-500">({group.customerName})</span>
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {group.printedUnits}/{group.totalUnits} piezas
+                      </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                       {group.pendingUnits > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{group.pendingUnits} pend.</span>}
                       {group.printingUnits > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{group.printingUnits} impr.</span>}
                       {group.printedUnits > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{group.printedUnits} listos</span>}
-                      {group.printTimeMinutes > 0 && <span className="text-slate-400">· {formatTime(group.printTimeMinutes)}/ud</span>}
+                      <span className="text-slate-400">· Recibido: {new Date(group.date).toLocaleDateString('es-AR')}</span>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden flex mt-2 max-w-xs">
                       {group.printedUnits > 0 && <div className="bg-emerald-500 transition-all duration-300" style={{ width: `${(group.printedUnits / group.totalUnits) * 100}%` }} />}
@@ -493,84 +470,97 @@ export const PrintQueue: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    {remainingMinutes > 0 && (
-                      <p className="text-xs text-slate-500 flex items-center gap-1 justify-end"><Clock size={12} /> {formatTime(remainingMinutes)}</p>
+                    {!allDone && (
+                      <>
+                        <p className="text-xs text-slate-500 flex items-center gap-1 justify-end"><Clock size={12} /> {formatTime(group.remainingMinutes)}</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full mt-1">
+                          <CalendarDays size={10} /> {group.estimatedDate}
+                        </span>
+                      </>
                     )}
                     {allDone && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 size={12} /> Listo
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 size={12} /> Todo Impreso
                       </span>
                     )}
                   </div>
                   {isExpanded ? <ChevronDown size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
                 </button>
 
-                {/* Expanded: per-order breakdown */}
+                {/* Expanded: products list */}
                 {isExpanded && (
-                  <div className="border-t border-slate-100 bg-slate-50/50">
-                    {group.orders
-                      .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
-                      .map(o => {
-                        const pending = o.total - o.printed - o.printing;
-                        return (
-                          <div key={`${o.orderId}-${o.itemIndex}`} className="px-4 py-3 border-b border-slate-100 last:border-b-0">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-slate-700">Pedido #{o.orderNumber}</span>
-                                <span className="text-xs text-slate-500">({o.customerName})</span>
-                                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">x{o.total}</span>
+                  <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                    {group.items.map(item => {
+                      const pending = item.quantity - item.printedQty - item.printingQty;
+                      return (
+                        <div key={`${group.orderId}-${item.productId}`} className="bg-white rounded-xl border border-slate-200/60 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                <Package className="text-slate-400" size={16} />
                               </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {/* Printed control */}
-                              <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-2.5 py-1.5">
-                                <CheckCircle2 size={14} className="text-emerald-600" />
-                                <span className="text-xs font-medium text-emerald-700">Impresos</span>
-                                <div className="flex items-center gap-1 ml-1">
-                                  <button onClick={() => unmarkOnePrinted(o.orderId, o.itemIndex)} disabled={o.printed <= 0}
-                                    className="w-6 h-6 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                                    <Minus size={12} />
-                                  </button>
-                                  <span className="text-sm font-bold text-emerald-700 min-w-[20px] text-center">{o.printed}</span>
-                                  <button onClick={() => markOnePrinted(o.orderId, o.itemIndex)} disabled={o.printed + o.printing >= o.total}
-                                    className="w-6 h-6 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                                    <Plus size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                              {/* Printing control */}
-                              <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-2.5 py-1.5">
-                                <Loader2 size={14} className="text-blue-600" />
-                                <span className="text-xs font-medium text-blue-700">Imprimiendo</span>
-                                <div className="flex items-center gap-1 ml-1">
-                                  <button onClick={() => unmarkOnePrinting(o.orderId, o.itemIndex)} disabled={o.printing <= 0}
-                                    className="w-6 h-6 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                                    <Minus size={12} />
-                                  </button>
-                                  <span className="text-sm font-bold text-blue-700 min-w-[20px] text-center">{o.printing}</span>
-                                  <button onClick={() => markOnePrinting(o.orderId, o.itemIndex)} disabled={pending <= 0}
-                                    className="w-6 h-6 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                                    <Plus size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                              {/* Pending badge */}
-                              {pending > 0 && (
-                                <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5">
-                                  <CircleDot size={14} className="text-amber-600" />
-                                  <span className="text-xs font-medium text-amber-700">Pendientes</span>
-                                  <span className="text-sm font-bold text-amber-700">{pending}</span>
-                                </div>
-                              )}
-                              {o.printed === o.total && (
-                                <span className="text-xs font-medium text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full flex items-center gap-1">
-                                  <CheckCircle2 size={12} /> Completo
-                                </span>
-                              )}
+                            )}
+                            <div>
+                              <h4 className="font-semibold text-slate-800 text-sm">{item.name}</h4>
+                              <p className="text-xs text-slate-500">
+                                Cantidad: <span className="font-semibold text-slate-700">{item.quantity}</span>
+                                {item.printTimeMinutes > 0 && ` · ${formatTime(item.printTimeMinutes)}/ud`}
+                              </p>
                             </div>
                           </div>
-                        );
-                      })}
+                          
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Printed control */}
+                            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-2 py-1">
+                              <CheckCircle2 size={12} className="text-emerald-600" />
+                              <span className="text-[11px] font-medium text-emerald-700">Impresos</span>
+                              <div className="flex items-center gap-1 ml-1">
+                                <button onClick={() => unmarkOnePrinted(group.orderId, item.itemIndex)} disabled={item.printedQty <= 0}
+                                  className="w-5 h-5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                  <Minus size={10} />
+                                </button>
+                                <span className="text-xs font-bold text-emerald-700 min-w-[16px] text-center">{item.printedQty}</span>
+                                <button onClick={() => markOnePrinted(group.orderId, item.itemIndex)} disabled={item.printedQty + item.printingQty >= item.quantity}
+                                  className="w-5 h-5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                  <Plus size={10} />
+                                </button>
+                              </div>
+                            </div>
+                            {/* Printing control */}
+                            <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-2 py-1">
+                              <Loader2 size={12} className="text-blue-600" />
+                              <span className="text-[11px] font-medium text-blue-700">Imprimiendo</span>
+                              <div className="flex items-center gap-1 ml-1">
+                                <button onClick={() => unmarkOnePrinting(group.orderId, item.itemIndex)} disabled={item.printingQty <= 0}
+                                  className="w-5 h-5 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                  <Minus size={10} />
+                                </button>
+                                <span className="text-xs font-bold text-blue-700 min-w-[16px] text-center">{item.printingQty}</span>
+                                <button onClick={() => markOnePrinting(group.orderId, item.itemIndex)} disabled={pending <= 0}
+                                  className="w-5 h-5 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                  <Plus size={10} />
+                                </button>
+                              </div>
+                            </div>
+                            {/* Pending badge */}
+                            {pending > 0 && (
+                              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-xl px-2 py-1">
+                                <CircleDot size={12} className="text-amber-600" />
+                                <span className="text-[11px] font-medium text-amber-700">Pendientes</span>
+                                <span className="text-xs font-bold text-amber-700">{pending}</span>
+                              </div>
+                            )}
+                            {item.printedQty === item.quantity && (
+                              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                <CheckCircle2 size={10} /> Completo
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -579,60 +569,17 @@ export const PrintQueue: React.FC = () => {
         </div>
       )}
 
-      {/* Order Estimates */}
-      {orderEstimates.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
-            <CalendarDays size={18} className="text-indigo-600" /> Estimación por Pedido
-          </h2>
-          <div className="space-y-3">
-            {orderEstimates.map(est => {
-              const allDone = est.remaining === 0 && est.printing === 0;
-              return (
-                <div key={est.orderId}
-                  className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-xl transition-colors ${allDone ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-100'}`}>
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="font-semibold text-slate-800 text-sm">#{est.orderNumber}</span>
-                    <span className="text-sm text-slate-600 truncate">{est.customerName}</span>
-                    <span className="text-xs text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded flex-shrink-0">
-                      {est.printed}/{est.totalItems3D} piezas
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {!allDone && (
-                      <>
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                          <Clock size={12} /> {formatTime(est.remainingMinutes)}
-                        </span>
-                        <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CalendarDays size={12} /> {est.estimatedDate}
-                        </span>
-                      </>
-                    )}
-                    {allDone && (
-                      <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 size={14} /> Todo impreso
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Suggestion text */}
-          {orderEstimates.some(e => e.remaining > 0) && (
-            <div className="mt-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200">
-              <p className="text-sm text-indigo-800 flex items-start gap-2">
-                <TrendingUp size={16} className="flex-shrink-0 mt-0.5" />
-                <span>
-                  <strong>Sugerencia:</strong> Con {settings.printerCount} impresora{settings.printerCount > 1 ? 's' : ''} trabajando {settings.workHoursPerDay}h/día,
-                  estimás terminar toda la cola en <strong>~{totals.estimatedDays.toFixed(1)} días ({formatTime(totals.adjustedMinutes)})</strong>.
-                  {orderEstimates.length > 0 && ` El pedido más urgente (#${orderEstimates[0].orderNumber}) estaría listo ${orderEstimates[0].estimatedDate.toLowerCase()}.`}
-                </span>
-              </p>
-            </div>
-          )}
+      {/* Summary box */}
+      {ordersWithEstimates.some(e => e.pendingUnits > 0 || e.printingUnits > 0) && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mt-6">
+          <p className="text-sm text-indigo-800 flex items-start gap-2">
+            <TrendingUp size={16} className="flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>Resumen de Capacidad:</strong> Con {settings.printerCount} impresora{settings.printerCount > 1 ? 's' : ''} trabajando {settings.workHoursPerDay}h/día,
+              estimás terminar toda la cola en <strong>~{totals.estimatedDays.toFixed(1)} días ({formatTime(totals.adjustedMinutes)})</strong>.
+              {ordersWithEstimates.length > 0 && ` El pedido más urgente (#${ordersWithEstimates[0].orderNumber}) estaría listo ${ordersWithEstimates[0].estimatedDate?.toLowerCase()}.`}
+            </span>
+          </p>
         </div>
       )}
     </div>

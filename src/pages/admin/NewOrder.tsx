@@ -253,25 +253,18 @@ export const NewOrder: React.FC = () => {
     fetchOrders();
   }, [currentUser]);
 
-  const salesScores = useMemo(() => {
-    const scores: Record<string, number> = {};
+  const soldQuantities = useMemo(() => {
+    const counts: Record<string, number> = {};
     orders.forEach((order) => {
       if (order.orderStatus === 'cancelled') return;
       order.items?.forEach((item: any) => {
         const pId = item.productId;
         if (!pId) return;
-        
-        const prod = products.find(p => p.id === pId);
-        const isLlavero = prod
-          ? (prod.type === '3d' && (prod as any).isKeychain)
-          : (item.isKeychain || item.category?.toLowerCase() === 'llaveros');
-          
-        const contribution = isLlavero ? 1 : (item.quantity || 0);
-        scores[pId] = (scores[pId] || 0) + contribution;
+        counts[pId] = (counts[pId] || 0) + (item.quantity || 0);
       });
     });
-    return scores;
-  }, [orders, products]);
+    return counts;
+  }, [orders]);
 
   const { canonical: canonicalCategories, idRemap } = useMemo(
     () => dedupeCategories(categories),
@@ -283,15 +276,36 @@ export const NewOrder: React.FC = () => {
     return getCategoryTreeIds(canonicalCategories, selectedCategory);
   }, [selectedCategory, canonicalCategories]);
 
+  // Find category IDs belonging to the "Llaveros" tree (case-insensitive)
+  const llaverosCatIds = useMemo(() => {
+    const ids = new Set<string>();
+    const llaverosRoot = canonicalCategories.find(
+      c => c.name.toLowerCase().trim() === 'llaveros'
+    );
+    if (llaverosRoot) {
+      const treeIds = getCategoryTreeIds(canonicalCategories, llaverosRoot.id);
+      treeIds.forEach(id => ids.add(id));
+    }
+    return ids;
+  }, [canonicalCategories]);
+
   // Compute category sales totals
   const categorySalesTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     products.forEach((p) => {
       const catId = resolveCategoryId(p.categoryId, idRemap) ?? 'sin_categoria';
-      totals[catId] = (totals[catId] || 0) + (salesScores[p.id] || 0);
+      const resolvedCatId = resolveCategoryId(p.categoryId, idRemap) ?? '';
+      
+      const isLlavero = (p.type === '3d' && (p as any).isKeychain) ||
+                        (resolvedCatId && llaverosCatIds.has(resolvedCatId));
+      
+      const qty = soldQuantities[p.id] || 0;
+      const score = isLlavero ? (qty > 0 ? 1 : 0) : qty;
+      
+      totals[catId] = (totals[catId] || 0) + score;
     });
     return totals;
-  }, [products, salesScores, idRemap]);
+  }, [products, soldQuantities, idRemap, llaverosCatIds]);
 
   // Sort canonical categories using DFS tree helper to preserve parent-child hierarchy
   const sortedCategories = useMemo(() => {
@@ -310,7 +324,7 @@ export const NewOrder: React.FC = () => {
     });
   }, [products, searchTerm, selectedCategory, categoryFilterIds, idRemap]);
 
-  // Sort products by category position in the sorted tree, then by sales score
+  // Sort products by category position in the sorted tree, then by actual quantity sold
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
       const catIdA = resolveCategoryId(a.categoryId, idRemap) ?? 'sin_categoria';
@@ -324,13 +338,13 @@ export const NewOrder: React.FC = () => {
       
       if (idxA !== idxB) return idxA - idxB;
       
-      const scoreA = salesScores[a.id] || 0;
-      const scoreB = salesScores[b.id] || 0;
+      const scoreA = soldQuantities[a.id] || 0;
+      const scoreB = soldQuantities[b.id] || 0;
       if (scoreA !== scoreB) return scoreB - scoreA;
       
       return a.name.localeCompare(b.name, 'es');
     });
-  }, [filteredProducts, sortedCategories, salesScores, idRemap]);
+  }, [filteredProducts, sortedCategories, soldQuantities, idRemap]);
 
   const isCategoryVisible = (cat: Category) => {
     let currentParentId = cat.parentId;

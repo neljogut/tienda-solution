@@ -9,8 +9,13 @@ export function dedupeCategories(categories: Category[]): {
   canonical: Category[];
   idRemap: Map<string, string>;
 } {
+  const normalizedCats = categories.map((c) => ({
+    ...c,
+    parentId: c.parentId && typeof c.parentId === 'string' && c.parentId.trim() ? c.parentId.trim() : null,
+  }));
+
   const groups = new Map<string, Category[]>();
-  for (const cat of categories) {
+  for (const cat of normalizedCats) {
     const key = categoryKey(cat.name, cat.parentId);
     const list = groups.get(key) ?? [];
     list.push(cat);
@@ -26,7 +31,7 @@ export function dedupeCategories(categories: Category[]): {
     })[0];
 
   const idRemap = new Map<string, string>();
-  let canonical = categories.map((c) => ({ ...c }));
+  let canonical = normalizedCats.map((c) => ({ ...c }));
 
   for (const group of groups.values()) {
     if (group.length <= 1) continue;
@@ -36,13 +41,11 @@ export function dedupeCategories(categories: Category[]): {
     }
   }
 
-  if (idRemap.size > 0) {
-    canonical = canonical.map((c) => ({
-      ...c,
-      id: idRemap.get(c.id) ?? c.id,
-      parentId: c.parentId ? (idRemap.get(c.parentId) ?? c.parentId) : null,
-    }));
-  }
+  canonical = canonical.map((c) => ({
+    ...c,
+    id: idRemap.get(c.id) ?? c.id,
+    parentId: c.parentId ? (idRemap.get(c.parentId) ?? c.parentId) : null,
+  }));
 
   // Colapsar de nuevo por si el remap de parentId generó duplicados
   const unique = new Map<string, Category>();

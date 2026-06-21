@@ -49,6 +49,7 @@ export interface InventoryMovementLine {
   modifiedQuantity: number;
   previousQuantity: number;
   finalQuantity: number;
+  relatedProductId?: string;
 }
 
 /** Movimiento simple (un ítem) o agrupado (venta/devolución con varias líneas) */

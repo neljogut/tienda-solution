@@ -494,6 +494,7 @@ export const CartDrawer: React.FC = () => {
                   previousQuantity: prevWeight,
                   modifiedQuantity: -weightToDeduct,
                   finalQuantity: newWeight,
+                  relatedProductId: item.productId,
                 });
               }
             }
@@ -517,6 +518,7 @@ export const CartDrawer: React.FC = () => {
                     previousQuantity: prevQty,
                     modifiedQuantity: -qtyNeeded,
                     finalQuantity: newQty,
+                    relatedProductId: item.productId,
                   });
                 }
               }

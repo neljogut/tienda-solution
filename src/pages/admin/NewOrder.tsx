@@ -706,6 +706,7 @@ export const NewOrder: React.FC = () => {
         modifiedQuantity: number;
         previousQuantity: number;
         finalQuantity: number;
+        relatedProductId?: string;
       }[] = [];
 
       for (const item of sanitizedItems) {
@@ -759,6 +760,7 @@ export const NewOrder: React.FC = () => {
                   previousQuantity: prevWeight,
                   modifiedQuantity: -weightToDeduct,
                   finalQuantity: newWeight,
+                  relatedProductId: item.productId,
                 });
               }
             }
@@ -785,6 +787,7 @@ export const NewOrder: React.FC = () => {
                     previousQuantity: prevQty,
                     modifiedQuantity: -qtyNeeded,
                     finalQuantity: newQty,
+                    relatedProductId: item.productId,
                   });
                 }
               }

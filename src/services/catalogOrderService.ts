@@ -186,6 +186,7 @@ export async function createCatalogOrderClient(
             previousQuantity: prevWeight,
             modifiedQuantity: -weightToDeduct,
             finalQuantity: newWeight,
+            relatedProductId: item.productId,
           });
         }
       }
@@ -208,6 +209,7 @@ export async function createCatalogOrderClient(
               previousQuantity: prevQty,
               modifiedQuantity: -qtyNeeded,
               finalQuantity: newQty,
+              relatedProductId: item.productId,
             });
           }
         }

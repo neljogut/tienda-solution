@@ -51,7 +51,7 @@ function groupLinesByItem(lines: InventoryMovementLine[]): InventoryMovementLine
   const keys: string[] = [];
 
   lines.forEach((line) => {
-    const key = `${line.itemType}-${line.itemId}`;
+    const key = `${line.itemType}-${line.itemId}-${line.relatedProductId || ''}`;
     if (!grouped[key]) {
       keys.push(key);
       grouped[key] = { ...line };
@@ -305,7 +305,7 @@ export const InventoryMovements: React.FC = () => {
 
   // Editing state for movements
   const [isEditingLines, setIsEditingLines] = useState(false);
-  const [editingLines, setEditingLines] = useState<{ itemId: string; name: string; grams: number }[]>([]);
+  const [editingLines, setEditingLines] = useState<{ itemId: string; name: string; grams: number; relatedProductId?: string; }[]>([]);
   const [allFilaments, setAllFilaments] = useState<Filament[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -422,6 +422,7 @@ export const InventoryMovements: React.FC = () => {
         itemId: l.itemId,
         name: info?.name || `Filamento ID: ${l.itemId}`,
         grams: Math.abs(l.modifiedQuantity),
+        relatedProductId: l.relatedProductId,
       };
     });
     setEditingLines(mapped);
@@ -440,47 +441,75 @@ export const InventoryMovements: React.FC = () => {
       
       const batch = writeBatch(db);
       
-      const originalMap = new Map<string, number>();
+      // Map original by itemId__relatedProductId
+      const originalMap = new Map<string, { itemId: string; relatedProductId?: string; modifiedQuantity: number }>();
       originalFilamentLines.forEach((l) => {
-        originalMap.set(l.itemId, l.modifiedQuantity);
+        const key = `${l.itemId}__${l.relatedProductId || ''}`;
+        originalMap.set(key, {
+          itemId: l.itemId,
+          relatedProductId: l.relatedProductId,
+          modifiedQuantity: l.modifiedQuantity,
+        });
       });
       
-      const newMap = new Map<string, number>();
+      // Map editingLines by itemId__relatedProductId
+      const newMap = new Map<string, { itemId: string; relatedProductId?: string; modifiedQuantity: number }>();
       editingLines.forEach((line) => {
         if (line.grams > 0) {
-          newMap.set(line.itemId, -line.grams);
+          const key = `${line.itemId}__${line.relatedProductId || ''}`;
+          newMap.set(key, {
+            itemId: line.itemId,
+            relatedProductId: line.relatedProductId,
+            modifiedQuantity: -line.grams,
+          });
         }
       });
       
-      const allItemIds = Array.from(new Set([...Array.from(originalMap.keys()), ...Array.from(newMap.keys())]));
+      const allKeys = Array.from(new Set([...Array.from(originalMap.keys()), ...Array.from(newMap.keys())]));
       
-      const newMovementLines: InventoryMovementLine[] = [...nonFilamentLines];
-      
-      for (const itemId of allItemIds) {
-        const oldQty = originalMap.get(itemId) || 0;
-        const newQty = newMap.get(itemId) || 0;
+      // Group net changes by itemId to update inventory once per filament
+      const netChangesByItem = new Map<string, number>();
+      for (const key of allKeys) {
+        const oldLine = originalMap.get(key);
+        const newLine = newMap.get(key);
+        
+        const oldQty = oldLine ? oldLine.modifiedQuantity : 0;
+        const newQty = newLine ? newLine.modifiedQuantity : 0;
         const delta = newQty - oldQty;
         
+        const itemId = oldLine ? oldLine.itemId : newLine!.itemId;
+        netChangesByItem.set(itemId, (netChangesByItem.get(itemId) || 0) + delta);
+      }
+      
+      // Update inventory database stock and store pre/post stock weights
+      const itemStockDetails = new Map<string, { prev: number; final: number }>();
+      for (const [itemId, delta] of netChangesByItem.entries()) {
         const filRef = doc(db, 'inventory', itemId);
         const filSnap = await getDoc(filRef);
         if (filSnap.exists()) {
           const filData = filSnap.data();
-          const currentWeight = filData.availableWeightGrams || 0;
-          const newWeight = Math.max(0, currentWeight + delta);
+          const prev = filData.availableWeightGrams || 0;
+          const final = Math.max(0, prev + delta);
+          itemStockDetails.set(itemId, { prev, final });
           
-          batch.update(filRef, { availableWeightGrams: newWeight });
-          
-          if (newQty < 0) {
-            newMovementLines.push({
-              itemId,
-              itemType: 'filament',
-              lineType: 'consumption',
-              modifiedQuantity: newQty,
-              previousQuantity: currentWeight,
-              finalQuantity: newWeight,
-            });
-          }
+          batch.update(filRef, { availableWeightGrams: final });
         }
+      }
+      
+      // Build the new movement lines array
+      const newMovementLines: InventoryMovementLine[] = [...nonFilamentLines];
+      
+      for (const [, newLine] of newMap.entries()) {
+        const stock = itemStockDetails.get(newLine.itemId);
+        newMovementLines.push({
+          itemId: newLine.itemId,
+          itemType: 'filament',
+          lineType: 'consumption',
+          modifiedQuantity: newLine.modifiedQuantity,
+          previousQuantity: stock ? stock.prev : 0,
+          finalQuantity: stock ? stock.final : 0,
+          relatedProductId: newLine.relatedProductId,
+        });
       }
       
       const movementRef = doc(db, 'inventory_movements', m.id);
@@ -576,6 +605,26 @@ export const InventoryMovements: React.FC = () => {
         finalQuantity: m.finalQuantity ?? 0,
       }];
     }
+
+    // In-memory reconstruction of relatedProductId for legacy grouped movements
+    const hasAnyRelatedProduct = rawLines.some((l) => l.relatedProductId);
+    const hasProductLines = rawLines.some((l) => l.itemType === 'product');
+    if (!hasAnyRelatedProduct && hasProductLines) {
+      let currentProductId: string | null = null;
+      rawLines = rawLines.map((line) => {
+        if (line.itemType === 'product') {
+          currentProductId = line.itemId;
+          return line;
+        } else if (line.itemType === 'filament' || line.itemType === 'supply') {
+          return {
+            ...line,
+            relatedProductId: currentProductId || undefined,
+          };
+        }
+        return line;
+      });
+    }
+
     return groupLinesByItem(rawLines);
   };
 
@@ -719,92 +768,297 @@ export const InventoryMovements: React.FC = () => {
 
           {/* Body */}
           {isEditingLines ? (
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="px-5 pt-4 pb-2 shrink-0">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Ajustar Consumos de Filamento
-                </p>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto px-5 py-2 space-y-3 min-h-0">
-                {editingLines.length === 0 ? (
-                  <p className="text-xs text-slate-505 py-2 text-slate-400">No hay filamentos cargados en este movimiento.</p>
-                ) : (
-                  editingLines.map((line, idx) => (
-                    <div key={line.itemId} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-850 text-xs truncate text-slate-800" title={line.name}>{line.name}</p>
+            (() => {
+              const productLines = lines.filter((l) => l.itemType === 'product');
+              const productIds = new Set(productLines.map((p) => p.itemId));
+              const unassociated = editingLines.filter(
+                (el) => !el.relatedProductId || !productIds.has(el.relatedProductId)
+              );
+
+              return (
+                <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <div className="px-5 pt-4 pb-2 shrink-0">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Ajustar Consumos de Filamento
+                    </p>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto px-5 py-2 space-y-4 min-h-0">
+                    {/* Edición por Producto */}
+                    {productLines.length > 0 ? (
+                      productLines.map((prodLine, pIdx) => {
+                        const prodInfo = itemsMap[prodLine.itemId];
+                        const prodFilaments = editingLines.filter(
+                          (el) => el.relatedProductId === prodLine.itemId
+                        );
+                        
+                        return (
+                          <div
+                            key={`edit-group-${prodLine.itemId}-${pIdx}`}
+                            className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              {prodInfo?.image ? (
+                                <img src={prodInfo.image} alt="" className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                                  <ShoppingBag size={14} />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-bold text-slate-800 text-xs sm:text-sm">
+                                  {prodInfo?.name || 'Producto'}
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-semibold uppercase">
+                                  {prodInfo?.type}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2 border-t border-slate-200/50">
+                              {prodFilaments.length === 0 ? (
+                                <p className="text-xs text-slate-400 py-1 italic">
+                                  No hay filamentos registrados para este producto.
+                                </p>
+                              ) : (
+                                prodFilaments.map((line) => {
+                                  const globalIdx = editingLines.indexOf(line);
+                                  return (
+                                    <div
+                                      key={`line-${line.itemId}-${globalIdx}`}
+                                      className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-slate-100 bg-white"
+                                    >
+                                      <div className="min-w-0 flex-1">
+                                        <p className="font-bold text-slate-700 text-xs truncate" title={line.name}>
+                                          {line.name}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={line.grams === 0 ? '' : line.grams}
+                                          onChange={(e) => {
+                                            const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                            setEditingLines((prev) =>
+                                              prev.map((item, i) => (i === globalIdx ? { ...item, grams: val } : item))
+                                            );
+                                          }}
+                                          className="w-16 p-1 border rounded text-right text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none"
+                                          placeholder="0"
+                                        />
+                                        <span className="text-xs text-slate-400 font-medium">g</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingLines((prev) => prev.filter((_, i) => i !== globalIdx));
+                                          }}
+                                          className="p-1.5 rounded-lg transition-colors text-red-500 hover:text-red-650 hover:bg-red-50"
+                                          title="Quitar filamento"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            {/* Agregar filamento a este producto */}
+                            <div className="pt-1.5">
+                              <SearchableFilamentSelect
+                                value=""
+                                placeholder="-- Agregar filamento para este producto --"
+                                filaments={allFilaments.filter(
+                                  (f) => !prodFilaments.some((el) => el.itemId === f.id)
+                                )}
+                                onChange={(filId) => {
+                                  if (!filId) return;
+                                  const filamentObj = allFilaments.find((f) => f.id === filId);
+                                  if (filamentObj) {
+                                    const name = `${filamentObj.brand} ${filamentObj.color} (${filamentObj.material})`;
+                                    setEditingLines((prev) => [
+                                      ...prev,
+                                      { itemId: filId, name, grams: 100, relatedProductId: prodLine.itemId },
+                                    ]);
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : null}
+
+                    {/* Consumos sin producto (o generales) */}
+                    {(productLines.length === 0 || unassociated.length > 0) && (
+                      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3">
+                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                          <AlertCircle size={14} className="text-slate-500" />
+                          Consumos sin producto asociado
+                        </h4>
+                        
+                        <div className="space-y-2 pt-2 border-t border-slate-200/50">
+                          {unassociated.length === 0 ? (
+                            <p className="text-xs text-slate-400 py-1 italic">
+                              No hay consumos generales registrados.
+                            </p>
+                          ) : (
+                            unassociated.map((line) => {
+                              const globalIdx = editingLines.indexOf(line);
+                              return (
+                                <div
+                                  key={`line-unassoc-${line.itemId}-${globalIdx}`}
+                                  className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-slate-100 bg-white"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-slate-700 text-xs truncate" title={line.name}>
+                                      {line.name}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={line.grams === 0 ? '' : line.grams}
+                                      onChange={(e) => {
+                                        const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                        setEditingLines((prev) =>
+                                          prev.map((item, i) => (i === globalIdx ? { ...item, grams: val } : item))
+                                        );
+                                      }}
+                                      className="w-16 p-1 border rounded text-right text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none"
+                                      placeholder="0"
+                                    />
+                                    <span className="text-xs text-slate-400 font-medium">g</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingLines((prev) => prev.filter((_, i) => i !== globalIdx));
+                                      }}
+                                      className="p-1.5 rounded-lg transition-colors text-red-500 hover:text-red-650 hover:bg-red-50"
+                                      title="Quitar filamento"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Agregar consumo de filamento general */}
+                        <div className="pt-1.5">
+                          <SearchableFilamentSelect
+                            value=""
+                            placeholder="-- Agregar consumo de filamento general --"
+                            filaments={allFilaments.filter(
+                              (f) => !unassociated.some((el) => el.itemId === f.id)
+                            )}
+                            onChange={(filId) => {
+                              if (!filId) return;
+                              const filamentObj = allFilaments.find((f) => f.id === filId);
+                              if (filamentObj) {
+                                const name = `${filamentObj.brand} ${filamentObj.color} (${filamentObj.material})`;
+                                setEditingLines((prev) => [...prev, { itemId: filId, name, grams: 100 }]);
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <input
-                          type="number"
-                          min="0"
-                          value={line.grams === 0 ? '' : line.grams}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? 0 : Number(e.target.value);
-                            setEditingLines((prev) =>
-                              prev.map((item, i) => (i === idx ? { ...item, grams: val } : item))
-                            );
-                          }}
-                          className="w-20 p-1 border rounded text-right text-xs font-semibold"
-                          placeholder="0"
-                        />
-                        <span className="text-xs text-slate-400 font-medium">g</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingLines((prev) => prev.filter((_, i) => i !== idx));
-                          }}
-                          className="p-1.5 rounded-lg transition-colors text-red-500 hover:text-red-705 hover:bg-red-50"
-                          title="Quitar filamento"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              
-              <div className="px-5 py-4 border-t border-slate-100 shrink-0">
-                <div className="flex gap-2 items-center">
-                  <SearchableFilamentSelect
-                    value=""
-                    placeholder="-- Agregar Filamento del Inventario --"
-                    filaments={allFilaments.filter((f) => !editingLines.some((el) => el.itemId === f.id))}
-                    onChange={(filId) => {
-                      if (!filId) return;
-                      const filamentObj = allFilaments.find((f) => f.id === filId);
-                      if (filamentObj) {
-                        const name = `${filamentObj.brand} ${filamentObj.color} (${filamentObj.material})`;
-                        setEditingLines((prev) => [...prev, { itemId: filId, name, grams: 100 }]);
-                      }
-                    }}
-                  />
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()
           ) : (
-            <div className="p-5 overflow-y-auto space-y-5 min-h-[120px]">
+            <div className="p-5 overflow-y-auto min-h-[120px] max-h-[500px]">
               {lines.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-6">Este movimiento no tiene ítems registrados.</p>
               ) : (
-                LINE_SECTIONS.map((section) => {
-                  const sectionLines = lines.filter((l) => l.itemType === section.itemType);
-                  if (!sectionLines.length) return null;
-                  return (
-                    <div key={section.itemType}>
-                      <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                        <span className="text-slate-400">{section.icon}</span>
-                        {section.label}
-                        <span className="text-slate-300 font-normal">({sectionLines.length})</span>
-                      </h3>
-                      <div className="space-y-2">
-                        {sectionLines.map((line, idx) => renderLineCard(line, `${m.id}-${section.itemType}-${idx}`))}
+                (() => {
+                  const productLines = lines.filter((l) => l.itemType === 'product');
+                  
+                  if (productLines.length > 0) {
+                    const otherLines = lines.filter((l) => l.itemType !== 'product');
+                    const productIds = new Set(productLines.map((p) => p.itemId));
+                    const associatedLines = otherLines.filter(
+                      (l) => l.relatedProductId && productIds.has(l.relatedProductId)
+                    );
+                    const unassociatedLines = otherLines.filter(
+                      (l) => !l.relatedProductId || !productIds.has(l.relatedProductId)
+                    );
+
+                    return (
+                      <div className="space-y-4">
+                        {productLines.map((prodLine, pIdx) => {
+                          const prodLines = associatedLines.filter(
+                            (l) => l.relatedProductId === prodLine.itemId
+                          );
+                          return (
+                            <div
+                              key={`group-${prodLine.itemId}-${pIdx}`}
+                              className="bg-slate-50/50 rounded-2xl border border-slate-200/60 p-4 space-y-3"
+                            >
+                              <div className="font-bold text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+                                Producto Vendido
+                              </div>
+                              {renderLineCard(prodLine, `prod-${prodLine.itemId}`)}
+                              
+                              {prodLines.length > 0 && (
+                                <div className="space-y-2 pl-4 sm:pl-8 border-l-2 border-slate-200 mt-3">
+                                  <div className="font-bold text-[9px] text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                                    <Palette size={11} /> Materiales Consumidos
+                                  </div>
+                                  {prodLines.map((assocLine, aIdx) =>
+                                    renderLineCard(assocLine, `assoc-${assocLine.itemId}-${aIdx}`)
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {unassociatedLines.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                              <AlertCircle size={14} className="text-slate-400" />
+                              Consumos sin producto asociado
+                              <span className="text-slate-300 font-normal">({unassociatedLines.length})</span>
+                            </h3>
+                            <div className="space-y-2">
+                              {unassociatedLines.map((line, idx) =>
+                                renderLineCard(line, `unassoc-${line.itemId}-${idx}`)
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  }
+
+                  // Fallback normal si no hay productos (ajustes, entradas, etc.)
+                  return LINE_SECTIONS.map((section) => {
+                    const sectionLines = lines.filter((l) => l.itemType === section.itemType);
+                    if (!sectionLines.length) return null;
+                    return (
+                      <div key={section.itemType} className="mb-4 last:mb-0">
+                        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                          <span className="text-slate-400">{section.icon}</span>
+                          {section.label}
+                          <span className="text-slate-300 font-normal">({sectionLines.length})</span>
+                        </h3>
+                        <div className="space-y-2">
+                          {sectionLines.map((line, idx) =>
+                            renderLineCard(line, `${m.id}-${section.itemType}-${idx}`)
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()
               )}
             </div>
           )}

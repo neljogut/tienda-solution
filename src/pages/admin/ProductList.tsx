@@ -5,7 +5,7 @@ import type { Product } from '../../types/product';
 import type { Category } from '../../types/category';
 import { dedupeCategories, resolveCategoryId, getSortedCategoryTree, getCategoryTreeIds } from '../../utils/categories';
 import { useNavigate } from 'react-router-dom';
-import { Edit, Trash2, Plus, Power, PowerOff, Search, Copy } from 'lucide-react';
+import { Edit, Trash2, Plus, Minus, Power, PowerOff, Search, Copy, Check } from 'lucide-react';
 import { formatPrintTime } from '../../utils/printTime';
 import { useAuth } from '../../context/AuthContext';
 import { usePricingData } from '../../hooks/usePricingData';
@@ -18,7 +18,27 @@ export const ProductList: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingStock, setEditingStock] = useState<{ productId: string; value: string } | null>(null);
+  const [recentlySaved, setRecentlySaved] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
+
+  const handleUpdateStock = async (productId: string, newStock: number) => {
+    try {
+      await updateDoc(doc(db, 'products', productId), { stock: Math.max(0, newStock) });
+      // Trigger success flash animation
+      setRecentlySaved(prev => ({ ...prev, [productId]: true }));
+      setTimeout(() => {
+        setRecentlySaved(prev => {
+          const next = { ...prev };
+          delete next[productId];
+          return next;
+        });
+      }, 1500);
+    } catch (err) {
+      console.error('Error updating stock:', err);
+      alert('Error al actualizar el stock.');
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'products'));
@@ -280,13 +300,66 @@ export const ProductList: React.FC = () => {
                           )}
                         </td>
                         <td className="p-4">
-                          {product.stock !== undefined ? (
-                            <span className={`font-semibold ${product.stock > 0 ? 'text-slate-700' : 'text-red-500'}`}>
-                              {product.stock}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            <div className={`inline-flex items-center bg-slate-50 border rounded-xl p-0.5 transition-all duration-300 ${
+                              recentlySaved[product.id]
+                                ? 'border-emerald-400 bg-emerald-50/50 shadow-sm shadow-emerald-100 ring-1 ring-emerald-400/25'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = product.stock ?? 0;
+                                  handleUpdateStock(product.id, Math.max(0, current - 1));
+                                }}
+                                disabled={(product.stock ?? 0) <= 0}
+                                className="w-6 h-6 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors disabled:opacity-30 disabled:hover:bg-transparent shrink-0"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={editingStock?.productId === product.id ? editingStock.value : (product.stock ?? 0)}
+                                onFocus={() => setEditingStock({ productId: product.id, value: String(product.stock ?? 0) })}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/\D/g, ''); // only allow digits
+                                  setEditingStock({ productId: product.id, value: val });
+                                }}
+                                onBlur={() => {
+                                  if (editingStock && editingStock.productId === product.id) {
+                                    const parsed = parseInt(editingStock.value, 10);
+                                    handleUpdateStock(product.id, isNaN(parsed) ? 0 : parsed);
+                                    setEditingStock(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  }
+                                }}
+                                className={`w-10 text-center text-xs font-bold bg-transparent border-0 focus:outline-none focus:ring-0 p-0 transition-colors duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                  recentlySaved[product.id] ? 'text-emerald-600' : 'text-slate-700'
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = product.stock ?? 0;
+                                  handleUpdateStock(product.id, current + 1);
+                                }}
+                                className="w-6 h-6 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors shrink-0"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                              {recentlySaved[product.id] && (
+                                <Check size={14} className="text-emerald-500 stroke-[3] animate-bounce" />
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="p-4 font-medium text-slate-900">
                           ${price?.toLocaleString('es-AR') || 0}
@@ -392,11 +465,68 @@ export const ProductList: React.FC = () => {
                             {product.type === '3d' ? formatPrintTime(product.printTimeMinutes) : '—'}
                           </span>
                         </div>
-                        <div>
-                          <span className="text-slate-400 block font-bold uppercase tracking-wider">Stock</span>
-                          <span className={`font-bold ${product.stock > 0 ? 'text-slate-700' : 'text-red-500'}`}>
-                            {product.stock !== undefined ? product.stock : '-'}
-                          </span>
+                        <div className="flex flex-col items-center justify-center">
+                          <span className="text-slate-400 block font-bold uppercase tracking-wider mb-1">Stock</span>
+                          <div className="flex items-center gap-1 justify-center">
+                            <div className={`flex items-center bg-white border rounded-lg p-0.5 shadow-sm transition-all duration-300 ${
+                              recentlySaved[product.id]
+                                ? 'border-emerald-400 bg-emerald-50/50 ring-1 ring-emerald-400/25'
+                                : 'border-slate-200'
+                            }`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = product.stock ?? 0;
+                                  handleUpdateStock(product.id, Math.max(0, current - 1));
+                                }}
+                                disabled={(product.stock ?? 0) <= 0}
+                                className="w-5 h-5 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors disabled:opacity-30 disabled:hover:bg-transparent shrink-0"
+                              >
+                                <Minus size={10} />
+                              </button>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={editingStock?.productId === product.id ? editingStock.value : (product.stock ?? 0)}
+                                onFocus={() => setEditingStock({ productId: product.id, value: String(product.stock ?? 0) })}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/\D/g, ''); // only allow digits
+                                  setEditingStock({ productId: product.id, value: val });
+                                }}
+                                onBlur={() => {
+                                  if (editingStock && editingStock.productId === product.id) {
+                                    const parsed = parseInt(editingStock.value, 10);
+                                    handleUpdateStock(product.id, isNaN(parsed) ? 0 : parsed);
+                                    setEditingStock(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  }
+                                }}
+                                className={`w-8 text-center text-[10px] font-bold bg-transparent border-0 focus:outline-none focus:ring-0 p-0 transition-colors duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                  recentlySaved[product.id] ? 'text-emerald-600' : 'text-slate-700'
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = product.stock ?? 0;
+                                  handleUpdateStock(product.id, current + 1);
+                                }}
+                                className="w-5 h-5 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0"
+                              >
+                                <Plus size={10} />
+                              </button>
+                            </div>
+                            <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                              {recentlySaved[product.id] && (
+                                <Check size={10} className="text-emerald-500 stroke-[3] animate-bounce" />
+                              )}
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <span className="text-slate-400 block font-bold uppercase tracking-wider">Precio (Min)</span>

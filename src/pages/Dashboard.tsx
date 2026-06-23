@@ -4,10 +4,11 @@ import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import type { Order } from '../types/order';
 import type { Product } from '../types/product';
+import type { Filament, InventoryMovement } from '../types/inventory';
 import { 
   DollarSign, ShoppingCart, TrendingUp, AlertCircle, Package, 
-  Users, Clock, CheckCircle, Truck, ArrowRight, Plus,
-  BarChart3, Wallet, XCircle, Flame, Loader2
+  Users, Clock, CheckCircle, Truck, Plus,
+  BarChart3, Wallet, XCircle, Flame, Loader2, Palette
 } from 'lucide-react';
 import { fetchDollarRate } from '../services/dollarService';
 import type { ExchangeRateData, PricingSettingsResale } from '../types/settings';
@@ -23,6 +24,10 @@ export const Dashboard: React.FC = () => {
   const [employees, setEmployees] = useState<UserData[]>([]);
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
   const [resaleSettings, setResaleSettings] = useState<PricingSettingsResale | null>(null);
+  const [filaments, setFilaments] = useState<Filament[]>([]);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [filamentLimit, setFilamentLimit] = useState<number | 'all'>(5);
+  const [productLimit, setProductLimit] = useState<number | 'all'>(5);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,6 +86,23 @@ export const Dashboard: React.FC = () => {
       });
     }
 
+    // Listen to inventory (filaments) for owner
+    let inventoryUnsub = () => {};
+    let movementsUnsub = () => {};
+    if (userData?.role === 'owner') {
+      const invQ = query(collection(db, 'inventory'), where('type', '==', 'filament'));
+      inventoryUnsub = onSnapshot(invQ, (snap) => {
+        const fils: Filament[] = [];
+        snap.forEach((d) => fils.push({ id: d.id, ...d.data() } as Filament));
+        setFilaments(fils);
+      });
+      movementsUnsub = onSnapshot(collection(db, 'inventory_movements'), (snap) => {
+        const movs: InventoryMovement[] = [];
+        snap.forEach((d) => movs.push({ id: d.id, ...d.data() } as InventoryMovement));
+        setMovements(movs);
+      });
+    }
+
     // Initial load timer (fallback)
     const t = setTimeout(() => { setLoading(false); checkLoading(); }, 3000);
 
@@ -90,6 +112,8 @@ export const Dashboard: React.FC = () => {
       prodsUnsub(); 
       resaleUnsub();
       employeesUnsub();
+      inventoryUnsub();
+      movementsUnsub();
       clearTimeout(t);
     };
   }, [userData]);
@@ -203,20 +227,26 @@ export const Dashboard: React.FC = () => {
   }, [employees, orders, thisMonth, userData]);
 
   // Top products — keychains count as 1 per order line (sell in bulk), rest count by qty
-  const productSalesMap = new Map<string, { name: string; qty: number; revenue: number }>();
-  activeOrders.forEach(order => {
-    order.items?.forEach(item => {
-      const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
-      const prod = products.find(p => p.id === item.productId);
-      const isKeychain = prod && prod.type === '3d' && (prod as any).isKeychain;
-      existing.qty += isKeychain ? 1 : item.quantity;
-      existing.revenue += item.unitPrice * item.quantity;
-      productSalesMap.set(item.productId, existing);
+  const productRanking = useMemo(() => {
+    const productSalesMap = new Map<string, { name: string; qty: number; revenue: number }>();
+    activeOrders.forEach(order => {
+      order.items?.forEach(item => {
+        const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
+        const prod = products.find(p => p.id === item.productId);
+        const isKeychain = prod && prod.type === '3d' && (prod as any).isKeychain;
+        existing.qty += isKeychain ? 1 : item.quantity;
+        existing.revenue += item.unitPrice * item.quantity;
+        productSalesMap.set(item.productId, existing);
+      });
     });
-  });
-  const topProducts = [...productSalesMap.entries()]
-    .sort((a, b) => b[1].qty - a[1].qty)
-    .slice(0, 5);
+    return [...productSalesMap.entries()]
+      .sort((a, b) => b[1].qty - a[1].qty);
+  }, [activeOrders, products]);
+
+  const visibleProducts = useMemo(() => {
+    if (productLimit === 'all') return productRanking;
+    return productRanking.slice(0, productLimit);
+  }, [productRanking, productLimit]);
 
   // Low stock alerts
   const lowStockProducts = products.filter(p => (p.stock || 0) <= 3 && p.isActive);
@@ -230,6 +260,56 @@ export const Dashboard: React.FC = () => {
         .slice(0, 5)
     : [];
 
+  // ─── Filament consumption ranking (owner only) ───
+  const filamentRanking = useMemo(() => {
+    if (userData?.role !== 'owner' || filaments.length === 0) return [];
+
+    // Build a map of filament id -> { material, color, hexColor }
+    const filamentMap = new Map<string, { material: string; color: string; hexColor: string }>();
+    filaments.forEach(f => {
+      filamentMap.set(f.id, { material: f.material, color: f.color, hexColor: f.hexColor });
+    });
+
+    // Aggregate consumption by material+color key
+    const consumptionMap = new Map<string, { material: string; color: string; hexColor: string; grams: number }>();
+
+    movements.forEach(mov => {
+      // Process grouped movements with lines
+      if (mov.lines && mov.lines.length > 0) {
+        mov.lines.forEach(line => {
+          if (line.itemType === 'filament' && (line.lineType === 'consumption' || line.lineType === 'out_sale')) {
+            const info = filamentMap.get(line.itemId);
+            if (!info) return;
+            const key = `${info.material.toLowerCase()}_${info.color.toLowerCase()}`;
+            const existing = consumptionMap.get(key) || { ...info, grams: 0 };
+            existing.grams += Math.abs(line.modifiedQuantity);
+            consumptionMap.set(key, existing);
+          }
+        });
+      } else if (mov.itemType === 'filament' && mov.itemId && (mov.movementType === 'consumption' || mov.movementType === 'out_sale')) {
+        // Legacy single-item movement
+        const info = filamentMap.get(mov.itemId);
+        if (!info) return;
+        const key = `${info.material.toLowerCase()}_${info.color.toLowerCase()}`;
+        const existing = consumptionMap.get(key) || { ...info, grams: 0 };
+        existing.grams += Math.abs(mov.modifiedQuantity || 0);
+        consumptionMap.set(key, existing);
+      }
+    });
+
+    // Sort by consumption descending, filter out zero
+    const sorted = [...consumptionMap.values()]
+      .filter(entry => entry.grams > 0)
+      .sort((a, b) => b.grams - a.grams);
+
+    return sorted;
+  }, [userData, filaments, movements]);
+
+  const visibleFilaments = useMemo(() => {
+    if (filamentLimit === 'all') return filamentRanking;
+    return filamentRanking.slice(0, filamentLimit);
+  }, [filamentRanking, filamentLimit]);
+
   // Quick actions
   const quickActions = [
     { label: 'Nuevo Pedido', icon: Plus, path: '/orders/new', color: 'from-blue-500 to-indigo-600' },
@@ -238,7 +318,7 @@ export const Dashboard: React.FC = () => {
     { label: 'Ver Balance', icon: BarChart3, path: '/balance', color: 'from-amber-500 to-orange-600' },
   ];
 
-  const recentOrders = [...orders].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+
 
   if (loading) {
     return (
@@ -266,7 +346,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Row */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${userData?.role === 'owner' ? 'xl:grid-cols-7' : 'xl:grid-cols-6'} gap-4`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${userData?.role === 'owner' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
         <StatCard title="Ventas del Día" value={`$${salesToday.toLocaleString('es-AR')}`} icon={DollarSign} color="emerald" />
         <StatCard title="Ventas del Mes" value={`$${salesMonth.toLocaleString('es-AR')}`} icon={TrendingUp} color="blue" />
         <StatCard title="Pendiente de Cobro" value={`$${totalPending.toLocaleString('es-AR')}`} icon={Wallet} color="amber" />
@@ -332,6 +412,28 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Quick Actions */}
+      <div className="card p-5">
+        <h3 className="font-bold text-slate-800 mb-4">Accesos Rápidos</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button 
+                key={action.path}
+                onClick={() => navigate(action.path)}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 transition-all group"
+              >
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+                  <Icon size={20} />
+                </div>
+                <span className="text-xs font-semibold text-slate-600">{action.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Collaborators Performance (Owner only) */}
       {userData?.role === 'owner' && collaboratorsStats.length > 0 && (
         <div className="card p-5">
@@ -374,83 +476,127 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
-        <div className="card p-5">
-          <h3 className="font-bold text-slate-800 mb-4">Accesos Rápidos</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button 
-                  key={action.path}
-                  onClick={() => navigate(action.path)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 hover:border-slate-200 transition-all group"
+      {/* Top Products */}
+      {visibleProducts.length > 0 && (
+        <div className="card p-5 border-l-4 border-l-emerald-400 bg-gradient-to-r from-emerald-50/30 to-green-50/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-md">
+                <Package size={16} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Top Productos</h3>
+                <p className="text-[11px] text-slate-400">Productos más vendidos según cantidad de unidades</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              {([5, 10, 25, 50, 'all'] as const).map((opt) => (
+                <button
+                  key={String(opt)}
+                  onClick={() => setProductLimit(opt)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    productLimit === opt
+                      ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
-                    <Icon size={20} />
-                  </div>
-                  <span className="text-xs font-semibold text-slate-600">{action.label}</span>
+                  {opt === 'all' ? 'Todos' : `Top ${opt}`}
                 </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {visibleProducts.map(([id, data], i) => {
+              const prod = products.find(p => p.id === id);
+              return (
+                <div key={id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                    i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {i + 1}
+                  </span>
+                  
+                  {/* Imagen del Producto */}
+                  <div className="w-10 h-10 rounded bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {prod?.mainImage ? (
+                      <img
+                        src={prod.mainImage}
+                        alt={data.name}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <Package size={16} className="text-slate-400" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-700 truncate">{data.name}</p>
+                    <p className="text-[11px] text-slate-400">{data.qty} vendidos</p>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-600 whitespace-nowrap">
+                    ${data.revenue.toLocaleString('es-AR')}
+                  </span>
+                </div>
               );
             })}
           </div>
         </div>
+      )}
 
-        {/* Top Products */}
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-800">Top Productos</h3>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Más Vendidos</span>
-          </div>
-          {topProducts.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">Sin ventas registradas aún</p>
-          ) : (
-            <div className="space-y-3">
-              {topProducts.map(([id, data], i) => (
-                <div key={id} className="flex items-center gap-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{data.name}</p>
-                    <p className="text-[11px] text-slate-400">{data.qty} vendidos</p>
-                  </div>
-                  <span className="text-sm font-bold text-emerald-600">${data.revenue.toLocaleString('es-AR')}</span>
-                </div>
+      {/* Filament Usage Ranking (Owner only) */}
+      {userData?.role === 'owner' && filamentRanking.length > 0 && (
+        <div className="card p-5 border-l-4 border-l-violet-400 bg-gradient-to-r from-violet-50/30 to-purple-50/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+                <Palette size={16} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Filamentos Más Utilizados</h3>
+                <p className="text-[11px] text-slate-400">Consumo total acumulado en impresión 3D</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              {([5, 10, 25, 50, 'all'] as const).map((opt) => (
+                <button
+                  key={String(opt)}
+                  onClick={() => setFilamentLimit(opt)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    filamentLimit === opt
+                      ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt === 'all' ? 'Todos' : `Top ${opt}`}
+                </button>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Recent Orders */}
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-800">Últimos Pedidos</h3>
-            <button onClick={() => navigate('/orders')} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:text-blue-700">
-              Ver todos <ArrowRight size={12} />
-            </button>
           </div>
-          {recentOrders.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">Sin pedidos aún</p>
-          ) : (
-            <div className="space-y-3">
-              {recentOrders.map(order => (
-                <div key={order.id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">#{order.orderNumber}</p>
-                    <p className="text-[11px] text-slate-400">{order.customerName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-800">${(order.totalAmount || 0).toLocaleString('es-AR')}</p>
-                    <OrderStatusBadge status={order.orderStatus} />
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {visibleFilaments.map((entry, i) => (
+              <div key={`${entry.material}_${entry.color}`} className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                  i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {i + 1}
+                </span>
+                <div
+                  className="w-5 h-5 rounded-full flex-shrink-0 border border-slate-200 shadow-inner"
+                  style={{ backgroundColor: entry.hexColor || '#ccc' }}
+                  title={entry.color}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 truncate">{entry.material} {entry.color}</p>
                 </div>
-              ))}
-            </div>
-          )}
+                <span className="text-sm font-bold text-violet-600 whitespace-nowrap">
+                  {formatWeight(entry.grams)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Low Stock Alerts */}
       {lowStockProducts.length > 0 && (
@@ -473,6 +619,16 @@ export const Dashboard: React.FC = () => {
       )}
     </div>
   );
+};
+
+const formatWeight = (grams: number): string => {
+  const rounded = Math.round(grams);
+  if (rounded >= 1000) {
+    const kg = Math.floor(rounded / 1000);
+    const g = rounded % 1000;
+    return g > 0 ? `${kg} kg ${g} g` : `${kg} kg`;
+  }
+  return `${rounded} g`;
 };
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string; icon: any; color: string }) => {
@@ -510,15 +666,4 @@ const MiniStat = ({ label, value, icon: Icon, className }: { label: string; valu
   </div>
 );
 
-const OrderStatusBadge = ({ status }: { status: string }) => {
-  const config: Record<string, { label: string; className: string }> = {
-    draft: { label: 'Borrador', className: 'badge-gray' },
-    pending: { label: 'Pendiente', className: 'badge-yellow' },
-    processing: { label: 'En Proceso', className: 'badge-blue' },
-    finished: { label: 'Terminado', className: 'badge-green' },
-    delivered: { label: 'Entregado', className: 'badge-purple' },
-    cancelled: { label: 'Cancelado', className: 'badge-red' },
-  };
-  const c = config[status] || config.pending;
-  return <span className={`badge text-[10px] ${c.className}`}>{c.label}</span>;
-};
+

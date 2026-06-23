@@ -247,7 +247,7 @@ export const Dashboard: React.FC = () => {
       order.items?.forEach(item => {
         const prod = products.find(p => p.id === item.productId);
         if (!prod || prod.type !== '3d') return;
-        const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
+        const existing = productSalesMap.get(item.productId) || { name: prod.name || item.name, qty: 0, revenue: 0 };
         const isKeychain = (prod as any).isKeychain;
         existing.qty += isKeychain ? 1 : item.quantity;
         existing.revenue += item.unitPrice * item.quantity;
@@ -269,7 +269,7 @@ export const Dashboard: React.FC = () => {
       order.items?.forEach(item => {
         const prod = products.find(p => p.id === item.productId);
         if (!prod || prod.type !== 'resale') return;
-        const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
+        const existing = productSalesMap.get(item.productId) || { name: prod.name || item.name, qty: 0, revenue: 0 };
         existing.qty += item.quantity;
         existing.revenue += item.unitPrice * item.quantity;
         productSalesMap.set(item.productId, existing);

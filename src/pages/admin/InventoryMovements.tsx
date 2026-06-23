@@ -10,6 +10,7 @@ import {
   ArrowLeftRight, Search, Filter, Eye, X,
   ArrowUpRight, ArrowDownRight, Edit3, User, Clock, AlertCircle, ShoppingBag,
   Package, Droplet, Receipt, Loader2, Trash2, Edit, Palette, Check, ChevronDown,
+  Undo, RotateCcw,
 } from 'lucide-react';
 
 type ItemInfo = { name: string; image?: string; type: string; unit: 'g' | 'u.' };
@@ -533,7 +534,7 @@ export const InventoryMovements: React.FC = () => {
     }
   };
 
-  const getMovementBadgeStyles = (type: InventoryMovementType) => {
+  const getMovementBadgeStyles = (type: InventoryMovementType, reason?: string) => {
     switch (type) {
       case 'sale':
         return {
@@ -542,11 +543,24 @@ export const InventoryMovements: React.FC = () => {
           label: 'Venta',
         };
       case 'in':
-      case 'return':
         return {
           bgColor: 'bg-emerald-50 border-emerald-100 text-emerald-600',
           icon: <ArrowUpRight size={14} />,
-          label: type === 'in' ? 'Entrada' : 'Devolución',
+          label: 'Entrada',
+        };
+      case 'return':
+        const isRestoration = reason?.toLowerCase().includes('restauraci') || reason?.toLowerCase().includes('restore') || false;
+        if (isRestoration) {
+          return {
+            bgColor: 'bg-teal-50 border-teal-200 text-teal-700',
+            icon: <Undo size={14} />,
+            label: 'Restauración',
+          };
+        }
+        return {
+          bgColor: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+          icon: <RotateCcw size={14} />,
+          label: 'Devolución',
         };
       case 'out_sale':
       case 'consumption':
@@ -642,6 +656,16 @@ export const InventoryMovements: React.FC = () => {
   const movementMatchesFilter = (m: InventoryMovement): boolean => {
     if (typeFilter === 'all') return true;
     if (typeFilter === 'sale') return m.movementType === 'sale';
+
+    const isRestoration = m.reason?.toLowerCase().includes('restauraci') || m.reason?.toLowerCase().includes('restore') || false;
+
+    if (typeFilter === 'restoration') {
+      return (m.movementType === 'return' || (m.lines || []).some(l => l.lineType === 'return')) && isRestoration;
+    }
+    if (typeFilter === 'return') {
+      return (m.movementType === 'return' || (m.lines || []).some(l => l.lineType === 'return')) && !isRestoration;
+    }
+
     if (m.movementType === typeFilter) return true;
     if (m.lines?.some((l) => l.lineType === typeFilter)) return true;
     return false;
@@ -666,10 +690,10 @@ export const InventoryMovements: React.FC = () => {
     [movements, typeFilter, searchTerm, itemsMap, ordersMap]
   );
 
-  const renderLineCard = (line: InventoryMovementLine, key: string) => {
+  const renderLineCard = (line: InventoryMovementLine, key: string, parentReason?: string) => {
     const info = itemsMap[line.itemId];
     const unit = unitForItemType(line.itemType);
-    const lineBadge = getMovementBadgeStyles(line.lineType);
+    const lineBadge = getMovementBadgeStyles(line.lineType, parentReason);
     const isOut = line.modifiedQuantity < 0;
 
     return (
@@ -712,7 +736,7 @@ export const InventoryMovements: React.FC = () => {
   const renderDetailModal = () => {
     if (!selectedMovement) return null;
     const m = selectedMovement;
-    const badge = getMovementBadgeStyles(m.movementType);
+    const badge = getMovementBadgeStyles(m.movementType, m.reason);
     const order = getOrderLabel(m.orderId);
     const lines = getLines(m);
 
@@ -1005,7 +1029,7 @@ export const InventoryMovements: React.FC = () => {
                               <div className="font-bold text-[10px] text-slate-400 uppercase tracking-wider mb-1">
                                 Producto Vendido
                               </div>
-                              {renderLineCard(prodLine, `prod-${prodLine.itemId}`)}
+                              {renderLineCard(prodLine, `prod-${prodLine.itemId}`, m.reason)}
                               
                               {prodLines.length > 0 && (
                                 <div className="space-y-2 pl-4 sm:pl-8 border-l-2 border-slate-200 mt-3">
@@ -1013,7 +1037,7 @@ export const InventoryMovements: React.FC = () => {
                                     <Palette size={11} /> Materiales Consumidos
                                   </div>
                                   {prodLines.map((assocLine, aIdx) =>
-                                    renderLineCard(assocLine, `assoc-${assocLine.itemId}-${aIdx}`)
+                                    renderLineCard(assocLine, `assoc-${assocLine.itemId}-${aIdx}`, m.reason)
                                   )}
                                 </div>
                               )}
@@ -1030,7 +1054,7 @@ export const InventoryMovements: React.FC = () => {
                             </h3>
                             <div className="space-y-2">
                               {unassociatedLines.map((line, idx) =>
-                                renderLineCard(line, `unassoc-${line.itemId}-${idx}`)
+                                renderLineCard(line, `unassoc-${line.itemId}-${idx}`, m.reason)
                               )}
                             </div>
                           </div>
@@ -1052,7 +1076,7 @@ export const InventoryMovements: React.FC = () => {
                         </h3>
                         <div className="space-y-2">
                           {sectionLines.map((line, idx) =>
-                            renderLineCard(line, `${m.id}-${section.itemType}-${idx}`)
+                            renderLineCard(line, `${m.id}-${section.itemType}-${idx}`, m.reason)
                           )}
                         </div>
                       </div>
@@ -1152,6 +1176,7 @@ export const InventoryMovements: React.FC = () => {
             <option value="sale">Ventas</option>
             <option value="in">Entradas</option>
             <option value="return">Devoluciones</option>
+            <option value="restoration">Restauraciones</option>
             <option value="adjustment">Ajustes</option>
             <option value="correction">Correcciones</option>
           </select>
@@ -1174,7 +1199,7 @@ export const InventoryMovements: React.FC = () => {
       ) : (
         <div className="space-y-3">
           {filteredMovements.map((m) => {
-            const badge = getMovementBadgeStyles(m.movementType);
+            const badge = getMovementBadgeStyles(m.movementType, m.reason);
             const order = getOrderLabel(m.orderId);
             const summary = getMovementSummary(m);
             const grouped = isGroupedMovement(m);

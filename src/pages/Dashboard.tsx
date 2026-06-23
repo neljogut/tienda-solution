@@ -8,7 +8,8 @@ import type { Filament, InventoryMovement } from '../types/inventory';
 import { 
   DollarSign, ShoppingCart, TrendingUp, AlertCircle, Package, 
   Users, Clock, CheckCircle, Truck, Plus,
-  BarChart3, Wallet, XCircle, Flame, Loader2, Palette
+  BarChart3, Wallet, XCircle, Flame, Loader2, Palette,
+  ShoppingBag
 } from 'lucide-react';
 import { fetchDollarRate } from '../services/dollarService';
 import type { ExchangeRateData, PricingSettingsResale } from '../types/settings';
@@ -27,7 +28,9 @@ export const Dashboard: React.FC = () => {
   const [filaments, setFilaments] = useState<Filament[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [filamentLimit, setFilamentLimit] = useState<number | 'all'>(5);
-  const [productLimit, setProductLimit] = useState<number | 'all'>(5);
+  const [product3DLimit, setProduct3DLimit] = useState<number | 'all'>(5);
+  const [productResaleLimit, setProductResaleLimit] = useState<number | 'all'>(5);
+  const [collaboratorLimit, setCollaboratorLimit] = useState<number | 'all'>(5);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -226,27 +229,59 @@ export const Dashboard: React.FC = () => {
     });
   }, [employees, orders, thisMonth, userData]);
 
-  // Top products — keychains count as 1 per order line (sell in bulk), rest count by qty
-  const productRanking = useMemo(() => {
+  const sortedCollaborators = useMemo(() => {
+    return collaboratorsStats
+      .filter(stat => stat.salesAmount > 0)
+      .sort((a, b) => b.salesAmount - a.salesAmount);
+  }, [collaboratorsStats]);
+
+  const visibleCollaborators = useMemo(() => {
+    if (collaboratorLimit === 'all') return sortedCollaborators;
+    return sortedCollaborators.slice(0, collaboratorLimit);
+  }, [sortedCollaborators, collaboratorLimit]);
+
+  // Top 3D Products
+  const product3DRanking = useMemo(() => {
     const productSalesMap = new Map<string, { name: string; qty: number; revenue: number }>();
     activeOrders.forEach(order => {
       order.items?.forEach(item => {
-        const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
         const prod = products.find(p => p.id === item.productId);
-        const isKeychain = prod && prod.type === '3d' && (prod as any).isKeychain;
+        if (!prod || prod.type !== '3d') return;
+        const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
+        const isKeychain = (prod as any).isKeychain;
         existing.qty += isKeychain ? 1 : item.quantity;
         existing.revenue += item.unitPrice * item.quantity;
         productSalesMap.set(item.productId, existing);
       });
     });
-    return [...productSalesMap.entries()]
-      .sort((a, b) => b[1].qty - a[1].qty);
+    return [...productSalesMap.entries()].sort((a, b) => b[1].qty - a[1].qty);
   }, [activeOrders, products]);
 
-  const visibleProducts = useMemo(() => {
-    if (productLimit === 'all') return productRanking;
-    return productRanking.slice(0, productLimit);
-  }, [productRanking, productLimit]);
+  const visible3DProducts = useMemo(() => {
+    if (product3DLimit === 'all') return product3DRanking;
+    return product3DRanking.slice(0, product3DLimit);
+  }, [product3DRanking, product3DLimit]);
+
+  // Top Resale Products
+  const productResaleRanking = useMemo(() => {
+    const productSalesMap = new Map<string, { name: string; qty: number; revenue: number }>();
+    activeOrders.forEach(order => {
+      order.items?.forEach(item => {
+        const prod = products.find(p => p.id === item.productId);
+        if (!prod || prod.type !== 'resale') return;
+        const existing = productSalesMap.get(item.productId) || { name: item.name, qty: 0, revenue: 0 };
+        existing.qty += item.quantity;
+        existing.revenue += item.unitPrice * item.quantity;
+        productSalesMap.set(item.productId, existing);
+      });
+    });
+    return [...productSalesMap.entries()].sort((a, b) => b[1].qty - a[1].qty);
+  }, [activeOrders, products]);
+
+  const visibleResaleProducts = useMemo(() => {
+    if (productResaleLimit === 'all') return productResaleRanking;
+    return productResaleRanking.slice(0, productResaleLimit);
+  }, [productResaleRanking, productResaleLimit]);
 
   // Low stock alerts
   const lowStockProducts = products.filter(p => (p.stock || 0) <= 3 && p.isActive);
@@ -435,49 +470,65 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Collaborators Performance (Owner only) */}
-      {userData?.role === 'owner' && collaboratorsStats.length > 0 && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4 border-b pb-2">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <Users size={18} className="text-blue-500" />
-              Rendimiento de Colaboradores
-            </h3>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Comisiones y Ventas (Mes)</span>
+      {userData?.role === 'owner' && sortedCollaborators.length > 0 && (
+        <div className="card p-5 border-l-4 border-l-violet-400 bg-gradient-to-r from-violet-50/30 to-purple-50/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+                <Users size={16} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Rendimiento de Colaboradores</h3>
+                <p className="text-[11px] text-slate-400">Ventas y comisiones acumuladas del mes actual</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              {([5, 10, 25, 50, 'all'] as const).map((opt) => (
+                <button
+                  key={String(opt)}
+                  onClick={() => setCollaboratorLimit(opt)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    collaboratorLimit === opt
+                      ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt === 'all' ? 'Todos' : `Top ${opt}`}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold">
-                  <th className="py-2.5">Colaborador</th>
-                  <th className="py-2.5 text-center">Pedidos (Mes)</th>
-                  <th className="py-2.5 text-right">Ventas (Mes)</th>
-                  <th className="py-2.5 text-right">Comisiones A Pagar (Cobrado)</th>
-                  <th className="py-2.5 text-right">Comisiones En Espera (A Cobrar)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {collaboratorsStats.map((stat) => (
-                  <tr key={stat.uid} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3 font-semibold text-slate-700 flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-[9px]">
-                        {stat.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      {stat.name}
-                    </td>
-                    <td className="py-3 text-center font-medium text-slate-600">{stat.salesCount}</td>
-                    <td className="py-3 text-right font-bold text-slate-800">${stat.salesAmount.toLocaleString('es-AR')}</td>
-                    <td className="py-3 text-right font-bold text-emerald-600">${stat.availableComm.toLocaleString('es-AR')}</td>
-                    <td className="py-3 text-right font-bold text-amber-600">${stat.waitingComm.toLocaleString('es-AR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {visibleCollaborators.map((entry, i) => (
+              <div key={entry.uid} className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                  i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {i + 1}
+                </span>
+
+                {/* Avatar / Iniciales */}
+                <div className="w-10 h-10 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  {entry.name.slice(0, 2).toUpperCase()}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 truncate">{entry.name}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {entry.salesCount} pedidos | Comisiones: <span className="text-emerald-600 font-bold">${entry.availableComm.toLocaleString('es-AR')}</span> cobrado, <span className="text-amber-600 font-bold">${entry.waitingComm.toLocaleString('es-AR')}</span> a cobrar
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-violet-600 whitespace-nowrap">
+                  ${entry.salesAmount.toLocaleString('es-AR')}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Top Products */}
-      {visibleProducts.length > 0 && (
+      {/* Top Productos 3D */}
+      {visible3DProducts.length > 0 && (
         <div className="card p-5 border-l-4 border-l-emerald-400 bg-gradient-to-r from-emerald-50/30 to-green-50/20">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
@@ -485,17 +536,17 @@ export const Dashboard: React.FC = () => {
                 <Package size={16} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800">Top Productos</h3>
-                <p className="text-[11px] text-slate-400">Productos más vendidos según cantidad de unidades</p>
+                <h3 className="font-bold text-slate-800">Top Productos 3D</h3>
+                <p className="text-[11px] text-slate-400">Productos de impresión 3D más vendidos</p>
               </div>
             </div>
             <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               {([5, 10, 25, 50, 'all'] as const).map((opt) => (
                 <button
                   key={String(opt)}
-                  onClick={() => setProductLimit(opt)}
+                  onClick={() => setProduct3DLimit(opt)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    productLimit === opt
+                    product3DLimit === opt
                       ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-sm'
                       : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                   }`}
@@ -506,7 +557,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {visibleProducts.map(([id, data], i) => {
+            {visible3DProducts.map(([id, data], i) => {
               const prod = products.find(p => p.id === id);
               return (
                 <div key={id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
@@ -535,6 +586,74 @@ export const Dashboard: React.FC = () => {
                     <p className="text-[11px] text-slate-400">{data.qty} vendidos</p>
                   </div>
                   <span className="text-sm font-bold text-emerald-600 whitespace-nowrap">
+                    ${data.revenue.toLocaleString('es-AR')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top Productos de Reventa */}
+      {visibleResaleProducts.length > 0 && (
+        <div className="card p-5 border-l-4 border-l-blue-400 bg-gradient-to-r from-blue-50/30 to-indigo-50/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                <ShoppingBag size={16} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Top Productos de Reventa</h3>
+                <p className="text-[11px] text-slate-400">Productos de reventa / comunes más vendidos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              {([5, 10, 25, 50, 'all'] as const).map((opt) => (
+                <button
+                  key={String(opt)}
+                  onClick={() => setProductResaleLimit(opt)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    productResaleLimit === opt
+                      ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt === 'all' ? 'Todos' : `Top ${opt}`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {visibleResaleProducts.map(([id, data], i) => {
+              const prod = products.find(p => p.id === id);
+              return (
+                <div key={id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                    i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {i + 1}
+                  </span>
+                  
+                  {/* Imagen del Producto */}
+                  <div className="w-10 h-10 rounded bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {prod?.mainImage ? (
+                      <img
+                        src={prod.mainImage}
+                        alt={data.name}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <Package size={16} className="text-slate-400" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-700 truncate">{data.name}</p>
+                    <p className="text-[11px] text-slate-400">{data.qty} vendidos</p>
+                  </div>
+                  <span className="text-sm font-bold text-blue-600 whitespace-nowrap">
                     ${data.revenue.toLocaleString('es-AR')}
                   </span>
                 </div>

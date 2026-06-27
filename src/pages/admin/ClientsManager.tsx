@@ -7,7 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import type { UserData } from '../../types/user';
 import {
   Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin,
-  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert, Store, RefreshCw
+  Crown, Shield, Star, X, ChevronUp, Eye, UserPlus, ShieldAlert, Store, RefreshCw,
+  ArrowUpDown
 } from 'lucide-react';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
@@ -58,6 +59,10 @@ export const ClientsManager: React.FC = () => {
   const [filterWholesale, setFilterWholesale] = useState<boolean | null>(null);
   const [filterTrusted, setFilterTrusted] = useState<boolean | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Sorting state
+  const [sortBy, setSortBy] = useState<'lastName' | 'createdAt' | 'totalPurchased' | 'totalOwed' | 'city'>('lastName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -383,6 +388,102 @@ export const ClientsManager: React.FC = () => {
     }
     return result;
   }, [clients, filterWholesale, filterTrusted, searchTerm]);
+
+  /* ── sorted list ── */
+  const sortedClients = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let valA: any;
+      let valB: any;
+
+      if (sortBy === 'lastName') {
+        valA = `${a.lastName || ''} ${a.firstName || ''}`.toLowerCase();
+        valB = `${b.lastName || ''} ${b.firstName || ''}`.toLowerCase();
+      } else if (sortBy === 'createdAt') {
+        valA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        valB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      } else if (sortBy === 'totalPurchased') {
+        valA = a.totalPurchased ?? 0;
+        valB = b.totalPurchased ?? 0;
+      } else if (sortBy === 'totalOwed') {
+        valA = a.totalOwed ?? 0;
+        valB = b.totalOwed ?? 0;
+      } else if (sortBy === 'city') {
+        valA = (a.city || '').toLowerCase();
+        valB = (b.city || '').toLowerCase();
+      } else {
+        valA = '';
+        valB = '';
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filtered, sortBy, sortOrder]);
+
+  const handleSort = (field: typeof sortBy, defaultOrder: 'asc' | 'desc' = 'asc') => {
+    if (sortBy === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder(defaultOrder);
+    }
+  };
+
+  const renderSortIndicator = (field: typeof sortBy) => {
+    if (sortBy !== field) return <span className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity ml-1">⇅</span>;
+    return <span className="text-blue-600 ml-1">{sortOrder === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const renderSortButton = (field: typeof sortBy, label: string, defaultOrder: 'asc' | 'desc' = 'asc', forcedOrder?: 'asc' | 'desc') => {
+    const isActive = forcedOrder 
+      ? sortBy === field && sortOrder === forcedOrder
+      : sortBy === field;
+
+    const handleClick = () => {
+      if (forcedOrder) {
+        if (isActive) {
+          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+          setSortBy(field);
+          setSortOrder(forcedOrder);
+        }
+      } else {
+        if (sortBy === field) {
+          setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+          setSortBy(field);
+          setSortOrder(defaultOrder);
+        }
+      }
+    };
+
+    let suffix = '⇅';
+    if (isActive) {
+      if (forcedOrder) {
+        suffix = forcedOrder === 'asc' ? '▲' : '▼';
+      } else {
+        suffix = sortOrder === 'asc' ? '▲' : '▼';
+      }
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap shadow-sm border ${
+          isActive
+            ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:border-blue-700 active:scale-95'
+            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 active:bg-slate-100 active:scale-95'
+        }`}
+      >
+        {label}
+        <span className={isActive ? 'text-[10px] font-extrabold' : 'text-slate-300'}>
+          {suffix}
+        </span>
+      </button>
+    );
+  };
 
   /* ── modal helpers ── */
   const openAdd = () => {
@@ -740,6 +841,8 @@ export const ClientsManager: React.FC = () => {
     setFilterWholesale(null);
     setFilterTrusted(null);
     setSearchTerm('');
+    setSortBy('lastName');
+    setSortOrder('asc');
   };
 
   /* ── render ── */
@@ -819,8 +922,9 @@ export const ClientsManager: React.FC = () => {
         </div>
       )}
 
-      {/* ─── Search & Filter Bar ─── */}
-      <div className="card p-4 space-y-3">
+      {/* ─── Search, Sort & Filter Bar ─── */}
+      <div className="card p-4 space-y-4">
+        {/* Fila 1: Buscador */}
         <div className="flex flex-col sm:flex-row gap-3 items-center">
           <div className="relative flex-1 w-full">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -834,8 +938,24 @@ export const ClientsManager: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter toggles */}
-        <div className="flex flex-wrap gap-2 items-center">
+        {/* Fila 2: Ordenamiento */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1 select-none">
+            <ArrowUpDown size={13} className="text-slate-400" />
+            <span>Ordenar:</span>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full select-none">
+            {renderSortButton('lastName', 'Apellido', 'asc')}
+            {renderSortButton('createdAt', 'Registro', 'desc')}
+            {renderSortButton('totalPurchased', 'Más Compras', 'desc', 'desc')}
+            {renderSortButton('totalPurchased', 'Menos Compras', 'asc', 'asc')}
+            {renderSortButton('totalOwed', 'Deuda', 'desc')}
+            {renderSortButton('city', 'Ciudad', 'asc')}
+          </div>
+        </div>
+
+        {/* Fila 3: Filtros */}
+        <div className="flex flex-wrap gap-2 items-center border-t border-slate-100 pt-3">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Filtrar:</span>
 
           {/* Wholesale filter */}
@@ -868,7 +988,7 @@ export const ClientsManager: React.FC = () => {
             {filterTrusted === true ? '✓ Confianza' : filterTrusted === false ? '✗ Sin Confianza' : 'Confianza'}
           </button>
 
-          {(filterWholesale !== null || filterTrusted !== null) && (
+          {(filterWholesale !== null || filterTrusted !== null || searchTerm.trim() !== '' || sortBy !== 'lastName' || sortOrder !== 'asc') && (
             <button
               onClick={clearFilters}
               className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors flex items-center gap-1"
@@ -884,7 +1004,7 @@ export const ClientsManager: React.FC = () => {
       <div className="flex items-center gap-2 text-sm text-slate-500">
         <Users size={16} />
         <span>
-          {filtered.length} {filtered.length === 1 ? 'cliente' : 'clientes'}
+          {sortedClients.length} {sortedClients.length === 1 ? 'cliente' : 'clientes'}
           {activeFilterLabels.length > 0 && ` (${activeFilterLabels.join(', ')})`}
           {searchTerm && ` — búsqueda: "${searchTerm}"`}
         </span>
@@ -896,17 +1016,21 @@ export const ClientsManager: React.FC = () => {
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="table-header">
-                <th>Cliente</th>
+              <tr className="table-header select-none">
+                <th className="cursor-pointer hover:bg-slate-100/80 transition-colors group" onClick={() => handleSort('lastName')}>
+                  Cliente {renderSortIndicator('lastName')}
+                </th>
                 <th>Clasificación</th>
                 <th>Teléfono</th>
                 <th>Email</th>
-                <th>Ciudad</th>
+                <th className="cursor-pointer hover:bg-slate-100/80 transition-colors group" onClick={() => handleSort('city')}>
+                  Ciudad {renderSortIndicator('city')}
+                </th>
                 <th className="text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.length === 0 ? (
+              {sortedClients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-12">
                     <div className="flex flex-col items-center justify-center text-slate-400 gap-3">
@@ -927,7 +1051,7 @@ export const ClientsManager: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filtered.map((client) => {
+                sortedClients.map((client) => {
                   const badges = getClientBadges(client);
                   const isExpanded = expandedId === client.id;
                   return (
@@ -1167,12 +1291,12 @@ export const ClientsManager: React.FC = () => {
 
         {/* Mobile View: Cards */}
         <div className="block md:hidden divide-y divide-slate-100 text-xs">
-          {filtered.length === 0 ? (
+          {sortedClients.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No se encontraron clientes con esos filtros.
             </div>
           ) : (
-            filtered.map((client) => {
+            sortedClients.map((client) => {
               const badges = getClientBadges(client);
               const isExpanded = expandedId === client.id;
               return (

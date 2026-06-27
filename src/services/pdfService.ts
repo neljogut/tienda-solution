@@ -5,6 +5,26 @@ import type { Order } from '../types/order';
 import type { BusinessSettings, PricingSettings3D } from '../types/settings';
 import { calculate3DCostBreakdown } from './pricingService';
 
+// Utility to sanitize text for jsPDF's built-in helvetica font (Windows-1252 only).
+// Strips emojis, zero-width chars, and other unsupported Unicode symbols.
+const sanitizePdfText = (text: string): string => {
+  if (!text) return '';
+  return text
+    // Remove zero-width characters (joiners, non-joiners, etc.)
+    .replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '')
+    // Remove emoji and supplementary Unicode planes (U+10000+)
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '')
+    // Remove misc symbols, dingbats, emoticons, etc. in BMP
+    .replace(/[\u2600-\u27BF\u2B50-\u2B55\u2934-\u2935\u3297\u3299]/g, '')
+    // Remove variation selectors
+    .replace(/[\uFE00-\uFE0F]/g, '')
+    // Remove any remaining control characters (except newline/tab)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Collapse multiple spaces into one
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};
+
 // Utility to format dates
 const formatDate = (isoString?: string) => {
   if (!isoString) return '—';
@@ -183,7 +203,8 @@ export const generateClientPDF = async (
 
   order.items.forEach((item) => {
     // Check height
-    const truncatedName = item.name.length > 42 ? `${item.name.substring(0, 40)}...` : item.name;
+    const safeName = sanitizePdfText(item.name);
+    const truncatedName = safeName.length > 42 ? `${safeName.substring(0, 40)}...` : safeName;
     const splitName = docPdf.splitTextToSize(truncatedName, 90);
     const rowHeight = Math.max(splitName.length * 4.5 + 4, 10);
 
@@ -565,7 +586,8 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
   order.items.forEach((e) => {
     y += 6;
     docPdf.rect(15, y, 180, 6, 'S');
-    docPdf.text(e.name.length > 40 ? `${e.name.substring(0, 38)}...` : e.name, 17, y + 4.5);
+    const safeEName = sanitizePdfText(e.name);
+    docPdf.text(safeEName.length > 40 ? `${safeEName.substring(0, 38)}...` : safeEName, 17, y + 4.5);
     docPdf.text(e.quantity.toString(), 120, y + 4.5);
     docPdf.text(formatCurrency(e.unitPrice), 155, y + 4.5, { align: 'right' });
     docPdf.text(formatCurrency(e.unitPrice * e.quantity), 193, y + 4.5, { align: 'right' });
@@ -599,7 +621,7 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
     resaleRows.forEach((r) => {
       y += 6;
       docPdf.rect(15, y, 180, 6, 'S');
-      docPdf.text(r.productName, 17, y + 4.5);
+      docPdf.text(sanitizePdfText(r.productName), 17, y + 4.5);
       docPdf.text(r.quantity.toString(), 120, y + 4.5);
       docPdf.text(formatCurrency(r.costoCompraUnit), 155, y + 4.5, { align: 'right' });
       docPdf.setTextColor('#991b1b');
@@ -636,7 +658,8 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
   filamentRows.forEach((f) => {
     y += 6;
     docPdf.rect(15, y, 180, 6, 'S');
-    docPdf.text(f.productName.length > 25 ? `${f.productName.substring(0, 23)}...` : f.productName, 17, y + 4.5);
+    const safeFName = sanitizePdfText(f.productName);
+    docPdf.text(safeFName.length > 25 ? `${safeFName.substring(0, 23)}...` : safeFName, 17, y + 4.5);
     docPdf.text(f.filDescription.length > 25 ? `${f.filDescription.substring(0, 23)}...` : f.filDescription, 75, y + 4.5);
     docPdf.text(f.grams.toFixed(0), 125, y + 4.5, { align: 'right' });
     docPdf.text(formatCurrency(f.precioKg), 155, y + 4.5, { align: 'right' });
@@ -680,7 +703,7 @@ export const generateInternalPDF = async (order: Order, business: BusinessSettin
     insumoRows.forEach((r) => {
       y += 6;
       docPdf.rect(15, y, 180, 6, 'S');
-      docPdf.text(r.productName, 17, y + 4.5);
+      docPdf.text(sanitizePdfText(r.productName), 17, y + 4.5);
       docPdf.text(r.insumoName, 75, y + 4.5);
       docPdf.text(r.cantidad.toFixed(0), 125, y + 4.5, { align: 'right' });
       docPdf.text(formatCurrency(r.precioUnit), 155, y + 4.5, { align: 'right' });

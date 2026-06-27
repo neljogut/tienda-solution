@@ -6,8 +6,8 @@ import { db } from '../firebase';
 import { 
   LayoutDashboard, ShoppingBag, Package, Users, Receipt, 
   Warehouse, ArrowLeftRight, DollarSign, BarChart3, Settings,
-  Building2, UserCog, X, Tag, ShoppingCart, User, CreditCard,
-  ChevronRight, LogOut, History, Layers, Printer
+  Building2, UserCog, X, ShoppingCart, User, CreditCard,
+  ChevronRight, LogOut, History, Printer
 } from 'lucide-react';
 import { getDefaultBusinessSettings } from '../constants/defaults';
 
@@ -75,8 +75,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       title: 'Productos',
       items: [
         { label: 'Productos', icon: Package, path: '/admin/products', permission: 'viewCatalog' },
-        { label: 'Categorías', icon: Tag, path: '/categories', permission: 'viewCategories' },
-        { label: 'Tipos de Producto', icon: Layers, path: '/admin/product-types', permission: 'viewCategories' },
         { label: 'Inventario', icon: Warehouse, path: '/inventory', permission: 'viewInventory' },
         { label: 'Movimientos', icon: ArrowLeftRight, path: '/inventory-movements', permission: 'viewInventoryMovements' },
       ]

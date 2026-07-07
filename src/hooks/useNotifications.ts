@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { AppNotification } from '../types/notification';
-import { markAllNotificationsRead, markNotificationRead } from '../services/notificationService';
+import { markAllNotificationsRead, markNotificationRead, clearAllNotifications } from '../services/notificationService';
 import {
   playNotificationSound,
   showSystemNotification,
@@ -85,6 +85,12 @@ export function useNotifications(uid: string | undefined) {
     setLatestAlert(null);
   }, [uid]);
 
+  const clearNotifications = useCallback(async () => {
+    if (!uid) return;
+    await clearAllNotifications(uid);
+    setLatestAlert(null);
+  }, [uid]);
+
   const requestBrowserPermission = useCallback(async () => {
     return requestNotificationPermission();
   }, []);
@@ -97,6 +103,7 @@ export function useNotifications(uid: string | undefined) {
     dismissAlert,
     markRead,
     markAllRead,
+    clearNotifications,
     requestBrowserPermission,
   };
 }

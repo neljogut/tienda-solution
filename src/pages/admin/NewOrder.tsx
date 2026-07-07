@@ -8,16 +8,16 @@ import { migrateClient } from '../../types/client';
 import type { Category } from '../../types/category';
 import type { VariantGroup } from '../../types/variantGroup';
 import { dedupeCategories, resolveCategoryId, getCategoryTreeIds, getSortedCategoryTree } from '../../utils/categories';
-import type { ExchangeRateData, DepositSettings, PricingSettings3D } from '../../types/settings';
-import type { CashSession, PaymentMethod } from '../../types/cash';
+import type { ExchangeRateData, DepositSettings } from '../../types/settings';
+import type { PaymentMethod } from '../../types/cash';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, ShoppingBag, Share2, Copy, CheckCircle2, X, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, User, CreditCard, AlertCircle, Sparkles, Info, ChevronRight, ChevronDown, ShoppingBag, Share2, Copy, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTierPrice, roundPriceUp100, recalculateAllProductsInFirestore, resolveInheritedPriceTiers, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../../services/pricingService';
 import { NumericInput } from '../../components/NumericInput';
 import { useCartStore } from '../../store/cartStore';
 import { SearchableClientSelect } from '../../components/SearchableClientSelect';
-import { estimateDeliveryTime } from '../../utils/deliveryEstimator';
+
 
 interface DrawerQuantityInputProps {
   productId: string;
@@ -97,8 +97,8 @@ export const NewOrder: React.FC = () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [paidAmount, setPaidAmount] = useState<number | ''>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [observationsPublic, setObservationsPublic] = useState('');
-  const [observationsInternal, setObservationsInternal] = useState('');
+  const observationsPublic = '';
+  const observationsInternal = '';
   const [loading, setLoading] = useState(false);
   const [addToast, setAddToast] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -111,37 +111,17 @@ export const NewOrder: React.FC = () => {
 
   // Settings & Exchange Rate
   const [depositSettings, setDepositSettings] = useState<DepositSettings | null>(null);
-  const [pricing3dSettings, setPricing3dSettings] = useState<PricingSettings3D | null>(null);
+  const [pricingResaleSettings, setPricingResaleSettings] = useState<any>(null);
+  const [pricing3dSettings] = useState<any>(null); // Dummy/unused
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
   
-  // Daily Cash active session
-  const [activeSession, setActiveSession] = useState<CashSession | null>(null);
+
 
   // Transfer client cart items if they exist
   const clientCart = useCartStore();
   const [cartTransferred, setCartTransferred] = useState(false);
   
-  // Delivery Estimation
-  const [estimatedDelivery, setEstimatedDelivery] = useState<{ days: number; date: Date | null; explanation: string } | null>(null);
 
-  useEffect(() => {
-    if (cartItems.length === 0) {
-      setEstimatedDelivery(null);
-      return;
-    }
-    const itemsForEst = cartItems.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      type: item.type
-    }));
-    estimateDeliveryTime(itemsForEst).then(res => {
-      setEstimatedDelivery({
-        days: res.estimatedDays,
-        date: res.estimatedDate,
-        explanation: res.explanation
-      });
-    }).catch(console.error);
-  }, [cartItems]);
 
   useEffect(() => {
     if (products.length > 0 && clientCart.items.length > 0 && !cartTransferred) {
@@ -210,18 +190,12 @@ export const NewOrder: React.FC = () => {
       if (snap.exists()) setExchangeRate((snap.data() as ExchangeRateData).currentUsdToArs);
     });
 
-    // 4b. Live pricing3d settings listener
-    const unsubPricing3d = onSnapshot(doc(db, 'settings', 'pricing3d'), (snap) => {
-      if (snap.exists()) setPricing3dSettings(snap.data() as PricingSettings3D);
+    // 4b. Live pricingResale settings listener
+    const unsubPricingResale = onSnapshot(doc(db, 'settings', 'pricingResale'), (snap) => {
+      if (snap.exists()) setPricingResaleSettings(snap.data());
     });
 
-    // 5. Live active cash session listener
-    const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
-    const unsubSession = onSnapshot(qSession, (snap) => {
-      const openSessions = snap.docs.map(d => ({ id: d.id, ...d.data() } as CashSession));
-      const mySession = openSessions.find(s => s.openedBy === userData?.uid) || null;
-      setActiveSession(mySession);
-    });
+
 
     return () => {
       unsubProducts();
@@ -230,8 +204,7 @@ export const NewOrder: React.FC = () => {
       unsubVariantGroups();
       unsubDeposit();
       unsubRate();
-      unsubPricing3d();
-      unsubSession();
+      unsubPricingResale();
     };
   }, []);
 
@@ -389,17 +362,17 @@ export const NewOrder: React.FC = () => {
     total3DWeightKeychain = 0,
     scopeQtyMap?: Map<string, number>
   ) => {
+    const isClientWholesale = client?.isWholesale ?? false;
+    let isWholesale = isClientWholesale;
+
     // 0. If product has price tiers, resolve them and use aggregated scope quantity
     const resolvedTiers = resolveInheritedPriceTiers(product.priceTiers, product.categoryId, categories, product.variantGroup, variantGroups);
     if (resolvedTiers && resolvedTiers.length > 0) {
       const basePrice = product.useManualPrice ? product.manualRetailPrice : product.calculatedRetailPrice;
       const scopeId = deepestTierScopeCategoryId(product.priceTiers, product.categoryId, categories, product.variantGroup);
       const effectiveQty = (scopeId && scopeQtyMap) ? (scopeQtyMap.get(scopeId) ?? quantity) : quantity;
-      return getTierPrice(effectiveQty, basePrice, resolvedTiers);
+      return getTierPrice(effectiveQty, basePrice, resolvedTiers, isClientWholesale);
     }
-
-    const isClientWholesale = client?.isWholesale ?? false;
-    let isWholesale = isClientWholesale;
 
     if (product.type === '3d') {
       const isKeychain = !!(product as any).isKeychain;
@@ -459,7 +432,7 @@ export const NewOrder: React.FC = () => {
         const hasTiers = resolvedTiers && resolvedTiers.length > 0;
         if (hasTiers) return; // Price tiers ignore wholesale thresholds
 
-        const weight = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
+        const weight = ((product as any).weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
         if ((product as any).isKeychain) {
           total3DWeightKeychain += weight;
         } else {
@@ -650,18 +623,11 @@ export const NewOrder: React.FC = () => {
       const isEmployeeCreator = userData?.role === 'employee';
       const employeeId = isEmployeeCreator ? userData.uid : activeClient?.employeeId;
       const employeeName = isEmployeeCreator ? (userData.displayName || userData.email || 'Colaborador') : activeClient?.employeeName;
-      const commissionPercent = pricing3dSettings?.employeeCommissionPercent ?? 10;
+      const commissionPercent = pricingResaleSettings?.employeeCommissionPercent ?? 10;
       
       let commissionAmount: number | undefined = undefined;
       if (employeeId) {
-        if (isEmployeeCreator) {
-          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
-        } else {
-          const profit3D = sanitizedItems
-            .filter(item => item.type === '3d')
-            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
-          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
-        }
+        commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
       }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
@@ -682,7 +648,7 @@ export const NewOrder: React.FC = () => {
         exchangeRateDate: new Date().toISOString(),
         totalCost,
         totalProfit,
-        deliveryDate: estimatedDelivery && estimatedDelivery.date ? estimatedDelivery.date.toISOString() : undefined,
+
         ...(employeeId ? {
           commissionEmployeeId: employeeId,
           commissionEmployeeName: employeeName || 'Colaborador',
@@ -727,72 +693,7 @@ export const NewOrder: React.FC = () => {
             finalQuantity: newStock,
           });
 
-          // Deduct associated 3D materials (filaments and supplies)
-          if (product.type === '3d') {
-            const prod3d = product as any;
 
-            // Deduct Filaments (gramos exactos por línea si están definidos)
-            const filamentLines = prod3d.filamentLines?.length
-              ? prod3d.filamentLines
-              : (prod3d.filamentIds ?? []).map((filamentId: string) => ({
-                  supplyId: filamentId,
-                  grams: (prod3d.weightGrams * qty) / Math.max(1, prod3d.filamentIds.length),
-                }));
-
-            for (const line of filamentLines) {
-              const filamentId = line.supplyId;
-              const weightToDeduct = (line.grams || 0) * qty;
-              if (!filamentId || weightToDeduct <= 0) continue;
-
-              const filRef = doc(db, 'inventory', filamentId);
-              const filSnap = await getDoc(filRef);
-              if (filSnap.exists()) {
-                const filData = filSnap.data();
-                const prevWeight = filData.availableWeightGrams || 0;
-                const newWeight = Math.max(0, prevWeight - weightToDeduct);
-
-                batch.update(filRef, { availableWeightGrams: newWeight });
-
-                saleLines.push({
-                  itemId: filamentId,
-                  itemType: 'filament',
-                  lineType: 'consumption',
-                  previousQuantity: prevWeight,
-                  modifiedQuantity: -weightToDeduct,
-                  finalQuantity: newWeight,
-                  relatedProductId: item.productId,
-                });
-              }
-            }
-
-            // Deduct Supplies
-            if (prod3d.supplyIds && prod3d.supplyIds.length > 0) {
-              for (const supplyObj of prod3d.supplyIds) {
-                const supplyId = supplyObj.supplyId;
-                const qtyNeeded = supplyObj.quantity * qty;
-
-                const supRef = doc(db, 'inventory', supplyId);
-                const supSnap = await getDoc(supRef);
-                if (supSnap.exists()) {
-                  const supData = supSnap.data();
-                  const prevQty = supData.currentStock || 0;
-                  const newQty = Math.max(0, prevQty - qtyNeeded);
-
-                  batch.update(supRef, { currentStock: newQty });
-
-                  saleLines.push({
-                    itemId: supplyId,
-                    itemType: 'supply',
-                    lineType: 'consumption',
-                    previousQuantity: prevQty,
-                    modifiedQuantity: -qtyNeeded,
-                    finalQuantity: newQty,
-                    relatedProductId: item.productId,
-                  });
-                }
-              }
-            }
-          }
         }
       }
       await batch.commit();
@@ -819,38 +720,7 @@ export const NewOrder: React.FC = () => {
         });
       }
 
-      // 4. Register Cash Session Transaction if paidAmountAmt > 0
-      if (paidAmountAmt > 0 && activeSession) {
-        const movementData: Omit<any, 'id'> = {
-          sessionId: activeSession.id,
-          date: new Date().toISOString(),
-          type: paidAmountAmt === totalAmount ? 'sale_income' : 'deposit',
-          amount: paidAmountAmt,
-          paymentMethod,
-          orderId,
-          customerId: selectedClientId,
-          userId: userData?.uid || '',
-          userName: userData?.displayName || 'Admin',
-          observation: `${paidAmountAmt === totalAmount ? 'Venta' : 'Seña'} de Pedido #${orderNumber} (${customerName})`
-        };
 
-        // Add movement
-        await addDoc(collection(db, 'cash_movements'), movementData);
-
-        // Update session totals
-        const sessionRef = doc(db, 'cash_sessions', activeSession.id);
-        const currentIncome = activeSession.totalIncome || 0;
-        const currentExpected = activeSession.expectedAmount || 0;
-        const breakdown = { ...(activeSession.breakdown || { cash: 0, transfer: 0, mercadopago: 0, card: 0, other: 0 }) };
-        
-        breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + paidAmountAmt;
-
-        await updateDoc(sessionRef, {
-          totalIncome: currentIncome + paidAmountAmt,
-          expectedAmount: currentExpected + paidAmountAmt,
-          breakdown
-        });
-      }
 
       navigate('/orders');
     } catch (error) {
@@ -878,18 +748,11 @@ export const NewOrder: React.FC = () => {
       const isEmployeeCreator = userData?.role === 'employee';
       const employeeId = isEmployeeCreator ? userData.uid : activeClient?.employeeId;
       const employeeName = isEmployeeCreator ? (userData.displayName || userData.email || 'Colaborador') : activeClient?.employeeName;
-      const commissionPercent = pricing3dSettings?.employeeCommissionPercent ?? 10;
+      const commissionPercent = pricingResaleSettings?.employeeCommissionPercent ?? 10;
       
       let commissionAmount: number | undefined = undefined;
       if (employeeId) {
-        if (isEmployeeCreator) {
-          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
-        } else {
-          const profit3D = sanitizedItems
-            .filter(item => item.type === '3d')
-            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
-          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
-        }
+        commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
       }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
@@ -910,7 +773,7 @@ export const NewOrder: React.FC = () => {
         exchangeRateDate: new Date().toISOString(),
         totalCost,
         totalProfit,
-        deliveryDate: estimatedDelivery && estimatedDelivery.date ? estimatedDelivery.date.toISOString() : undefined,
+
         sharedAt: new Date().toISOString(),
         ...(employeeId ? {
           commissionEmployeeId: employeeId,
@@ -971,7 +834,7 @@ export const NewOrder: React.FC = () => {
             if (hasTiers) return;
             
             if (product.type === '3d') {
-              const w = (product.weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
+              const w = ((product as any).weightGrams || 0) * (item.quantity === '' ? 0 : Number(item.quantity));
               if ((product as any).isKeychain) {
                 weightKeychain += w;
               } else {
@@ -1294,13 +1157,7 @@ export const NewOrder: React.FC = () => {
                 </div>
               )}
               
-              {/* Cash Session Status warning */}
-              {paidAmountAmt > 0 && !activeSession && (
-                <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-2.5 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold animate-fadeIn">
-                  <AlertCircle size={14} className="flex-shrink-0 text-amber-600" />
-                  <span>La caja diaria está cerrada. El pago no se registrará en la caja diaria.</span>
-                </div>
-              )}
+
 
               <div className="flex justify-between items-center text-xs pt-2.5 border-t border-slate-200 font-bold">
                 <span className="text-slate-600">Saldo Pendiente:</span>
@@ -1310,47 +1167,9 @@ export const NewOrder: React.FC = () => {
               </div>
             </div>
 
-            {/* Estimated Delivery Date */}
-            {estimatedDelivery && estimatedDelivery.date && (
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 animate-fadeIn space-y-1">
-                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
-                  <CalendarDays size={12} className="text-indigo-500" /> Fecha Estimada de Entrega (con margen)
-                </p>
-                <div className="flex items-center justify-between text-xs pt-0.5">
-                  <span className="font-bold text-indigo-700">
-                    {estimatedDelivery.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </span>
-                  <span className="font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full text-[10px]">
-                    ~{estimatedDelivery.days} {estimatedDelivery.days === 1 ? 'día' : 'días'}
-                  </span>
-                </div>
-                <p className="text-[9px] text-slate-400 leading-normal pt-0.5">{estimatedDelivery.explanation}</p>
-              </div>
-            )}
 
-            {/* Observation Fields */}
-            <div className="space-y-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Observaciones para el cliente</label>
-                <input 
-                  type="text" 
-                  value={observationsPublic} 
-                  onChange={e => setObservationsPublic(e.target.value)}
-                  placeholder="Ej. Entregar envuelto para regalo..."
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Observaciones internas (dueño)</label>
-                <input 
-                  type="text" 
-                  value={observationsInternal} 
-                  onChange={e => setObservationsInternal(e.target.value)}
-                  placeholder="Ej. Revisar calidad del filamento rojo..."
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white"
-                />
-              </div>
-            </div>
+
+
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-2.5 pt-2">

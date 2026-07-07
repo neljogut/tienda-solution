@@ -72,6 +72,14 @@ export const unifyClientsAndOrders = async (): Promise<{ success: boolean; messa
           user.customerId = linkedClient.id;
         }
       } else {
+        // If the user already had a customerId set, it means they had a client profile that was explicitly deleted.
+        // We clean up by deleting the user document rather than recreating the client profile.
+        if (user.customerId) {
+          batch.delete(doc(db, 'users', user.uid));
+          modificationsCount++;
+          continue;
+        }
+
         // Create client profile for registered user if missing
         const names = (user.displayName || 'Cliente').trim().split(/\s+/);
         const firstName = names[0] || 'Cliente';

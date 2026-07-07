@@ -5,19 +5,7 @@ import path from 'path';
 const rootDir = process.cwd();
 const envFilePath = path.join(rootDir, '.env.local');
 
-const DUALGI_CONFIG = {
-  projectId: 'dualgi3de',
-  hostingUrl: 'https://dualgi3de.web.app',
-  envText: `VITE_FIREBASE_API_KEY=AIzaSyDhSZUTwx7-TQ0cxrxsQO4_RYKdMo9ppC8
-VITE_FIREBASE_AUTH_DOMAIN=dualgi3de.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=dualgi3de
-VITE_FIREBASE_STORAGE_BUCKET=dualgi3de.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=756959344919
-VITE_FIREBASE_APP_ID=1:756959344919:web:968cc4b3092191444d9f52
-VITE_FIREBASE_VAPID_KEY=BJZsOEW6D3QI0uflC-mbD2HjlD2hhKdDHDNnbQkPJXyx0gEbUppeSSKtT67ijmzFMAs6laNC19uDXd5n7zCI_eE`,
-};
-
-const SOLUTION_CONFIG = {
+const CONFIG = {
   projectId: 'solution-3d',
   hostingUrl: 'https://solution-3d.web.app',
   envText: `VITE_FIREBASE_API_KEY=AIzaSyAvDeGu9jbA-A72evVUT2wP8a4MbOpwcII
@@ -29,13 +17,13 @@ VITE_FIREBASE_APP_ID=1:86569253623:web:52e051771a39cf18b7f1f2
 VITE_FIREBASE_VAPID_KEY=BD5uadfHdJuGWxzpUAdolXOjuOVdPKHAwB6ejEiycrb9l1xCTUKk-58LOsBLmeEbLyQxVqS7WxtsOLZgHHsGWjU`,
 };
 
-function deployTo(targetName, config) {
+try {
   console.log(`\n======================================================`);
-  console.log(`STARTING DEPLOY TO: ${targetName.toUpperCase()} (${config.projectId})`);
+  console.log(`STARTING DEPLOY TO: SOLUTION 3D (${CONFIG.projectId})`);
   console.log(`======================================================`);
 
-  console.log(`Writing .env.local for ${targetName}...`);
-  fs.writeFileSync(envFilePath, config.envText + '\n', 'utf8');
+  console.log(`Writing .env.local for Solution 3D...`);
+  fs.writeFileSync(envFilePath, CONFIG.envText + '\n', 'utf8');
 
   console.log(`Generating Service Worker with Firebase config...`);
   execSync('node scripts/generate-fcm-sw.mjs', { stdio: 'inherit' });
@@ -46,8 +34,8 @@ function deployTo(targetName, config) {
   console.log(`Building Cloud Functions...`);
   execSync('npm run build', { cwd: path.join(rootDir, 'functions'), stdio: 'inherit' });
 
-  console.log(`Switching Firebase CLI to use project: ${config.projectId}...`);
-  execSync(`npx firebase use ${config.projectId}`, { stdio: 'inherit' });
+  console.log(`Switching Firebase CLI to use project: ${CONFIG.projectId}...`);
+  execSync(`npx firebase use ${CONFIG.projectId}`, { stdio: 'inherit' });
 
   console.log(`Deploying Hosting and Functions...`);
   execSync(
@@ -56,22 +44,17 @@ function deployTo(targetName, config) {
       stdio: 'inherit',
       env: {
         ...process.env,
-        HOSTING_URL: config.hostingUrl,
-        GCLOUD_PROJECT: config.projectId,
-        GCP_PROJECT: config.projectId,
+        HOSTING_URL: CONFIG.hostingUrl,
+        GCLOUD_PROJECT: CONFIG.projectId,
+        GCP_PROJECT: CONFIG.projectId,
       },
     }
   );
 
-  console.log(`\n🎉 Success! Deployed to ${targetName}.`);
-}
-
-try {
-  deployTo('Dualgi 3D', DUALGI_CONFIG);
-  deployTo('Solution', SOLUTION_CONFIG);
+  console.log(`\n🎉 Success! Deployed to Solution 3D.`);
 
   console.log(`\n======================================================`);
-  console.log(`✅ MERCADO PAGO INTEGRATION DEPLOYS COMPLETED!`);
+  console.log(`✅ MERCADO PAGO INTEGRATION DEPLOY COMPLETED!`);
   console.log(`======================================================`);
 } catch (error) {
   console.error(`\n❌ Deployment failed:`, error.message);

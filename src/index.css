@@ -38,9 +38,9 @@
 
   /* Buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold 
-           px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 
-           hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 
+    @apply bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold 
+           px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 
+           hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 
            active:translate-y-0 transition-all duration-200 
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
   }
@@ -165,7 +165,7 @@
   }
 
   .sidebar-item-active {
-    @apply bg-gradient-to-r from-blue-600/20 to-indigo-600/20 text-white 
+    @apply bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-white 
            border-l-2 border-blue-400;
   }
 
@@ -197,4 +197,25 @@
   /* No scrollbar utility */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .bg-premium-radial {
+    background:
+      radial-gradient(1200px 620px at 20% 0%, rgba(59, 130, 246, 0.15), transparent 70%),
+      radial-gradient(920px 520px at 85% 0%, rgba(6, 182, 212, 0.12), transparent 68%),
+      linear-gradient(180deg, #f8fafc, #f1f5f9);
+  }
+
+  .topbar-glass {
+    @apply bg-white/75 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-40 transition-all duration-300;
+  }
+
+  .topbar-hidden {
+    transform: translateY(-100%);
+    box-shadow: none;
+  }
+
+  .topbar-visible {
+    transform: translateY(0);
+    @apply shadow-sm shadow-slate-100;
+  }
 }

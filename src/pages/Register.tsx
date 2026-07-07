@@ -210,12 +210,10 @@ export const Register: React.FC = () => {
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 transition-all duration-300">
         <div className="bg-blue-600 p-6 text-center flex flex-col items-center">
           {businessSettings?.logoUrl ? (
-            <img src={businessSettings.logoUrl} className="w-16 h-16 object-cover rounded-2xl mb-4 shadow-lg border border-white/10" alt="Logo" />
+            <img src={businessSettings.logoUrl} className="h-16 max-w-[200px] object-contain rounded-2xl mb-4 border border-white/10" alt="Logo" />
           ) : (
-            <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto flex items-center justify-center backdrop-blur-md mb-4 shadow-inner">
-              <span className="text-white text-3xl font-black">
-                {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : 'D'}
-              </span>
+            <div className="h-16 max-w-[200px] flex items-center justify-center mb-4">
+              <img src="/logo-white-text.png" className="h-full w-full object-contain" alt="Logo" />
             </div>
           )}
           <h2 className="text-2xl font-bold text-white">Crear Cuenta</h2>

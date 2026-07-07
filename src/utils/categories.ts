@@ -195,3 +195,20 @@ export function getSortedCategoryTree(
   walk(null, 0);
   return result;
 }
+
+/** Construye el path completo de una categoría: "Padre › Hijo › Nieto". */
+export function resolveCategoryPath(
+  categoryId: string | undefined | null,
+  categories: Category[]
+): string {
+  if (!categoryId) return '';
+  const path: string[] = [];
+  let currentId: string | null = categoryId;
+  while (currentId) {
+    const cat = categories.find(c => c.id === currentId);
+    if (!cat) break;
+    path.unshift(cat.name);
+    currentId = cat.parentId ?? null;
+  }
+  return path.join(' › ');
+}

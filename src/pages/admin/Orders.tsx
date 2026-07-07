@@ -6,7 +6,7 @@ import type { Order, OrderStatus, PaymentStatus } from '../../types/order';
 import type { BusinessSettings } from '../../types/settings';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle2, Clock, Truck, XCircle, Plus, FileDown, FileText, Loader2, Edit2, X, Trash2, AlertCircle, ChevronDown, ChevronUp, Package, CalendarDays } from 'lucide-react';
+import { CheckCircle2, Clock, Truck, XCircle, Plus, FileDown, FileText, Loader2, Edit2, X, Trash2, AlertCircle, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { generateClientPDF, generateInternalPDF } from '../../services/pdfService';
 import { notifyClientOrderChanges } from '../../services/notificationService';
 import { getDefaultBusinessSettings } from '../../constants/defaults';
@@ -87,15 +87,13 @@ export const Orders: React.FC = () => {
   // Deletion modal state
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
   const [restoreStock, setRestoreStock] = useState(true);
-  const [restoreFilament, setRestoreFilament] = useState(true);
-  const [restoreSupplies, setRestoreSupplies] = useState(true);
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission, userData } = useAuth();
 
   // Sorting state
-  const [sortBy, setSortBy] = useState<'orderNumber' | 'customerName' | 'date' | 'orderStatus' | 'paymentStatus' | 'totalAmount' | 'deliveryDate'>('date');
+  const [sortBy, setSortBy] = useState<'orderNumber' | 'customerName' | 'date' | 'orderStatus' | 'paymentStatus' | 'totalAmount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const handleSort = (field: typeof sortBy) => {
@@ -115,19 +113,6 @@ export const Orders: React.FC = () => {
       if (sortBy === 'date') {
         valA = new Date(a.date).getTime();
         valB = new Date(b.date).getTime();
-      } else if (sortBy === 'deliveryDate') {
-        const isActA = a.orderStatus !== 'delivered' && !!a.deliveryDate;
-        const isActB = b.orderStatus !== 'delivered' && !!b.deliveryDate;
-
-        if (isActA && !isActB) return -1;
-        if (!isActA && isActB) return 1;
-
-        const timeA = a.deliveryDate ? new Date(a.deliveryDate).getTime() : 0;
-        const timeB = b.deliveryDate ? new Date(b.deliveryDate).getTime() : 0;
-
-        if (timeA === timeB) return 0;
-        if (timeA < timeB) return sortOrder === 'asc' ? -1 : 1;
-        return sortOrder === 'asc' ? 1 : -1;
       } else if (sortBy === 'customerName') {
         valA = (a.customerName || '').toLowerCase();
         valB = (b.customerName || '').toLowerCase();
@@ -210,81 +195,7 @@ export const Orders: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Automatic migration for missing deliveryDate on active orders
-  useEffect(() => {
-    if (loading || orders.length === 0 || !userData || (userData.role !== 'owner' && userData.role !== 'employee')) return;
 
-    const activeMissing = orders.filter(
-      o => (o.orderStatus === 'pending' || o.orderStatus === 'processing') && !o.deliveryDate
-    );
-
-    if (activeMissing.length === 0) return;
-
-    const runMigration = async () => {
-      try {
-        const { getDoc, getDocs, doc, collection, writeBatch, query, where } = await import('firebase/firestore');
-        const settingsSnap = await getDoc(doc(db, 'settings', 'printQueue'));
-        const printerCount = settingsSnap.exists() ? (settingsSnap.data().printerCount || 1) : 1;
-        const workHoursPerDay = settingsSnap.exists() ? (settingsSnap.data().workHoursPerDay || 8) : 8;
-
-        const prodsSnap = await getDocs(query(collection(db, 'products'), where('type', '==', '3d')));
-        const productTimes: Record<string, number> = {};
-        prodsSnap.forEach(d => {
-          productTimes[d.id] = d.data().printTimeMinutes || 0;
-        });
-
-        const allActive = orders
-          .filter(o => o.orderStatus === 'pending' || o.orderStatus === 'processing')
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        let cumulativeMinutes = 0;
-        const batch = writeBatch(db);
-        let batchNeeded = false;
-
-        for (const order of allActive) {
-          let remainingMinutes = 0;
-          const items = order.items || [];
-          
-          items.forEach(item => {
-            if (item.type === '3d') {
-              const printTime = productTimes[item.productId] || 0;
-              const printed = item.printedQty || 0;
-              const pending = Math.max(0, item.quantity - printed);
-              
-              if (pending > 0) {
-                remainingMinutes += pending * printTime;
-              }
-            }
-          });
-
-          cumulativeMinutes += remainingMinutes;
-
-          if (!order.deliveryDate) {
-            const adjusted = printerCount > 1 ? cumulativeMinutes / printerCount : cumulativeMinutes;
-            const days = workHoursPerDay > 0 ? (adjusted / 60 / workHoursPerDay) : 0;
-            const estimatedDays = Math.ceil(days * 1.4) + 1;
-            
-            const estDate = new Date();
-            estDate.setDate(estDate.getDate() + estimatedDays);
-            
-            batch.update(doc(db, 'orders', order.id), {
-              deliveryDate: estDate.toISOString()
-            });
-            batchNeeded = true;
-          }
-        }
-
-        if (batchNeeded) {
-          await batch.commit();
-          console.log('Automated deliveryDate migration completed successfully.');
-        }
-      } catch (err) {
-        console.error('Error during automatic deliveryDate migration:', err);
-      }
-    };
-
-    runMigration();
-  }, [orders, loading, userData]);
 
   useEffect(() => {
     const openId = searchParams.get('open');
@@ -449,80 +360,7 @@ export const Orders: React.FC = () => {
             }
           }
 
-          // Deduct associated 3D materials (filaments and supplies)
-          if (item.type === '3d') {
-            // 2. Restore filaments
-            if (restoreFilament) {
-              const prodRef = doc(db, 'products', item.productId);
-              const prodSnap = await getDoc(prodRef);
-              if (prodSnap.exists()) {
-                const product = prodSnap.data();
-                const filamentLines = product.filamentLines?.length
-                  ? product.filamentLines
-                  : (product.filamentIds ?? []).map((filamentId: string) => ({
-                      supplyId: filamentId,
-                      grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds.length),
-                    }));
 
-                for (const line of filamentLines) {
-                  const filamentId = line.supplyId;
-                  const weightToRestore = (line.grams || 0) * item.quantity;
-                  if (!filamentId || weightToRestore <= 0) continue;
-
-                  const filRef = doc(db, 'inventory', filamentId);
-                  const filSnap = await getDoc(filRef);
-                  if (filSnap.exists()) {
-                    const filData = filSnap.data();
-                    const prevWeight = filData.availableWeightGrams || 0;
-                    const newWeight = prevWeight + weightToRestore;
-                    batch.update(filRef, { availableWeightGrams: newWeight });
-
-                    restoreLines.push({
-                      itemId: filamentId,
-                      itemType: 'filament',
-                      lineType: 'restored',
-                      previousQuantity: prevWeight,
-                      modifiedQuantity: weightToRestore,
-                      finalQuantity: newWeight,
-                    });
-                  }
-                }
-              }
-            }
-
-            // 3. Restore supplies
-            if (restoreSupplies) {
-              const prodRef = doc(db, 'products', item.productId);
-              const prodSnap = await getDoc(prodRef);
-              if (prodSnap.exists()) {
-                const product = prodSnap.data();
-                if (product.supplyIds && product.supplyIds.length > 0) {
-                  for (const supplyObj of product.supplyIds) {
-                    const supplyId = supplyObj.supplyId;
-                    const qtyNeeded = supplyObj.quantity * item.quantity;
-
-                    const supRef = doc(db, 'inventory', supplyId);
-                    const supSnap = await getDoc(supRef);
-                    if (supSnap.exists()) {
-                      const supData = supSnap.data();
-                      const prevQty = supData.currentStock || 0;
-                      const newQty = prevQty + qtyNeeded;
-                      batch.update(supRef, { currentStock: newQty });
-
-                      restoreLines.push({
-                        itemId: supplyId,
-                        itemType: 'supply',
-                        lineType: 'restored',
-                        previousQuantity: prevQty,
-                        modifiedQuantity: qtyNeeded,
-                        finalQuantity: newQty,
-                      });
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
 
         // Add inventory movement document if any restoration occurred
@@ -676,9 +514,7 @@ export const Orders: React.FC = () => {
                     <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('date')}>
                       Fecha {renderSortIndicator('date')}
                     </th>
-                    <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('deliveryDate')}>
-                      Entrega {renderSortIndicator('deliveryDate')}
-                    </th>
+
                     <th className="p-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group" onClick={() => handleSort('orderStatus')}>
                       Estado {renderSortIndicator('orderStatus')}
                     </th>
@@ -739,25 +575,6 @@ export const Orders: React.FC = () => {
                                 month: '2-digit',
                                 year: 'numeric'
                               })}
-                            </td>
-                            
-                            {/* Delivery Date */}
-                            <td className="p-4 text-slate-500">
-                              {order.orderStatus === 'delivered' ? (
-                                <span className="inline-flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full p-1" title="Entregado">
-                                  <CheckCircle2 size={13} className="stroke-[2.5]" />
-                                </span>
-                              ) : order.deliveryDate ? (
-                                <span className="font-semibold text-slate-700">
-                                  {new Date(order.deliveryDate).toLocaleDateString('es-AR', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric'
-                                  })}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400">—</span>
-                              )}
                             </td>
                             
                             {/* Status */}
@@ -823,8 +640,6 @@ export const Orders: React.FC = () => {
                                     onClick={() => {
                                       setDeletingOrder(order);
                                       setRestoreStock(order.orderStatus !== 'draft');
-                                      setRestoreFilament(order.orderStatus !== 'draft');
-                                      setRestoreSupplies(order.orderStatus !== 'draft');
                                     }}
                                     className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                                     title="Eliminar Pedido"
@@ -938,7 +753,7 @@ export const Orders: React.FC = () => {
                 {renderMobileSortButton('orderStatus', 'Estado')}
                 {renderMobileSortButton('paymentStatus', 'Pago')}
                 {renderMobileSortButton('totalAmount', 'Total')}
-                {renderMobileSortButton('deliveryDate', 'Entrega')}
+
               </div>
 
               {sortedOrders.length === 0 ? (
@@ -984,22 +799,7 @@ export const Orders: React.FC = () => {
                         {getPaymentBadge(order.paymentStatus)}
                       </div>
 
-                      {/* Row 3.5: Delivery Date */}
-                      {order.orderStatus === 'delivered' ? (
-                        <div className="flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded self-start font-semibold">
-                          <CheckCircle2 size={11} className="stroke-[2.5]" />
-                          <span>Entregado</span>
-                        </div>
-                      ) : order.deliveryDate ? (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded self-start">
-                          <CalendarDays size={11} className="text-slate-400" />
-                          <span>Entrega: {new Date(order.deliveryDate).toLocaleDateString('es-AR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}</span>
-                        </div>
-                      ) : null}
+
 
                       {/* Row 4: Partial Payment Info */}
                       {order.paymentStatus === 'partial' && (
@@ -1069,8 +869,6 @@ export const Orders: React.FC = () => {
                               onClick={() => {
                                 setDeletingOrder(order);
                                 setRestoreStock(order.orderStatus !== 'draft');
-                                setRestoreFilament(order.orderStatus !== 'draft');
-                                setRestoreSupplies(order.orderStatus !== 'draft');
                               }}
                               className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50 border border-slate-100 transition-colors"
                               title="Eliminar Pedido"
@@ -1336,35 +1134,7 @@ export const Orders: React.FC = () => {
                      </div>
                    </label>
 
-                   {deletingOrder.items.some(i => i.type === '3d') && (
-                     <>
-                       <label className="flex items-center gap-3 cursor-pointer p-1 border-t border-slate-200/50 pt-2">
-                         <input
-                           type="checkbox"
-                           checked={restoreFilament}
-                           onChange={(e) => setRestoreFilament(e.target.checked)}
-                           className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
-                         />
-                         <div>
-                           <span className="text-xs font-bold text-slate-700 block">Restaurar Gramos de Filamento</span>
-                           <span className="text-[10px] text-slate-400">Devuelve los gramos de filamentos asociados al stock.</span>
-                         </div>
-                       </label>
 
-                       <label className="flex items-center gap-3 cursor-pointer p-1 border-t border-slate-200/50 pt-2">
-                         <input
-                           type="checkbox"
-                           checked={restoreSupplies}
-                           onChange={(e) => setRestoreSupplies(e.target.checked)}
-                           className="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500"
-                         />
-                         <div>
-                           <span className="text-xs font-bold text-slate-700 block">Restaurar Insumos/Tornillos</span>
-                           <span className="text-[10px] text-slate-400">Devuelve los insumos consumidos al inventario.</span>
-                         </div>
-                       </label>
-                     </>
-                   )}
                  </div>
                )}
             </div>

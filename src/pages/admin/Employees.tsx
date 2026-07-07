@@ -632,7 +632,6 @@ export const Employees: React.FC = () => {
 
   const permissionsList: { key: keyof UserPermissions; label: string; group: string }[] = [
     // General
-    { key: 'viewDashboard', label: 'Ver Dashboard de Administración', group: 'General' },
 
     // Pedidos
     { key: 'viewOrders', label: 'Ver Listado de Pedidos', group: 'Pedidos' },

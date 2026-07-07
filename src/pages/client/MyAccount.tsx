@@ -200,7 +200,7 @@ export const MyAccount: React.FC = () => {
       </div>
 
       {/* Payout Details Section */}
-      {(userData?.role === 'employee' || userData?.role === 'owner') && (
+      {userData?.role === 'employee' && (
         <div className="card p-6 mt-6">
           <div className="flex items-center gap-2 mb-6 pb-6 border-b border-slate-100">
             <CreditCard className="text-indigo-600 animate-pulse" size={20} />

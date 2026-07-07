@@ -609,6 +609,11 @@ export const ClientsManager: React.FC = () => {
       // 1. Delete the client
       batch.delete(doc(db, 'clients', deleteTarget.id));
 
+      // 1.5. If the client is linked to a user account, delete it to prevent recreation
+      if (deleteTarget.userId) {
+        batch.delete(doc(db, 'users', deleteTarget.userId));
+      }
+
       // 2. Convert orders of this client to 'eventual' to preserve financial history
       const ordersQuery = query(collection(db, 'orders'), where('customerId', '==', deleteTarget.id));
       const ordersSnap = await getDocs(ordersQuery);

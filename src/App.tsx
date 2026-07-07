@@ -12,21 +12,20 @@ import { Catalog } from './pages/Catalog';
 import { MyOrders } from './pages/client/MyOrders';
 import { MyAccount } from './pages/client/MyAccount';
 import { ProductDetail } from './pages/ProductDetail';
-import { Dashboard } from './pages/Dashboard';
 import { getDefaultBusinessSettings } from './constants/defaults';
 import { ProductList } from './pages/admin/ProductList';
 import { ProductForm } from './pages/admin/ProductForm';
-import { Inventory } from './pages/admin/Inventory';
+import { QuotesList } from './pages/admin/QuotesList';
+import { QuoteForm } from './pages/admin/QuoteForm';
 import { Orders } from './pages/admin/Orders';
 import { NewOrder } from './pages/admin/NewOrder';
-import { Cash } from './pages/admin/Cash';
+
 import { CurrentAccounts } from './pages/admin/CurrentAccounts';
 import { Balance } from './pages/admin/Balance';
 import { ClientsManager } from './pages/admin/ClientsManager';
 import { Categories } from './pages/admin/Categories';
 import { PricingSettings } from './pages/admin/PricingSettings';
-import { CashHistory } from './pages/admin/CashHistory';
-import { InventoryMovements } from './pages/admin/InventoryMovements';
+
 import { BusinessSettingsPage } from './pages/admin/BusinessSettings';
 import { Employees } from './pages/admin/Employees';
 import { MyAccountBalance } from './pages/client/MyAccountBalance';
@@ -36,7 +35,9 @@ import { SharedOrder } from './pages/SharedOrder';
 import { MyBalance } from './pages/client/MyBalance';
 import { Liquidations } from './pages/admin/Liquidations';
 import { ProductTypes } from './pages/admin/ProductTypes';
-import { PrintQueue } from './pages/admin/PrintQueue';
+import { Services } from './pages/Services';
+import { AdminServices } from './pages/admin/AdminServices';
+
 
 // Rutas protegidas basadas en auth y roles
 const ProtectedRoute = ({ children, requiredRole, requiredPermission }: { 
@@ -60,6 +61,34 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission }: {
   return children;
 };
 
+const IndexRedirect = () => {
+  const { userData, loading } = useAuth();
+  const [defaultPage, setDefaultPage] = React.useState<string>('/catalog');
+  const [settingsLoading, setSettingsLoading] = React.useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setDefaultPage(data.defaultLandingPage === 'orders' ? '/orders' : '/catalog');
+      }
+      setSettingsLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  if (loading || settingsLoading) {
+    return <div className="h-screen w-full flex items-center justify-center text-slate-500">Cargando...</div>;
+  }
+
+  // Only owners/employees might be redirected to orders by default.
+  // Clients always go to catalog.
+  if (userData?.role === 'owner' || userData?.role === 'employee') {
+    return <Navigate to={defaultPage} replace />;
+  }
+  return <Navigate to="/catalog" replace />;
+};
+
 function App() {
   useEffect(() => {
     initNotificationAudio();
@@ -71,7 +100,7 @@ function App() {
       const data = snap.exists() ? snap.data() : null;
       
       // Update Title
-      document.title = data?.name ? `${data.name} · Impresión 3D y Regalos Personalizados` : `${getDefaultBusinessSettings().name} · Impresión 3D y Regalos Personalizados`;
+      document.title = data?.browserTabTitle || (data?.name ? `${data.name} · Impresión 3D y Regalos Personalizados` : `${getDefaultBusinessSettings().name} · Impresión 3D y Regalos Personalizados`);
       
       // Update Favicon
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
@@ -93,13 +122,14 @@ function App() {
           <Route path="/register" element={<Register />} />
           
           <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/catalog" replace />} />
+            <Route index element={<IndexRedirect />} />
             <Route path="catalog" element={<Catalog />} />
             <Route path="catalog/category/:categoryId" element={<Catalog />} />
             <Route path="catalog/type/:typeId" element={<Catalog />} />
             <Route path="catalog/type/:typeId/category/:categoryId" element={<Catalog />} />
             <Route path="catalog/:id" element={<ProductDetail />} />
             <Route path="shared-order/:orderId" element={<SharedOrder />} />
+            <Route path="servicios" element={<Services />} />
             
             {/* Client routes */}
             <Route path="my-orders" element={
@@ -129,11 +159,7 @@ function App() {
             } />
             
             {/* Owner / Employee protected routes */}
-            <Route path="dashboard" element={
-              <ProtectedRoute requiredPermission="viewDashboard">
-                <Dashboard />
-              </ProtectedRoute>
-            } />
+
             <Route path="admin/products" element={
               <ProtectedRoute requiredPermission="viewCatalog">
                 <ProductList />
@@ -149,16 +175,23 @@ function App() {
                 <ProductForm />
               </ProtectedRoute>
             } />
-            <Route path="inventory" element={
-              <ProtectedRoute requiredPermission="viewInventory">
-                <Inventory />
+            
+            <Route path="admin/quotes" element={
+              <ProtectedRoute>
+                <QuotesList />
               </ProtectedRoute>
             } />
-            <Route path="inventory-movements" element={
-              <ProtectedRoute requiredPermission="viewInventoryMovements">
-                <InventoryMovements />
+            <Route path="admin/quotes/new" element={
+              <ProtectedRoute>
+                <QuoteForm />
               </ProtectedRoute>
             } />
+            <Route path="admin/quotes/:id" element={
+              <ProtectedRoute>
+                <QuoteForm />
+              </ProtectedRoute>
+            } />
+
             <Route path="orders" element={
               <ProtectedRoute requiredPermission="viewOrders">
                 <Orders />
@@ -169,16 +202,7 @@ function App() {
                 <NewOrder />
               </ProtectedRoute>
             } />
-            <Route path="cash" element={
-              <ProtectedRoute requiredPermission="viewCash">
-                <Cash />
-              </ProtectedRoute>
-            } />
-            <Route path="cash-history" element={
-              <ProtectedRoute requiredPermission="viewCashHistory">
-                <CashHistory />
-              </ProtectedRoute>
-            } />
+
             <Route path="accounts" element={
               <ProtectedRoute requiredPermission="viewAccounts">
                 <CurrentAccounts />
@@ -194,7 +218,7 @@ function App() {
                 <ClientsManager />
               </ProtectedRoute>
             } />
-            <Route path="categories" element={
+            <Route path="admin/categories" element={
               <ProtectedRoute requiredPermission="viewCategories">
                 <Categories />
               </ProtectedRoute>
@@ -205,9 +229,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="pricing-settings" element={
-              <ProtectedRoute requiredPermission="viewPriceSettings">
-                <PricingSettings />
-              </ProtectedRoute>
+              <Navigate to="/business-settings" replace />
             } />
             <Route path="business-settings" element={
               <ProtectedRoute requiredRole="owner">
@@ -229,11 +251,12 @@ function App() {
                 <Liquidations />
               </ProtectedRoute>
             } />
-            <Route path="print-queue" element={
-              <ProtectedRoute requiredRole="owner">
-                <PrintQueue />
+            <Route path="admin/servicios" element={
+              <ProtectedRoute requiredPermission="viewOrders">
+                <AdminServices />
               </ProtectedRoute>
             } />
+
             
             {/* Fallback for undefined routes */}
             <Route path="*" element={<Navigate to="/catalog" replace />} />

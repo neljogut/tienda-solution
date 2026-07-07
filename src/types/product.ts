@@ -6,7 +6,7 @@ export interface PriceTier {
   unitPrice: number; // ARS price per unit at this tier
 }
 
-export interface BaseProduct {
+export interface Product {
   id: string;
   name: string;
   categoryId: string; // reference to Category
@@ -21,6 +21,7 @@ export interface BaseProduct {
   // Pricing
   useManualPrice: boolean;
   manualRetailPrice: number;
+  profitMarginPercent?: number;
 
   // Calculated fields
   calculatedRetailPrice: number;
@@ -34,32 +35,11 @@ export interface BaseProduct {
 
   createdAt?: string;
   updatedAt?: string;
-}
 
-export interface FilamentLine {
-  supplyId: string;
-  grams: number;
-}
-
-export interface SupplyLine {
-  supplyId: string;
-  quantity: number;
-}
-
-export interface Product3D extends BaseProduct {
-  type: '3d';
-  weightGrams: number;
-  printTimeMinutes: number;
-  isKeychain: boolean;
-  /** @deprecated Usar filamentLines (gramos por filamento) */
-  filamentIds: string[];
-  filamentLines: FilamentLine[];
-  supplyIds: SupplyLine[];
-}
-
-export interface ProductResale extends BaseProduct {
-  type: 'resale';
+  // Resale specific
   purchaseCost: number;
+
+  // Inventory / Barcode scanning
+  barcode?: string;
 }
 
-export type Product = Product3D | ProductResale;

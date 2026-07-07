@@ -552,69 +552,8 @@ export const Balance: React.FC = () => {
             </div>
           </div>
 
-          {/* Line breakdown 3D vs Resale */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* 3D Printing Balance */}
-            <div className="card p-6 border border-slate-200/80 shadow-sm space-y-5">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  Impresión 3D
-                </h3>
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
-                  {revenue3D > 0 ? ((revenue3D / totalRevenue) * 100).toFixed(0) : 0}% de ingresos
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-3 rounded-xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Ventas 3D</span>
-                  <p className="text-lg font-extrabold text-slate-700 mt-0.5">${revenue3D.toLocaleString('es-AR')}</p>
-                </div>
-                <div className="bg-emerald-50/40 p-3 rounded-xl">
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase">Ganancia Neta</span>
-                  <p className="text-lg font-extrabold text-emerald-700 mt-0.5">${profit3D.toLocaleString('es-AR')}</p>
-                </div>
-              </div>
-
-              {/* Proportional Cost details */}
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Detalle Proporcional de Costos</h4>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Material (Filamento):</span>
-                    <span className="font-semibold text-slate-800">${cost3DDetails.filament.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Electricidad (KWh):</span>
-                    <span className="font-semibold text-slate-800">${cost3DDetails.electricity.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Mantenimiento & Repuestos:</span>
-                    <span className="font-semibold text-slate-800">${cost3DDetails.maintenance.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Insumos adicionales:</span>
-                    <span className="font-semibold text-slate-800">${cost3DDetails.supplies.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Margen de error:</span>
-                    <span className="font-semibold text-slate-800">${cost3DDetails.errorMargin.toLocaleString('es-AR', {maximumFractionDigits: 0})}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-slate-800 border-t pt-1.5 mt-2">
-                    <span>Costo Real Consumido:</span>
-                    <span>${cost3D.toLocaleString('es-AR')}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status details */}
-              <div className="flex justify-between text-xs text-slate-500 border-t pt-3">
-                <span>Efectivo Cobrado: ${paid3D.toLocaleString('es-AR')}</span>
-                <span>Pendiente: ${pending3D.toLocaleString('es-AR')}</span>
-              </div>
-            </div>
+          {/* Line breakdown */}
+          <div className="flex flex-col gap-6">
 
             {/* Resale Balance */}
             <div className="card p-6 border border-slate-200/80 shadow-sm space-y-5">

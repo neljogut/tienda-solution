@@ -45,12 +45,10 @@ export const Login: React.FC = () => {
       <div className="card w-full max-w-md p-8 glass">
         <div className="flex flex-col items-center mb-8">
           {businessSettings?.logoUrl ? (
-            <img src={businessSettings.logoUrl} className="w-16 h-16 object-cover rounded-2xl mb-4 shadow-lg shadow-slate-200/50" alt="Logo" />
+            <img src={businessSettings.logoUrl} className="h-16 max-w-[200px] object-contain rounded-2xl mb-4" alt="Logo" />
           ) : (
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
-              <span className="text-white text-3xl font-bold">
-                {businessSettings?.name ? businessSettings.name.charAt(0).toUpperCase() : getDefaultBusinessSettings().name.charAt(0).toUpperCase()}
-              </span>
+            <div className="h-16 max-w-[200px] flex items-center justify-center mb-4">
+              <img src="/logo.png" className="h-full w-full object-contain" alt="Logo" />
             </div>
           )}
           <h2 className="text-2xl font-bold text-slate-800">{businessSettings?.name || getDefaultBusinessSettings().name}</h2>

@@ -30,7 +30,6 @@ export interface UserPermissions {
   downloadBalancePDFs?: boolean;
   viewManualPrices?: boolean;
   generateClientInvoices?: boolean;
-  viewDashboard?: boolean;
   viewAccounts?: boolean;
   viewCategories?: boolean;
 }

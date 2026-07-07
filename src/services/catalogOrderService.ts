@@ -10,7 +10,7 @@ import { db } from '../firebase';
 import type { CartItem } from '../store/cartStore';
 import type { User } from 'firebase/auth';
 import { resolveCustomerId } from './clientResolver';
-import { estimateDeliveryTime } from '../utils/deliveryEstimator';
+
 
 export interface CreateCatalogOrderResult {
   orderId: string;
@@ -74,28 +74,19 @@ export async function createCatalogOrderClient(
     }
   }
 
-  const pricing3dSnap = await getDoc(doc(db, 'settings', 'pricing3d'));
-  const commissionPercent = pricing3dSnap.exists()
-    ? (pricing3dSnap.data().employeeCommissionPercent ?? 10)
+  const pricingResaleSnap = await getDoc(doc(db, 'settings', 'pricingResale'));
+  const commissionPercent = pricingResaleSnap.exists()
+    ? (pricingResaleSnap.data().employeeCommissionPercent ?? 10)
     : 10;
 
   const totalProfit = totalAmount - totalCost;
   let commissionAmount: number | undefined = undefined;
   if (employeeId) {
-    const profit3D = orderItems
-      .filter(item => item.type === '3d')
-      .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
-    commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
+    commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
   }
   const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
-  const estResult = await estimateDeliveryTime(
-    orderItems.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      type: item.type
-    }))
-  );
+
 
   const newOrder = {
     orderNumber,
@@ -114,7 +105,7 @@ export async function createCatalogOrderClient(
     exchangeRateDate: new Date().toISOString(),
     totalCost,
     totalProfit,
-    deliveryDate: estResult.estimatedDate ? estResult.estimatedDate.toISOString() : undefined,
+
     ...(employeeId ? {
       commissionEmployeeId: employeeId,
       commissionEmployeeName: employeeName || 'Colaborador',
@@ -158,63 +149,7 @@ export async function createCatalogOrderClient(
       finalQuantity: newStock,
     });
 
-    if (product.type === '3d') {
-      const filamentLines = product.filamentLines?.length
-        ? product.filamentLines
-        : (product.filamentIds ?? []).map((filamentId: string) => ({
-            supplyId: filamentId,
-            grams:
-              (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds?.length || 1),
-          }));
 
-      for (const line of filamentLines) {
-        const filamentId = line.supplyId;
-        const weightToDeduct = (line.grams || 0) * item.quantity;
-        if (!filamentId || weightToDeduct <= 0) continue;
-
-        const filRef = doc(db, 'inventory', filamentId);
-        const filSnap = await getDoc(filRef);
-        if (filSnap.exists()) {
-          const filData = filSnap.data();
-          const prevWeight = filData.availableWeightGrams || 0;
-          const newWeight = Math.max(0, prevWeight - weightToDeduct);
-          batch.update(filRef, { availableWeightGrams: newWeight });
-          saleLines.push({
-            itemId: filamentId,
-            itemType: 'filament',
-            lineType: 'consumption',
-            previousQuantity: prevWeight,
-            modifiedQuantity: -weightToDeduct,
-            finalQuantity: newWeight,
-            relatedProductId: item.productId,
-          });
-        }
-      }
-
-      if (product.supplyIds?.length) {
-        for (const supplyObj of product.supplyIds) {
-          const supplyId = supplyObj.supplyId;
-          const qtyNeeded = supplyObj.quantity * item.quantity;
-          const supRef = doc(db, 'inventory', supplyId);
-          const supSnap = await getDoc(supRef);
-          if (supSnap.exists()) {
-            const supData = supSnap.data();
-            const prevQty = supData.currentStock || 0;
-            const newQty = Math.max(0, prevQty - qtyNeeded);
-            batch.update(supRef, { currentStock: newQty });
-            saleLines.push({
-              itemId: supplyId,
-              itemType: 'supply',
-              lineType: 'consumption',
-              previousQuantity: prevQty,
-              modifiedQuantity: -qtyNeeded,
-              finalQuantity: newQty,
-              relatedProductId: item.productId,
-            });
-          }
-        }
-      }
-    }
   }
 
   await batch.commit();

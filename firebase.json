@@ -17,10 +17,6 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
-        "source": "/catalog/**",
-        "function": "serveDynamicMeta"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }

@@ -4,25 +4,29 @@ import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CartDrawer } from './CartDrawer';
 import { Footer } from './Footer';
+import { Chatbot } from './Chatbot';
 import { useCartStore } from '../store/cartStore';
 import { ShoppingCart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ForcePasswordChange } from './ForcePasswordChange';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { BusinessSettings } from '../types/settings';
 import { getDefaultBusinessSettings } from '../constants/defaults';
 
 export const Layout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { getTotalItems, openDrawer, isDrawerOpen } = useCartStore();
+  const { getTotalItems, getTotalPrice, openDrawer, isDrawerOpen } = useCartStore();
   const { userData } = useAuth();
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
   const totalItems = getTotalItems();
+  const totalAmount = getTotalPrice();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/dashboard';
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isNewOrderRoute = location.pathname === '/admin/orders/new';
+  const showFloatingCart = !isDrawerOpen && totalItems > 0 && !isAdminRoute;
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
@@ -32,6 +36,28 @@ export const Layout: React.FC = () => {
     });
     return unsub;
   }, []);
+
+  useEffect(() => {
+    // Temporary helper to automatically upload the newly cropped/transparent logo to Firestore logoUrl
+    if (businessSettings && (!businessSettings.logoUrl || !businessSettings.logoUrl.startsWith('data:image/png;base64'))) {
+      const autoUpdateLogo = async () => {
+        try {
+          const res = await fetch('/logo.png');
+          const blob = await res.blob();
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            const base64data = reader.result as string;
+            await setDoc(doc(db, 'settings', 'business'), { logoUrl: base64data }, { merge: true });
+            console.log('Logo database updated successfully with cropped version!');
+          };
+        } catch (e) {
+          console.error('Error auto-updating logo:', e);
+        }
+      };
+      autoUpdateLogo();
+    }
+  }, [businessSettings]);
 
   if (userData?.forcePasswordChange) {
     return <ForcePasswordChange />;
@@ -49,7 +75,7 @@ export const Layout: React.FC = () => {
       
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out`}>
-        <Sidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+        <Sidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} businessSettings={businessSettings} />
       </div>
 
       {/* Main content */}
@@ -82,17 +108,51 @@ export const Layout: React.FC = () => {
       </div>
       <CartDrawer />
 
-      {/* Floating cart button for mobile and quick desktop access */}
-      {!isDrawerOpen && totalItems > 0 && (
-        <button
-          onClick={openDrawer}
-          className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-4 rounded-full shadow-2xl transition-transform transform hover:scale-110 z-40 flex items-center justify-center"
-        >
-          <ShoppingCart size={24} />
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] rounded-full flex items-center justify-center shadow-md animate-pulse">
-            {totalItems}
-          </span>
-        </button>
+      {/* Floating button/bar to open the cart (for both mobile and desktop) */}
+      {showFloatingCart && (
+        <>
+          {/* Mobile view floating bar */}
+          <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden animate-fadeIn">
+            <button
+              type="button"
+              onClick={openDrawer}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-5 rounded-2xl flex items-center justify-between font-extrabold shadow-2xl border-2 border-white/20 active:scale-98 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <ShoppingCart size={20} className="animate-bounce" />
+                <div className="flex flex-col items-start leading-tight">
+                  <span className="text-[10px] text-blue-200 uppercase tracking-wider font-bold">Ver Mi Pedido</span>
+                  <span className="text-sm">Tu Carrito ({totalItems})</span>
+                </div>
+              </div>
+              <span className="bg-white/20 px-3 py-1 rounded-xl text-sm font-black">
+                ${totalAmount.toLocaleString('es-AR')}
+              </span>
+            </button>
+          </div>
+
+          {/* Desktop view floating button */}
+          <div className="fixed bottom-8 right-8 z-40 hidden lg:block animate-fadeIn">
+            <button
+              type="button"
+              onClick={openDrawer}
+              className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 duration-200 border-2 border-white/20"
+            >
+              <ShoppingCart size={24} className="animate-bounce animate-duration-1000" />
+              <div className="flex flex-col items-start leading-tight">
+                <span className="text-xs text-blue-200 font-bold uppercase tracking-wider">Ver Mi Pedido</span>
+                <span className="text-base">Tu Carrito ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</span>
+              </div>
+              <div className="h-8 w-px bg-white/20 mx-1" />
+              <span className="bg-white/20 px-3 py-1.5 rounded-xl text-base font-black">
+                ${totalAmount.toLocaleString('es-AR')}
+              </span>
+            </button>
+          </div>
+        </>
+      )}
+      {businessSettings?.enableChatbot !== false && !isAdminRoute && (
+        <Chatbot businessSettings={businessSettings} />
       )}
     </div>
   );

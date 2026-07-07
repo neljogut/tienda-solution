@@ -391,3 +391,16 @@ export async function markAllNotificationsRead(recipientUid: string): Promise<vo
   });
   await batch.commit();
 }
+
+export async function clearAllNotifications(recipientUid: string): Promise<void> {
+  const snap = await getDocs(
+    query(collection(db, 'notifications'), where('recipientUid', '==', recipientUid))
+  );
+  if (snap.empty) return;
+
+  const batch = writeBatch(db);
+  snap.docs.forEach((notifDoc) => {
+    batch.delete(notifDoc.ref);
+  });
+  await batch.commit();
+}

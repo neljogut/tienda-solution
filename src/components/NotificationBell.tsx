@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck, Loader2, Package, X } from 'lucide-react';
+import { Bell, CheckCheck, Loader2, Package, X, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { registerFcmToken } from '../services/fcmService';
@@ -32,6 +32,7 @@ export const NotificationBell: React.FC = () => {
     dismissAlert,
     markRead,
     markAllRead,
+    clearNotifications,
     requestBrowserPermission,
   } = useNotifications(currentUser?.uid);
 
@@ -103,16 +104,28 @@ export const NotificationBell: React.FC = () => {
         <div className="absolute right-0 mt-2 w-[min(92vw,22rem)] bg-white rounded-2xl shadow-2xl border border-slate-200/80 z-50 overflow-hidden animate-fadeIn">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/80">
             <p className="text-sm font-bold text-slate-800">Notificaciones</p>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={() => void markAllRead()}
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-              >
-                <CheckCheck size={14} />
-                Marcar leídas
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void markAllRead()}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <CheckCheck size={13} />
+                  Marcar leídas
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void clearNotifications()}
+                  className="text-[11px] font-semibold text-red-500 hover:text-red-700 flex items-center gap-1"
+                >
+                  <Trash2 size={13} />
+                  Limpiar
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="max-h-[min(60vh,24rem)] overflow-y-auto">

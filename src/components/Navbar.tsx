@@ -16,13 +16,39 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, businessSettings 
   const { getTotalItems, toggleDrawer } = useCartStore();
   const totalItems = getTotalItems();
 
+  const [showCatalogTitle, setShowCatalogTitle] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      
+      const scrollY = target.scrollTop || window.scrollY;
+      setShowCatalogTitle(scrollY > 150);
+    };
+
+    const scrollContainer = document.querySelector('main');
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    } else {
+      window.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   const formatWhatsappLink = (num: string) => {
     const cleanNum = num.replace(/\D/g, '');
     return `https://wa.me/${cleanNum}`;
   };
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
+    <header className="h-16 topbar-glass topbar-visible flex items-center justify-between px-4 sm:px-6">
       <div className="flex items-center gap-3">
         <button 
           onClick={toggleSidebar}
@@ -30,6 +56,20 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, businessSettings 
         >
           <Menu size={22} />
         </button>
+      </div>
+
+      {/* Scroll-triggered Title in the middle */}
+      <div className={`flex flex-col items-center transition-all duration-500 transform ${
+        showCatalogTitle 
+          ? 'opacity-100 translate-y-0 scale-100' 
+          : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
+      }`}>
+        <span className="text-xs md:text-sm font-black tracking-wider text-blue-900 uppercase">
+          {businessSettings?.catalogTitle || 'SOLUTION CATÁLOGO'}
+        </span>
+        <span className="hidden sm:inline text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-normal">
+          {businessSettings?.catalogHeroText || 'Tu tienda de impresión 3D y tecnología'}
+        </span>
       </div>
       
       <div className="flex items-center gap-2">

@@ -1,184 +1,36 @@
-import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../types/settings';
-import type { Product, Product3D, ProductResale, PriceTier, FilamentLine, SupplyLine } from '../types/product';
+import type { PricingSettingsResale } from '../types/settings';
+import type { Product, PriceTier } from '../types/product';
 import type { Category } from '../types/category';
 import { doc, getDoc, getDocs, collection, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
-import { default3D, defaultResale } from '../constants/defaults';
-
-type InventoryItem = {
-  type?: string;
-  priceUsdKg?: number;
-  priceCurrency?: 'USD' | 'ARS';
-  unitCostArs?: number;
-};
-
-/** Costo en ARS por gramo de filamento, aplicando tipo de cambio únicamente si corresponde a USD. */
-function filamentPricePerGramArs(
-  filamentId: string | undefined,
-  settings: PricingSettings3D,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
-): number {
-  const item = filamentId ? inventoryMap?.get(filamentId) : undefined;
-  const hasCustom = item && (item.priceUsdKg ?? 0) > 0;
-  const priceKg = hasCustom ? item.priceUsdKg! : settings.filamentPriceUsdKg;
-  const currency = hasCustom ? (item.priceCurrency ?? 'USD') : (settings.filamentPriceCurrency ?? 'USD');
-  
-  const priceArsKg = currency === 'USD' ? (priceKg * exchangeRate.currentUsdToArs) : priceKg;
-  return priceArsKg / 1000;
-}
-
-function suppliesCostArs(
-  supplyIds: SupplyLine[] | undefined,
-  inventoryMap?: Map<string, InventoryItem>
-): number {
-  if (!supplyIds?.length) return 0;
-  return supplyIds.reduce((sum, line) => {
-    const item = inventoryMap?.get(line.supplyId);
-    const unit = item?.unitCostArs ?? 0;
-    return sum + unit * (line.quantity || 1);
-  }, 0);
-}
-
-function filamentCostArs(
-  product: Pick<Product3D, 'weightGrams' | 'filamentLines' | 'filamentIds'>,
-  settings: PricingSettings3D,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
-): number {
-  const lines: FilamentLine[] = product.filamentLines?.length
-    ? product.filamentLines
-    : (product.filamentIds ?? []).map((id) => ({
-        supplyId: id,
-        grams: product.weightGrams / Math.max(1, product.filamentIds.length),
-      }));
-
-  if (lines.length > 0) {
-    return lines.reduce(
-      (sum, line) => sum + line.grams * filamentPricePerGramArs(line.supplyId, settings, exchangeRate, inventoryMap),
-      0
-    );
-  }
-
-  return product.weightGrams * filamentPricePerGramArs(undefined, settings, exchangeRate, inventoryMap);
-}
+import { defaultResale } from '../constants/defaults';
+import type { VariantGroup } from '../types/variantGroup';
 
 export function roundPriceUp100(value: number): number {
   if (isNaN(value) || !isFinite(value) || value <= 0) return 0;
   return Math.ceil(value / 100) * 100;
 }
 
-export interface Cost3DBreakdown {
-  filament: number;
-  supplies: number;
-  electricity: number;
-  maintenance: number;
-  errorMargin: number;
-  /** Suma sin redondeo (filamento + electricidad + mantenimiento + margen + insumos). */
-  total: number;
-  /** Igual que calculate3DCost: Math.ceil(total). */
-  totalRounded: number;
-}
-
-export function calculate3DCostBreakdown(
-  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
-  settings: PricingSettings3D,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
-): Cost3DBreakdown {
-  const filament = filamentCostArs(product, settings, exchangeRate, inventoryMap);
-  const supplies = suppliesCostArs(product.supplyIds, inventoryMap);
-
-  const printerWattsToKw = settings.printerWatts / 1000;
-  const printTimeHours = product.printTimeMinutes / 60;
-  const electricity = printerWattsToKw * printTimeHours * settings.kwhPriceArs;
-
-  const maintenanceCostPerHour = settings.estimatedSparesCostArs / settings.printerLifespanHours;
-  const maintenance = maintenanceCostPerHour * printTimeHours;
-
-  const subtotal = filament + electricity + maintenance;
-  const errorMargin = subtotal * (settings.errorMarginPercent / 100);
-  const total = subtotal + errorMargin + supplies;
-
-  return {
-    filament,
-    supplies,
-    electricity,
-    maintenance,
-    errorMargin,
-    total,
-    totalRounded: Math.ceil(total),
-  };
-}
-
-// Calculate cost for a 3D printed product (filamento, insumos, energía, mantenimiento)
-export function calculate3DCost(
-  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
-  settings: PricingSettings3D,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
-): number {
-  return calculate3DCostBreakdown(product, settings, exchangeRate, inventoryMap).totalRounded;
-}
-
-// Calculate retail price for a 3D product
-export function calculate3DRetailPrice(
-  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'category' | 'isKeychain' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
-  settings: PricingSettings3D,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
-): number {
-  const filamentCost = filamentCostArs(product, settings, exchangeRate, inventoryMap);
-  const suppliesCost = suppliesCostArs(product.supplyIds, inventoryMap);
-
-  const printerWattsToKw = settings.printerWatts / 1000;
-  const printTimeHours = product.printTimeMinutes / 60;
-  const electricityCost = printerWattsToKw * printTimeHours * settings.kwhPriceArs;
-
-  const maintenanceCostPerHour = settings.estimatedSparesCostArs / settings.printerLifespanHours;
-  const maintenanceCost = maintenanceCostPerHour * printTimeHours;
-
-  const subtotal = filamentCost + electricityCost + maintenanceCost;
-  const errorMargin = subtotal * (settings.errorMarginPercent / 100);
-
-  const isKeychain = !!product.isKeychain;
-  const multiplier = isKeychain ? settings.multiplierRetailKeychain : settings.multiplierRetailNormal;
-  const rawRetail = (subtotal + errorMargin) * multiplier + suppliesCost;
-  return roundPriceUp100(rawRetail);
-}
-
-// Calculate wholesale price for a 3D product
-export function calculate3DWholesalePrice(
-  product: Pick<Product3D, 'weightGrams' | 'printTimeMinutes' | 'category' | 'isKeychain' | 'filamentLines' | 'filamentIds' | 'supplyIds'>,
-  settings: PricingSettings3D,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
-): number {
-  const retailPrice = calculate3DRetailPrice(product, settings, exchangeRate, inventoryMap);
-  const isKeychain = !!product.isKeychain;
-  const discountPercent = isKeychain
-    ? settings.wholesaleDiscountPercentKeychain
-    : settings.wholesaleDiscountPercentNormal;
-  const rawWholesale = retailPrice * (1 - discountPercent / 100);
-  return roundPriceUp100(rawWholesale);
-}
-
 // Calculate resale product prices
 export function calculateResaleRetailPrice(
   purchaseCost: number,
-  settings: PricingSettingsResale
+  settings: PricingSettingsResale | null | undefined,
+  productMargin?: number
 ): number {
-  const rawRetail = purchaseCost * (1 + settings.profitMarginPercent / 100);
+  const margin = typeof productMargin === 'number' ? productMargin : (settings?.profitMarginPercent ?? 30);
+  const rawRetail = purchaseCost * (1 + margin / 100);
   return roundPriceUp100(rawRetail);
 }
 
 export function calculateResaleWholesalePrice(
   purchaseCost: number,
-  settings: PricingSettingsResale
+  settings: PricingSettingsResale | null | undefined,
+  productMargin?: number
 ): number {
-  if (!settings.enableWholesale) return 0;
-  const retailPrice = calculateResaleRetailPrice(purchaseCost, settings);
-  const rawWholesale = retailPrice * (1 - settings.wholesaleDiscountPercent / 100);
+  const margin = typeof productMargin === 'number' ? productMargin : (settings?.profitMarginPercent ?? 30);
+  const retailPrice = calculateResaleRetailPrice(purchaseCost, settings, margin);
+  // Default wholesale fallback is 20% discount (retail * 0.8)
+  const rawWholesale = retailPrice * 0.8;
   return roundPriceUp100(rawWholesale);
 }
 
@@ -186,9 +38,15 @@ export function calculateResaleWholesalePrice(
 export function getTierPrice(
   quantity: number,
   basePrice: number,
-  tiers?: PriceTier[]
+  tiers?: PriceTier[],
+  isWholesale?: boolean
 ): number {
   if (!tiers || tiers.length === 0) return basePrice;
+
+  if (isWholesale) {
+    // Return the maximum discount (lowest unit price) among all tiers
+    return Math.min(...tiers.map(t => t.unitPrice));
+  }
 
   // Find matching tier
   const matchingTier = tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
@@ -200,8 +58,6 @@ export function getTierPrice(
 
   return basePrice;
 }
-
-import type { VariantGroup } from '../types/variantGroup';
 
 /** Resolves the price tiers for a product, walking up the category hierarchy if needed. */
 export function resolveInheritedPriceTiers(
@@ -228,7 +84,6 @@ export function resolveInheritedPriceTiers(
 
   return undefined;
 }
-
 
 /**
  * Finds the deepest category in the hierarchy (own or ancestor) that has priceTiers defined.
@@ -299,85 +154,52 @@ export function validateTierPrice(tierPrice: number, cost: number): boolean {
 /** Precio minorista en ARS para catálogo: manual del producto o calculado al vuelo. */
 export function resolveProductRetailPrice(
   product: Product,
-  settings3d: PricingSettings3D,
+  _settings3d: any,
   settingsResale: PricingSettingsResale,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
+  _exchangeRate: any,
+  _inventoryMap?: any
 ): number {
   if (product.useManualPrice) {
     return product.manualRetailPrice ?? 0;
   }
-  if (product.type === '3d') {
-    return calculate3DRetailPrice(product, settings3d, exchangeRate, inventoryMap);
-  }
-  return calculateResaleRetailPrice(product.purchaseCost ?? 0, settingsResale);
+  return calculateResaleRetailPrice(product.purchaseCost ?? 0, settingsResale, product.profitMarginPercent);
 }
 
-/** Costo en ARS (admin / margen). Respeta precios de filamento personalizados. */
+/** Costo en ARS (admin / margen). */
 export function resolveProductCost(
   product: Product,
-  settings3d: PricingSettings3D,
-  _settingsResale: PricingSettingsResale,
-  exchangeRate: ExchangeRateData,
-  inventoryMap?: Map<string, InventoryItem>
+  _settings3d: any,
+  _settingsResale: any,
+  _exchangeRate: any,
+  _inventoryMap?: any
 ): number {
-  if (product.type === '3d') {
-    return calculate3DCost(product, settings3d, exchangeRate, inventoryMap);
-  }
   return product.purchaseCost ?? 0;
 }
 
-// Recalculate all products in Firestore when pricing settings or exchange rate change
+// Recalculate all products in Firestore when pricing settings change
 export async function recalculateAllProductsInFirestore(): Promise<number> {
   try {
-    const [snap3D, snapResale, snapRate] = await Promise.all([
-      getDoc(doc(db, 'settings', 'pricing3d')),
-      getDoc(doc(db, 'settings', 'pricingResale')),
-      getDoc(doc(db, 'settings', 'exchangeRate'))
-    ]);
-
-    const settings3d = snap3D.exists() ? ({ ...default3D, ...snap3D.data() } as PricingSettings3D) : default3D;
+    const snapResale = await getDoc(doc(db, 'settings', 'pricingResale'));
     const settingsResale = snapResale.exists() ? ({ ...defaultResale, ...snapResale.data() } as PricingSettingsResale) : defaultResale;
-    const exchangeRate = snapRate.exists() ? (snapRate.data() as ExchangeRateData) : { currentUsdToArs: 1000, lastUpdate: '', provider: 'Fallback' };
 
-    const [querySnapshot, invSnap] = await Promise.all([
-      getDocs(collection(db, 'products')),
-      getDocs(collection(db, 'inventory')),
-    ]);
-    const inventoryMap = new Map<string, InventoryItem>();
-    invSnap.forEach((d) => inventoryMap.set(d.id, d.data() as InventoryItem));
+    const querySnapshot = await getDocs(collection(db, 'products'));
 
     const batch = writeBatch(db);
     let count = 0;
 
     querySnapshot.forEach((document) => {
-      const product = document.data();
-      let cost = product.calculatedCost || 0;
-      let retail = product.calculatedRetailPrice || 0;
-      let wholesale = product.calculatedWholesalePrice || 0;
-
-      if (product.type === '3d') {
-        const prod3d = product as Product3D;
-        cost = calculate3DCost(prod3d, settings3d, exchangeRate, inventoryMap);
-        retail = calculate3DRetailPrice(prod3d, settings3d, exchangeRate, inventoryMap);
-        if (prod3d.useManualPrice && prod3d.manualRetailPrice) {
-          const discountPercent = prod3d.isKeychain
-            ? settings3d.wholesaleDiscountPercentKeychain
-            : settings3d.wholesaleDiscountPercentNormal;
-          wholesale = roundPriceUp100(prod3d.manualRetailPrice * (1 - discountPercent / 100));
-        } else {
-          wholesale = calculate3DWholesalePrice(prod3d, settings3d, exchangeRate, inventoryMap);
-        }
+      const product = document.data() as Product;
+      const purchaseCost = product.purchaseCost || 0;
+      const cost = purchaseCost;
+      const retail = product.useManualPrice && product.manualRetailPrice 
+        ? product.manualRetailPrice 
+        : calculateResaleRetailPrice(purchaseCost, settingsResale, product.profitMarginPercent);
+      
+      let wholesale = 0;
+      if (product.useManualPrice && product.manualRetailPrice) {
+        wholesale = roundPriceUp100(product.manualRetailPrice * 0.8);
       } else {
-        const prodResale = product as ProductResale;
-        const purchaseCost = prodResale.purchaseCost || 0;
-        cost = purchaseCost;
-        retail = calculateResaleRetailPrice(purchaseCost, settingsResale);
-        if (prodResale.useManualPrice && prodResale.manualRetailPrice) {
-          wholesale = roundPriceUp100(prodResale.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
-        } else {
-          wholesale = calculateResaleWholesalePrice(purchaseCost, settingsResale);
-        }
+        wholesale = calculateResaleWholesalePrice(purchaseCost, settingsResale, product.profitMarginPercent);
       }
 
       // Only update if there is an actual difference to save writes
@@ -404,4 +226,15 @@ export async function recalculateAllProductsInFirestore(): Promise<number> {
     console.error('Error in recalculateAllProductsInFirestore:', error);
     return 0;
   }
+}
+
+export function calculate3DCostBreakdown(..._args: any[]) {
+  return {
+    total: 0,
+    filament: 0,
+    electricity: 0,
+    maintenance: 0,
+    supplies: 0,
+    errorMargin: 0,
+  };
 }

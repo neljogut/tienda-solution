@@ -13,6 +13,8 @@ interface AuthContextType {
   loading: boolean;
   hasPermission: (permission: keyof NonNullable<UserData['permissions']>) => boolean;
   logout: () => Promise<void>;
+  viewAsClient: boolean;
+  setViewAsClient: (v: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +23,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   hasPermission: () => false,
   logout: async () => {},
+  viewAsClient: false,
+  setViewAsClient: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -29,6 +33,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewAsClient, setViewAsClientState] = useState<boolean>(() => {
+    return localStorage.getItem('viewAsClient') === 'true';
+  });
+
+  const setViewAsClient = (v: boolean) => {
+    setViewAsClientState(v);
+    localStorage.setItem('viewAsClient', String(v));
+  };
 
   useEffect(() => {
     let unsubscribeDoc: (() => void) | null = null;
@@ -119,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, userData, loading, hasPermission, logout }}>
+    <AuthContext.Provider value={{ currentUser, userData, loading, hasPermission, logout, viewAsClient, setViewAsClient }}>
       {children}
     </AuthContext.Provider>
   );

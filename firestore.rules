@@ -117,6 +117,14 @@ service cloud.firestore {
       allow delete: if isAuth() && resource.data.recipientUid == request.auth.uid;
     }
     
+    // Reglas para Repairs (Servicio Técnico)
+    match /repairs/{repairId} {
+      // Cualquiera puede leer reparaciones (para que los clientes consulten por ticket o WhatsApp)
+      allow read: if true;
+      // Solo usuarios autenticados pueden crear o modificar reparaciones
+      allow write: if isAuth();
+    }
+
     // Cualquier otra colección, por defecto bloqueada a no logueados, abierta a logueados
     match /{document=**} {
       allow read, write: if isAuth();

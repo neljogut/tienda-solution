@@ -192,60 +192,7 @@ export const createCatalogOrder = onCall({ region: getFirestoreRegion() }, async
       finalQuantity: newStock,
     });
 
-    if (product.type === "3d") {
-      const filamentLines = product.filamentLines?.length
-        ? product.filamentLines
-        : (product.filamentIds ?? []).map((filamentId: string) => ({
-          supplyId: filamentId,
-          grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds.length),
-        }));
 
-      for (const line of filamentLines) {
-        const filamentId = line.supplyId;
-        const weightToDeduct = (line.grams || 0) * item.quantity;
-        if (!filamentId || weightToDeduct <= 0) continue;
-
-        const filRef = db.collection("inventory").doc(filamentId);
-        const filSnap = await filRef.get();
-        if (filSnap.exists) {
-          const filData = filSnap.data()!;
-          const prevWeight = filData.availableWeightGrams || 0;
-          const newWeight = Math.max(0, prevWeight - weightToDeduct);
-          batch.update(filRef, {availableWeightGrams: newWeight});
-          saleLines.push({
-            itemId: filamentId,
-            itemType: "filament",
-            lineType: "consumption",
-            previousQuantity: prevWeight,
-            modifiedQuantity: -weightToDeduct,
-            finalQuantity: newWeight,
-          });
-        }
-      }
-
-      if (product.supplyIds?.length) {
-        for (const supplyObj of product.supplyIds) {
-          const supplyId = supplyObj.supplyId;
-          const qtyNeeded = supplyObj.quantity * item.quantity;
-          const supRef = db.collection("inventory").doc(supplyId);
-          const supSnap = await supRef.get();
-          if (supSnap.exists) {
-            const supData = supSnap.data()!;
-            const prevQty = supData.currentStock || 0;
-            const newQty = Math.max(0, prevQty - qtyNeeded);
-            batch.update(supRef, {currentStock: newQty});
-            saleLines.push({
-              itemId: supplyId,
-              itemType: "supply",
-              lineType: "consumption",
-              previousQuantity: prevQty,
-              modifiedQuantity: -qtyNeeded,
-              finalQuantity: newQty,
-            });
-          }
-        }
-      }
-    }
   }
 
   await batch.commit();
@@ -310,43 +257,7 @@ export const finalizeSharedOrder = onCall({ region: getFirestoreRegion() }, asyn
       finalQuantity: newStock,
     });
 
-    if (product.type === "3d") {
-      const filamentLines = product.filamentLines?.length
-        ? product.filamentLines
-        : (product.filamentIds ?? []).map((filId: string) => ({
-            supplyId: filId,
-            grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds?.length || 1),
-          }));
 
-      for (const line of filamentLines) {
-        const weightToDeduct = (line.grams || 0) * item.quantity;
-        if (!line.supplyId || weightToDeduct <= 0) continue;
-        const filRef = db.collection("inventory").doc(line.supplyId);
-        const filSnap = await filRef.get();
-        if (filSnap.exists) {
-          const filData = filSnap.data()!;
-          const prevWeight = filData.availableWeightGrams || 0;
-          const newWeight = Math.max(0, prevWeight - weightToDeduct);
-          batch.update(filRef, { availableWeightGrams: newWeight });
-          saleLines.push({ itemId: line.supplyId, itemType: "filament", lineType: "consumption", previousQuantity: prevWeight, modifiedQuantity: -weightToDeduct, finalQuantity: newWeight });
-        }
-      }
-
-      if (product.supplyIds?.length) {
-        for (const supObj of product.supplyIds) {
-          const qtyNeeded = supObj.quantity * item.quantity;
-          const supRef = db.collection("inventory").doc(supObj.supplyId);
-          const supSnap = await supRef.get();
-          if (supSnap.exists) {
-            const supData = supSnap.data()!;
-            const prevQty = supData.currentStock || 0;
-            const newQty = Math.max(0, prevQty - qtyNeeded);
-            batch.update(supRef, { currentStock: newQty });
-            saleLines.push({ itemId: supObj.supplyId, itemType: "supply", lineType: "consumption", previousQuantity: prevQty, modifiedQuantity: -qtyNeeded, finalQuantity: newQty });
-          }
-        }
-      }
-    }
   }
 
   // Update client totals

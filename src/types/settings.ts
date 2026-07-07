@@ -20,6 +20,7 @@ export interface PricingSettingsResale {
   enableWholesale: boolean;
   wholesaleDiscountPercent: number;
   wholesaleMinimumOrderArs: number;
+  employeeCommissionPercent?: number;
 }
 
 export interface ExchangeRateData {
@@ -51,7 +52,12 @@ export interface BusinessSettings {
   whatsapp?: string;
   categorySortMode?: 'manual' | 'alphabetical';
   imgbbApiKey?: string;
-  showEstimatedDeliveryDateToClient?: boolean;
+  catalogHeroText?: string;
+  catalogTitle?: string;
+  browserTabTitle?: string;
+  defaultLandingPage?: 'catalog' | 'orders';
+  geminiApiKey?: string;
+  enableChatbot?: boolean;
 }
 
 export interface BankTransferSettings {

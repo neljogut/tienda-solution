@@ -1,340 +1,24 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { doc, getDoc, setDoc, addDoc, collection, getDocs, query, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
-import type { Product, FilamentLine, SupplyLine } from '../../types/product';
-import type { Filament, Supply } from '../../types/inventory';
+import type { Product } from '../../types/product';
 import type { Category } from '../../types/category';
 import type { VariantGroup } from '../../types/variantGroup';
 import { SearchableVariantGroupSelect } from '../../components/SearchableVariantGroupSelect';
 import { SearchableCategorySelect } from '../../components/SearchableCategorySelect';
-import { SearchableProductTypeSelect } from '../../components/SearchableProductTypeSelect';
 import { useAuth } from '../../context/AuthContext';
 
-import type { PricingSettings3D, PricingSettingsResale, ExchangeRateData } from '../../types/settings';
+import type { PricingSettingsResale } from '../../types/settings';
 import {
-  calculate3DCost,
-  calculate3DRetailPrice,
-  calculate3DWholesalePrice,
   calculateResaleRetailPrice,
   calculateResaleWholesalePrice,
   roundPriceUp100
 } from '../../services/pricingService';
-import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star, Package, Palette, Check, Crop } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Calculator, Plus, Trash2, Star, Crop, Barcode, Wand2 } from 'lucide-react';
 import { getProductImages } from '../../utils/productImages';
 import { NumericInput } from '../../components/NumericInput';
 import { uploadImageToImgBB } from '../../services/imageUploadService';
-import { WeightKgGramsInput } from '../../components/WeightKgGramsInput';
-import { TimeHoursMinutesInput } from '../../components/TimeHoursMinutesInput';
-import { formatWeightGrams } from '../../utils/weightGrams';
-
-// Helper to get color preview styles for filaments
-function getFilamentColorStyle(colorName: string): React.CSSProperties {
-  const name = colorName.toLowerCase().trim();
-  
-  if (name.includes('arcoiris') || name.includes('rainbow') || name.includes('arcoris') || name.includes('multicolor')) {
-    return { background: 'linear-gradient(135deg, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6)' };
-  }
-  if (name.includes('oro') || name.includes('dorado') || name.includes('gold')) {
-    return { background: 'linear-gradient(135deg, #f5c453, #c58d20)' };
-  }
-  if (name.includes('plata') || name.includes('plateado') || name.includes('silver')) {
-    return { background: 'linear-gradient(135deg, #e2e8f0, #94a3b8)' };
-  }
-  if (name.includes('cobre') || name.includes('copper')) {
-    return { background: 'linear-gradient(135deg, #f97316, #b45309)' };
-  }
-  if (name.includes('bronce') || name.includes('bronze')) {
-    return { background: 'linear-gradient(135deg, #ca8a04, #854d0e)' };
-  }
-  if (name.includes('transparente') || name.includes('clear')) {
-    return { 
-      background: 'repeating-linear-gradient(45deg, #e2e8f0, #e2e8f0 4px, #ffffff 4px, #ffffff 8px)',
-      border: '1px solid #cbd5e1'
-    };
-  }
-
-  const colorMap: Record<string, string> = {
-    negro: '#1e293b',
-    black: '#1e293b',
-    blanco: '#f8fafc',
-    white: '#f8fafc',
-    rojo: '#ef4444',
-    red: '#ef4444',
-    azul: '#3b82f6',
-    blue: '#3b82f6',
-    verde: '#10b981',
-    green: '#10b981',
-    amarillo: '#f59e0b',
-    yellow: '#f59e0b',
-    gris: '#64748b',
-    gray: '#64748b',
-    naranja: '#f97316',
-    orange: '#f97316',
-    rosa: '#ec4899',
-    pink: '#ec4899',
-    violeta: '#8b5cf6',
-    purpura: '#8b5cf6',
-    purple: '#8b5cf6',
-    fucsia: '#d946ef',
-    celeste: '#60a5fa',
-    turquesa: '#14b8a6',
-    teal: '#14b8a6'
-  };
-
-  for (const [key, hex] of Object.entries(colorMap)) {
-    if (name.includes(key)) {
-      const border = hex === '#f8fafc' ? '1px solid #cbd5e1' : 'none';
-      return { backgroundColor: hex, border };
-    }
-  }
-
-  return { background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' };
-}
-
-const ChevronDownIcon = () => (
-  <svg className="w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-  </svg>
-);
-
-
-// Searchable Supply Select Component
-const SearchableSupplySelect: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
-  supplies: Supply[];
-  placeholder?: string;
-}> = ({
-  value,
-  onChange,
-  supplies,
-  placeholder = 'Buscar insumo...'
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  
-  const selectedSupply = supplies.find(s => s.id === value);
-  const displayValue = selectedSupply ? selectedSupply.name : '';
-
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    if (!term) return supplies;
-    return supplies.filter(s => 
-      s.name.toLowerCase().includes(term) ||
-      (s.category && s.category.toLowerCase().includes(term))
-    );
-  }, [supplies, search]);
-
-  const handleFocus = () => {
-    setIsOpen(true);
-    setSearch('');
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const clickOutside = () => setIsOpen(false);
-    document.addEventListener('click', clickOutside);
-    return () => document.removeEventListener('click', clickOutside);
-  }, [isOpen]);
-
-  return (
-    <div className="relative w-full" onClick={e => e.stopPropagation()}>
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={isOpen ? search : displayValue}
-          onChange={e => setSearch(e.target.value)}
-          onFocus={handleFocus}
-          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
-        />
-        <div className="absolute left-3 top-3 text-slate-400">
-          <Package size={16} />
-        </div>
-        <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
-          <ChevronDownIcon />
-        </div>
-      </div>
-
-      {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-xl shadow-2xl z-50 py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin">
-          {filtered.length === 0 ? (
-            <div className="text-slate-400 py-6 text-center flex flex-col items-center gap-1">
-              <Package size={20} className="opacity-40" />
-              <span>No se encontraron insumos</span>
-            </div>
-          ) : (
-            filtered.map(s => {
-              const isSelected = s.id === value;
-              
-              const isLowStock = s.currentStock <= (s.minStock || 0);
-              let stockBadgeClass = 'badge-green';
-              if (s.currentStock === 0) {
-                stockBadgeClass = 'badge-red';
-              } else if (isLowStock) {
-                stockBadgeClass = 'badge-yellow';
-              }
-
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    onChange(s.id);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
-                    isSelected 
-                      ? 'bg-blue-50 text-blue-700' 
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-slate-800 truncate">{s.name}</span>
-                    <span className={`text-[10px] truncate ${isSelected ? 'text-blue-500 font-medium' : 'text-slate-400'}`}>
-                      Categoría: {s.category || 'Sin categoría'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`badge ${stockBadgeClass} text-[9px] px-1.5 py-0.5`}>
-                      Stock: {s.currentStock} {s.unitOfMeasure || 'u.'}
-                    </span>
-                    {isSelected && <Check size={14} className="text-blue-600" />}
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Searchable Filament Select Component
-const SearchableFilamentSelect: React.FC<{
-  value: string;
-  onChange: (value: string) => void;
-  filaments: Filament[];
-  placeholder?: string;
-}> = ({
-  value,
-  onChange,
-  filaments,
-  placeholder = 'Buscar filamento...'
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  
-  const selectedFilament = filaments.find(f => f.id === value);
-  const displayValue = selectedFilament 
-    ? `${selectedFilament.brand} · ${selectedFilament.material} · ${selectedFilament.color}`
-    : '';
-
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    if (!term) return filaments;
-    return filaments.filter(f => 
-      f.brand.toLowerCase().includes(term) ||
-      f.material.toLowerCase().includes(term) ||
-      f.color.toLowerCase().includes(term)
-    );
-  }, [filaments, search]);
-
-  const handleFocus = () => {
-    setIsOpen(true);
-    setSearch('');
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const clickOutside = () => setIsOpen(false);
-    document.addEventListener('click', clickOutside);
-    return () => document.removeEventListener('click', clickOutside);
-  }, [isOpen]);
-
-  return (
-    <div className="relative w-full" onClick={e => e.stopPropagation()}>
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={isOpen ? search : displayValue}
-          onChange={e => setSearch(e.target.value)}
-          onFocus={handleFocus}
-          className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-ellipsis truncate transition-all duration-200"
-        />
-        <div className="absolute left-3 top-3 text-slate-400">
-          <Palette size={16} />
-        </div>
-        <div className="absolute right-2.5 top-3 text-slate-400 pointer-events-none">
-          <ChevronDownIcon />
-        </div>
-      </div>
-
-      {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-xl shadow-2xl z-50 py-1.5 text-xs ring-1 ring-black/5 scrollbar-thin">
-          {filtered.length === 0 ? (
-            <div className="text-slate-400 py-6 text-center flex flex-col items-center gap-1">
-              <Palette size={20} className="opacity-40" />
-              <span>No se encontraron filamentos</span>
-            </div>
-          ) : (
-            filtered.map(f => {
-              const isSelected = f.id === value;
-              const colorStyle = getFilamentColorStyle(f.color);
-              
-              let stockBadgeClass = 'badge-green';
-              if (f.availableWeightGrams < 50) {
-                stockBadgeClass = 'badge-red';
-              } else if (f.availableWeightGrams < 200) {
-                stockBadgeClass = 'badge-yellow';
-              }
-
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => {
-                    onChange(f.id);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 ${
-                    isSelected 
-                      ? 'bg-blue-50 text-blue-700' 
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div 
-                      className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-sm border border-black/10" 
-                      style={colorStyle}
-                    />
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-slate-800 truncate">{f.brand} · {f.color}</span>
-                      <span className={`text-[10px] truncate ${isSelected ? 'text-blue-500 font-medium' : 'text-slate-400'}`}>
-                        {f.material}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`badge ${stockBadgeClass} text-[9px] px-1.5 py-0.5`}>
-                      {f.availableWeightGrams}g
-                    </span>
-                    {isSelected && <Check size={14} className="text-blue-600" />}
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface ImageEntry {
   url: string;
@@ -365,15 +49,11 @@ export const ProductForm: React.FC = () => {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categorySortMode, setCategorySortMode] = useState<'manual' | 'alphabetical'>('manual');
-  const [filaments, setFilaments] = useState<Filament[]>([]);
-  const [supplies, setSupplies] = useState<Supply[]>([]);
-  const [settings3d, setSettings3d] = useState<PricingSettings3D | null>(null);
   const [settingsResale, setSettingsResale] = useState<PricingSettingsResale | null>(null);
-  const [exchangeRate, setExchangeRate] = useState<number>(1000);
   const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
 
   const [formData, setFormData] = useState<any>({
-    type: '3d',
+    type: 'resale',
     name: '',
     categoryId: '',
     category: '',
@@ -381,15 +61,11 @@ export const ProductForm: React.FC = () => {
     isActive: true,
     useManualPrice: false,
     manualRetailPrice: 0,
-    weightGrams: 0,
-    printTimeMinutes: 0,
-    isKeychain: false,
+    profitMarginPercent: 30,
     purchaseCost: 0,
     stock: 0,
+    barcode: '',
     priceTiers: [],
-    filamentLines: [] as FilamentLine[],
-    supplyIds: [] as SupplyLine[],
-    filamentIds: [] as string[],
     variantGroup: '',
   });
 
@@ -419,8 +95,6 @@ export const ProductForm: React.FC = () => {
     return null;
   }, [formData.variantGroup, variantGroups]);
 
-
-
   useEffect(() => {
     const q = query(collection(db, 'categories'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -448,41 +122,17 @@ export const ProductForm: React.FC = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Fetch inventory and business settings
-        const [invSnap, businessSnap] = await Promise.all([
-          getDocs(query(collection(db, 'inventory'))),
-          getDoc(doc(db, 'settings', 'business')),
-        ]);
-
+        const businessSnap = await getDoc(doc(db, 'settings', 'business'));
         if (businessSnap.exists()) {
           const bizData = businessSnap.data();
           if (bizData && bizData.categorySortMode) {
             setCategorySortMode(bizData.categorySortMode);
           }
         }
-        const fils: Filament[] = [];
-        const sups: Supply[] = [];
-        invSnap.docs.forEach((d) => {
-          const data = d.data();
-          if (data.type === 'filament') fils.push({ id: d.id, ...data } as Filament);
-          if (data.type === 'supply') sups.push({ id: d.id, ...data } as Supply);
-        });
-        setFilaments(fils);
-        setSupplies(sups);
 
-        // Fetch settings
-        const s3dSnap = await getDoc(doc(db, 'settings/pricing3d'));
-        if (s3dSnap.exists()) setSettings3d(s3dSnap.data() as PricingSettings3D);
-        
         const sResaleSnap = await getDoc(doc(db, 'settings/pricingResale'));
         if (sResaleSnap.exists()) setSettingsResale(sResaleSnap.data() as PricingSettingsResale);
         
-        const xrSnap = await getDoc(doc(db, 'settings/exchangeRate'));
-        if (xrSnap.exists()) {
-          const data = xrSnap.data() as ExchangeRateData;
-          setExchangeRate(data.currentUsdToArs);
-        }
-
         const targetId = id || duplicateId;
         if (targetId) {
           const docSnap = await getDoc(doc(db, 'products', targetId));
@@ -493,17 +143,6 @@ export const ProductForm: React.FC = () => {
               normalized.name = `${data.name} (Copia)`;
               normalized.stock = 0;
               delete normalized.id;
-            }
-            if (data.type === '3d') {
-              if (!normalized.filamentLines?.length && normalized.filamentIds?.length) {
-                const perFil = (normalized.weightGrams || 0) / normalized.filamentIds.length;
-                normalized.filamentLines = normalized.filamentIds.map((id: string) => ({
-                  supplyId: id,
-                  grams: perFil,
-                }));
-              }
-              normalized.filamentLines = normalized.filamentLines ?? [];
-              normalized.supplyIds = normalized.supplyIds ?? [];
             }
             setFormData(normalized);
             setIsCustomTiers(!!data.priceTiers && data.priceTiers.length > 0);
@@ -521,71 +160,33 @@ export const ProductForm: React.FC = () => {
     loadInitialData();
   }, [id, duplicateId, isNew]);
 
-
-
   const resolveCategoryLabel = (catId: string) => {
-    const cat = categories.find((c) => c.id === catId);
-    if (!cat) return '';
-    if (!cat.parentId) return cat.name;
-    const parent = categories.find((c) => c.id === cat.parentId);
-    return parent ? `${parent.name} › ${cat.name}` : cat.name;
+    const path: string[] = [];
+    let currentId: string | null | undefined = catId;
+    while (currentId) {
+      const cat = categories.find((c) => c.id === currentId);
+      if (cat) {
+        path.unshift(cat.name);
+        currentId = cat.parentId;
+      } else {
+        currentId = undefined;
+      }
+    }
+    return path.join(' › ');
   };
 
-  const inventoryMap = useMemo(() => {
-    const map = new Map<string, { type?: string; priceUsdKg?: number; unitCostArs?: number }>();
-    filaments.forEach((f) => map.set(f.id, { type: 'filament', priceUsdKg: f.priceUsdKg }));
-    supplies.forEach((s) => map.set(s.id, { type: 'supply', unitCostArs: s.unitCostArs }));
-    return map;
-  }, [filaments, supplies]);
-
-  const totalFilamentGrams = useMemo(
-    () =>
-      (formData.filamentLines ?? []).reduce(
-        (sum: number, line: FilamentLine) => sum + (Number(line.grams) || 0),
-        0
-      ),
-    [formData.filamentLines]
-  );
-
-  // Automatically sync product weight with total filament weight when filaments are assigned
   useEffect(() => {
-    if (formData.type === '3d' && (formData.filamentLines?.length ?? 0) > 0) {
-      setFormData((prev: any) => {
-        if (prev.weightGrams === totalFilamentGrams) return prev;
-        return { ...prev, weightGrams: totalFilamentGrams };
-      });
+    if (!settingsResale) return;
+    const cost = formData.purchaseCost || 0;
+    const retail = calculateResaleRetailPrice(cost, settingsResale, formData.profitMarginPercent);
+    let wholesale = calculateResaleWholesalePrice(cost, settingsResale, formData.profitMarginPercent);
+    
+    if (formData.useManualPrice && formData.manualRetailPrice) {
+      wholesale = roundPriceUp100(formData.manualRetailPrice * 0.8);
     }
-  }, [totalFilamentGrams, formData.type, formData.filamentLines?.length]);
-
-  useEffect(() => {
-    if (formData.type === '3d') {
-      if (!settings3d) return;
-      const rateData = { currentUsdToArs: exchangeRate, lastUpdate: '', provider: '' };
-      const cost = calculate3DCost(formData, settings3d, rateData, inventoryMap);
-      const retail = calculate3DRetailPrice(formData, settings3d, rateData, inventoryMap);
-      let wholesale = calculate3DWholesalePrice(formData, settings3d, rateData, inventoryMap);
-      
-      if (formData.useManualPrice && formData.manualRetailPrice) {
-        const discountPercent = formData.isKeychain
-          ? settings3d.wholesaleDiscountPercentKeychain
-          : settings3d.wholesaleDiscountPercentNormal;
-        wholesale = roundPriceUp100(formData.manualRetailPrice * (1 - discountPercent / 100));
-      }
-      
-      setCalculated({ cost, retail, wholesale });
-    } else if (formData.type === 'resale') {
-      if (!settingsResale) return;
-      const cost = formData.purchaseCost || 0;
-      const retail = calculateResaleRetailPrice(cost, settingsResale);
-      let wholesale = calculateResaleWholesalePrice(cost, settingsResale);
-      
-      if (formData.useManualPrice && formData.manualRetailPrice) {
-        wholesale = roundPriceUp100(formData.manualRetailPrice * (1 - (settingsResale.wholesaleDiscountPercent || 0) / 100));
-      }
-      
-      setCalculated({ cost, retail, wholesale });
-    }
-  }, [formData.weightGrams, formData.printTimeMinutes, formData.isKeychain, formData.purchaseCost, formData.type, formData.filamentLines, formData.supplyIds, formData.useManualPrice, formData.manualRetailPrice, settings3d, settingsResale, exchangeRate, inventoryMap]);
+    
+    setCalculated({ cost, retail, wholesale });
+  }, [formData.purchaseCost, formData.useManualPrice, formData.manualRetailPrice, formData.profitMarginPercent, settingsResale]);
 
   const handleStartCrop = (url: string) => {
     setCroppingUrl(url);
@@ -817,17 +418,8 @@ export const ProductForm: React.FC = () => {
       };
 
       if (productToSave.type === '3d') {
-        productToSave.filamentLines = (productToSave.filamentLines ?? []).filter(
-          (l: FilamentLine) => l.supplyId && l.grams > 0
-        );
-        productToSave.supplyIds = (productToSave.supplyIds ?? []).filter(
-          (l: SupplyLine) => l.supplyId && l.quantity > 0
-        );
-        productToSave.filamentIds = productToSave.filamentLines.map((l: FilamentLine) => l.supplyId);
-        // Clean up resale specific fields
         delete productToSave.purchaseCost;
       } else {
-        // Clean up 3D specific fields
         delete productToSave.filamentLines;
         delete productToSave.supplyIds;
         delete productToSave.filamentIds;
@@ -842,11 +434,10 @@ export const ProductForm: React.FC = () => {
       } else {
         productToSave.variantGroup = '';
       }
-      if (productToSave.weightGrams === '') productToSave.weightGrams = 0;
-      if (productToSave.printTimeMinutes === '') productToSave.printTimeMinutes = 0;
       if (productToSave.purchaseCost === '') productToSave.purchaseCost = 0;
       if (productToSave.stock === '') productToSave.stock = 0;
       if (productToSave.manualRetailPrice === '') productToSave.manualRetailPrice = 0;
+      if (productToSave.profitMarginPercent === '') productToSave.profitMarginPercent = 30;
 
       // Sanitize priceTiers
       if (productToSave.priceTiers) {
@@ -890,16 +481,8 @@ export const ProductForm: React.FC = () => {
           <div className="card p-6 space-y-4">
             <h3 className="font-semibold text-lg text-slate-800 border-b pb-2">Información Básica</h3>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Producto</label>
-                <SearchableProductTypeSelect
-                  value={formData.type}
-                  onChange={val => setFormData({ ...formData, type: val })}
-                  canManage={userData?.role === 'owner'}
-                />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
                 <SearchableCategorySelect
                   required
@@ -961,174 +544,52 @@ export const ProductForm: React.FC = () => {
               <Calculator size={20} className="text-blue-500"/>
               Cálculo de Precios
             </h3>
-
-             {formData.type === '3d' ? (
-              <div className="grid grid-cols-2 gap-4">
-                <WeightKgGramsInput
-                  label="Peso del producto"
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Costo de Compra ($)</label>
+                <NumericInput 
+                  allowDecimals
                   required
-                  valueGrams={formData.weightGrams}
-                  onChangeGrams={val => setFormData({ ...formData, weightGrams: val })}
-                  disabled={(formData.filamentLines?.length ?? 0) > 0}
-                  className="[&_label]:block [&_label]:text-sm [&_label]:font-medium [&_label]:text-slate-700 [&_label]:mb-1 [&_label]:normal-case"
+                  className="w-full border border-slate-300 rounded-lg p-2 bg-white"
+                  value={formData.purchaseCost} 
+                  onChange={val => setFormData({...formData, purchaseCost: val})}
                 />
-                <TimeHoursMinutesInput
-                  label="Tiempo de impresión"
-                  required
-                  valueMinutes={formData.printTimeMinutes}
-                  onChangeMinutes={val => setFormData({ ...formData, printTimeMinutes: val })}
-                  className="[&_label]:block [&_label]:text-sm [&_label]:font-medium [&_label]:text-slate-700 [&_label]:mb-1 [&_label]:normal-case [&_.input]:border [&_.input]:border-slate-300 [&_.input]:rounded-lg [&_.input]:p-2"
-                />
-                <div className="col-span-2 flex items-center gap-2">
-                  <input 
-                    type="checkbox" id="isKeychain"
-                    checked={formData.isKeychain || false} onChange={e => setFormData({...formData, isKeychain: e.target.checked})}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor="isKeychain" className="text-sm text-slate-700">Es un Llavero (aplica multiplicador especial)</label>
-                </div>
-
-                <div className="col-span-2 space-y-3 pt-2 border-t border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-slate-700">Filamentos asociados</label>
-                    <button
-                      type="button"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
-                      onClick={() => setFormData({
-                        ...formData,
-                        filamentLines: [...(formData.filamentLines || []), { supplyId: '', grams: 0 }],
-                      })}
-                    >
-                      <Plus size={12} /> Agregar
-                    </button>
-                  </div>
-                  {(formData.filamentLines?.length ?? 0) === 0 && (
-                    <p className="text-xs text-slate-500">Sin filamentos vinculados. Se estima costo por peso total.</p>
-                  )}
-                  {formData.filamentLines?.map((line: FilamentLine, idx: number) => (
-                    <div key={idx} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <SearchableFilamentSelect
-                          value={line.supplyId}
-                          onChange={(val) => {
-                            const next = [...formData.filamentLines];
-                            next[idx] = { ...next[idx], supplyId: val };
-                            setFormData({ ...formData, filamentLines: next });
-                          }}
-                          filaments={filaments}
-                        />
-                      </div>
-                      <WeightKgGramsInput
-                        compact
-                        valueGrams={line.grams}
-                        onChangeGrams={(val) => {
-                          const next = [...formData.filamentLines];
-                          next[idx] = { ...next[idx], grams: val === '' ? 0 : Number(val) };
-                          setFormData({ ...formData, filamentLines: next });
-                        }}
-                        className="pb-0.5"
-                      />
-                      <button
-                        type="button"
-                        className="text-red-500 p-2"
-                        onClick={() => setFormData({
-                          ...formData,
-                          filamentLines: formData.filamentLines.filter((_: FilamentLine, i: number) => i !== idx),
-                        })}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  {(formData.filamentLines?.length ?? 0) > 0 && (
-                    <div className="flex justify-end items-center gap-2 text-sm pt-1">
-                      <span className="text-slate-500">Total filamento utilizado:</span>
-                      <span className="font-semibold text-slate-800">{formatWeightGrams(totalFilamentGrams)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="col-span-2 space-y-3 pt-2 border-t border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-slate-700">Insumos asociados</label>
-                    <button
-                      type="button"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
-                      onClick={() => setFormData({
-                        ...formData,
-                        supplyIds: [...(formData.supplyIds || []), { supplyId: '', quantity: 1 }],
-                      })}
-                    >
-                      <Plus size={12} /> Agregar
-                    </button>
-                  </div>
-                  {(formData.supplyIds?.length ?? 0) === 0 && (
-                    <p className="text-xs text-slate-500">Sin insumos vinculados (tapas, luces, etc.).</p>
-                  )}
-                  {formData.supplyIds?.map((line: SupplyLine, idx: number) => (
-                    <div key={idx} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <SearchableSupplySelect
-                          value={line.supplyId}
-                          onChange={(val) => {
-                            const next = [...formData.supplyIds];
-                            next[idx] = { ...next[idx], supplyId: val };
-                            setFormData({ ...formData, supplyIds: next });
-                          }}
-                          supplies={supplies}
-                        />
-                      </div>
-                      <div className="w-20">
-                        <NumericInput
-                          className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                          value={line.quantity}
-                          onChange={(val) => {
-                            const next = [...formData.supplyIds];
-                            next[idx] = { ...next[idx], quantity: val === '' ? 1 : Number(val) };
-                            setFormData({ ...formData, supplyIds: next });
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-slate-500 pb-2">u.</span>
-                      <button
-                        type="button"
-                        className="text-red-500 p-2"
-                        onClick={() => setFormData({
-                          ...formData,
-                          supplyIds: formData.supplyIds.filter((_: SupplyLine, i: number) => i !== idx),
-                        })}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Costo de Compra ($)</label>
-                  <NumericInput 
-                    allowDecimals
-                    required
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                    value={formData.purchaseCost} 
-                    onChange={val => setFormData({...formData, purchaseCost: val})}
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Stock Disponible</label>
                 <NumericInput 
                   required
-                  className="w-full border border-blue-300 bg-blue-50 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 font-semibold"
+                  className="w-full border border-slate-300 rounded-lg p-2 bg-white"
                   value={formData.stock} 
                   onChange={val => setFormData({...formData, stock: val})}
                 />
-                <p className="text-xs text-slate-500 mt-1">El stock controla si los clientes pueden añadirlo al carrito.</p>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-1.5">
+                <Barcode size={16} className="text-slate-500"/>
+                Código de Barras / SKU (Opcional)
+              </label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  placeholder="Ej: 7791234567890"
+                  className="flex-1 border border-slate-300 rounded-lg p-2"
+                  value={formData.barcode || ''}
+                  onChange={e => setFormData({...formData, barcode: e.target.value})}
+                />
+                <button
+                  type="button"
+                  title="Generar código automático"
+                  onClick={() => {
+                    const uniqueCode = '200' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+                    setFormData({...formData, barcode: uniqueCode});
+                  }}
+                  className="p-2 border border-slate-300 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1"
+                >
+                  <Wand2 size={18} />
+                </button>
               </div>
             </div>
 
@@ -1157,12 +618,24 @@ export const ProductForm: React.FC = () => {
                 <label htmlFor="useManualPrice" className="text-sm font-bold text-amber-700">Usar Precio Manual (sobrescribe el cálculo)</label>
               </div>
               
+              {!formData.useManualPrice && (
+                <div className="mb-3 animate-fadeIn">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Margen de Ganancia (%)</label>
+                  <NumericInput 
+                    className="w-full border border-blue-300 bg-blue-50/50 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 font-semibold text-sm"
+                    value={formData.profitMarginPercent ?? 30} 
+                    onChange={val => setFormData({...formData, profitMarginPercent: val === '' ? 0 : Number(val)})}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">El precio minorista se calculará aplicando este margen sobre el costo de compra.</p>
+                </div>
+              )}
+
               {formData.useManualPrice && (
-                <div>
+                <div className="animate-fadeIn">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Precio Manual Minorista ($)</label>
                   <NumericInput 
                     required={formData.useManualPrice}
-                    className="w-full border border-amber-300 bg-amber-50 rounded-lg p-2 focus:ring-2 focus:ring-amber-500"
+                    className="w-full border border-amber-300 bg-amber-50 rounded-lg p-2 focus:ring-2 focus:ring-amber-500 text-sm font-semibold"
                     value={formData.manualRetailPrice} 
                     onChange={val => setFormData({...formData, manualRetailPrice: val})}
                   />

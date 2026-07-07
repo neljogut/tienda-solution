@@ -1,4 +1,4 @@
-import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings, BusinessSettings, PrintQueueSettings } from '../types/settings';
+import type { PricingSettings3D, PricingSettingsResale, DepositSettings, PaymentSettings, BusinessSettings } from '../types/settings';
 
 export const default3D: PricingSettings3D = {
   "filamentPriceUsdKg": 9.68,
@@ -60,7 +60,9 @@ export const getDefaultBusinessSettings = (): BusinessSettings => {
       socialMedia: '@solution3d',
       description: 'Impresión 3D y Modelado Digital',
       imgbbApiKey: '',
-      showEstimatedDeliveryDateToClient: true
+      catalogTitle: 'SOLUTION CATÁLOGO',
+      geminiApiKey: '',
+      enableChatbot: true
     };
   }
   return {
@@ -75,11 +77,8 @@ export const getDefaultBusinessSettings = (): BusinessSettings => {
     socialMedia: '@dualgi3d',
     description: 'Materializando tus ideas en 3D',
     imgbbApiKey: '',
-    showEstimatedDeliveryDateToClient: true
+    catalogTitle: 'DUALGI CATÁLOGO',
+    geminiApiKey: '',
+    enableChatbot: true
   };
-};
-
-export const defaultPrintQueue: PrintQueueSettings = {
-  printerCount: 1,
-  workHoursPerDay: 8,
 };

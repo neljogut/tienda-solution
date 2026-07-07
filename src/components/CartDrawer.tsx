@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft, AlertCircle, Info, CreditCard, User, Sparkles, Loader2, ShoppingCart, Share2, Copy, CheckCircle2, Calendar } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft, AlertCircle, Info, CreditCard, User, Sparkles, Loader2, ShoppingCart, Share2, Copy, CheckCircle2, Search } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, collection, query, where, addDoc, writeBatch, getDoc, getCountFromServer } from 'firebase/firestore';
-import { estimateDeliveryTime, type EstimationResult } from '../utils/deliveryEstimator';
-import { roundPriceUp100, deepestTierScopeCategoryId, aggregatedQtyByScope } from '../services/pricingService';
+
+import { roundPriceUp100, deepestTierScopeCategoryId, aggregatedQtyByScope, getTierPrice } from '../services/pricingService';
 import { SearchableClientSelect } from './SearchableClientSelect';
 import { NumericInput } from './NumericInput';
 import type { Client } from '../types/client';
 import type { Category } from '../types/category';
 import type { VariantGroup } from '../types/variantGroup';
+import type { PriceTier } from '../types/product';
 
 interface QuantityInputProps {
   productId: string;
@@ -87,10 +88,8 @@ export const CartDrawer: React.FC = () => {
   // Configuration settings
   const [pricingSettings, setPricingSettings] = useState<any>(null);
   const [depositSettings, setDepositSettings] = useState<any>(null);
-  const [activeSession, setActiveSession] = useState<any>(null);
+
   const [exchangeRate, setExchangeRate] = useState<number>(1000);
-  const [businessSettings, setBusinessSettings] = useState<any>(null);
-  const [deliveryEstimation, setDeliveryEstimation] = useState<EstimationResult | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([]);
 
@@ -119,32 +118,53 @@ export const CartDrawer: React.FC = () => {
     });
 
     // 4. Clients listener
-    const qClients = userData?.role === 'employee'
-      ? query(collection(db, 'clients'), where('employeeId', '==', userData.uid))
-      : query(collection(db, 'clients'));
-    const unsubClients = onSnapshot(qClients, (snap) => {
-      setClients(snap.docs.map(d => {
-        const raw = d.data();
-        const hasNewFields = typeof raw.isWholesale === 'boolean';
-        const migrated = (hasNewFields ? raw : {
-          ...raw,
-          isWholesale: raw.clientType === 'wholesale',
-          isTrusted: raw.clientType === 'trusted',
-        });
-        if (migrated.isLocal === undefined) {
-          migrated.isLocal = false;
+    let unsubClients = () => {};
+    if (userData?.role === 'owner' || userData?.role === 'employee') {
+      const qClients = userData?.role === 'employee'
+        ? query(collection(db, 'clients'), where('employeeId', '==', userData.uid))
+        : query(collection(db, 'clients'));
+      unsubClients = onSnapshot(qClients, (snap) => {
+        setClients(snap.docs.map(d => {
+          const raw = d.data();
+          const hasNewFields = typeof raw.isWholesale === 'boolean';
+          const migrated = (hasNewFields ? raw : {
+            ...raw,
+            isWholesale: raw.clientType === 'wholesale',
+            isTrusted: raw.clientType === 'trusted',
+          });
+          if (migrated.isLocal === undefined) {
+            migrated.isLocal = false;
+          }
+          return { id: d.id, ...migrated } as Client;
+        }));
+      }, (err) => {
+        console.error("Error listening to clients:", err);
+      });
+    } else if (userData?.role === 'client' && userData?.customerId) {
+      unsubClients = onSnapshot(doc(db, 'clients', userData.customerId), (snap) => {
+        if (snap.exists()) {
+          const raw = snap.data();
+          const hasNewFields = typeof raw.isWholesale === 'boolean';
+          const migrated = (hasNewFields ? raw : {
+            ...raw,
+            isWholesale: raw.clientType === 'wholesale',
+            isTrusted: raw.clientType === 'trusted',
+          });
+          if (migrated.isLocal === undefined) {
+            migrated.isLocal = false;
+          }
+          setClients([{ id: snap.id, ...migrated } as Client]);
+        } else {
+          setClients([]);
         }
-        return { id: d.id, ...migrated } as Client;
-      }));
-    });
+      }, (err) => {
+        console.error("Error listening to client doc:", err);
+      });
+    } else {
+      setClients([]);
+    }
 
-    // 5. Active cash session listener
-    const qSession = query(collection(db, 'cash_sessions'), where('status', '==', 'open'));
-    const unsubSession = onSnapshot(qSession, (snap) => {
-      const openSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const mySession = openSessions.find((s: any) => s.openedBy === userData?.uid) || null;
-      setActiveSession(mySession);
-    });
+
 
     // 6. Categories listener
     const unsubCategories = onSnapshot(collection(db, 'categories'), (snap) => {
@@ -164,43 +184,97 @@ export const CartDrawer: React.FC = () => {
       setVariantGroups(groups);
     });
 
-    // 8. Business settings listener
-    const unsubBusiness = onSnapshot(doc(db, 'settings', 'business'), (snap) => {
-      if (snap.exists()) setBusinessSettings(snap.data());
-    });
- 
      return () => {
        unsubPricing();
        unsubDeposit();
        unsubRate();
        unsubClients();
-       unsubSession();
        unsubCategories();
        unsubVariantGroups();
-       unsubBusiness();
      };
    }, [isDrawerOpen, userData]);
 
-  // Estimate delivery time reactively
-  useEffect(() => {
-    if (items.length > 0) {
-      estimateDeliveryTime(
-        items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          type: item.type,
-        }))
-      )
-        .then((res) => {
-          setDeliveryEstimation(res);
-        })
-        .catch((err) => {
-          console.error('Error estimating delivery time in CartDrawer:', err);
+
+
+
+
+  const scopeStatusList = useMemo(() => {
+    if (!items || items.length === 0) return [];
+    
+    const scopesMap = new Map<string, {
+      scopeId: string;
+      scopeName: string;
+      effectiveQty: number;
+      resolvedPriceTiers: PriceTier[];
+      basePrice: number;
+      itemsCount: number;
+    }>();
+
+    const scopeQtyMap = aggregatedQtyByScope(
+      items.map(i => ({
+        priceTiers: i.priceTiers,
+        categoryId: i.categoryId,
+        variantGroup: i.variantGroup,
+        quantity: i.quantity,
+      })),
+      categories,
+      variantGroups
+    );
+
+    items.forEach(item => {
+      if (!item || !item.resolvedPriceTiers || item.resolvedPriceTiers.length === 0) return;
+      
+      const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
+      if (!scopeId) return;
+
+      const existing = scopesMap.get(scopeId);
+      const qty = item.quantity ?? 0;
+
+      if (existing) {
+        existing.itemsCount += 1;
+      } else {
+        let lookupId = scopeId;
+        let isGroup = false;
+        if (scopeId.startsWith('group::')) {
+          lookupId = scopeId.replace('group::', '');
+          isGroup = true;
+        }
+        const scopeCategory = !isGroup && categories ? categories.find(c => c && c.id.toLowerCase() === lookupId.toLowerCase()) : null;
+        const scopeGroup = isGroup && variantGroups ? variantGroups.find(g => g && (g.id.toLowerCase() === lookupId.toLowerCase() || g.name.toLowerCase() === lookupId.toLowerCase())) : null;
+        const rawName = scopeCategory ? scopeCategory.name : (scopeGroup ? scopeGroup.name : (isGroup ? lookupId.toUpperCase() : ''));
+        const segments = rawName.split(' - ').map(s => s.trim());
+        const scopeName = segments.length >= 2
+          ? `${segments[segments.length - 2]} ${segments[segments.length - 1]}`
+          : rawName;
+
+        const effectiveQty = scopeQtyMap.get(scopeId) ?? qty;
+
+        scopesMap.set(scopeId, {
+          scopeId,
+          scopeName: scopeName || 'Otros',
+          effectiveQty,
+          resolvedPriceTiers: item.resolvedPriceTiers,
+          basePrice: item.basePrice ?? item.price ?? 0,
+          itemsCount: 1
         });
-    } else {
-      setDeliveryEstimation(null);
-    }
-  }, [items]);
+      }
+    });
+
+    return Array.from(scopesMap.values()).map(data => {
+      const sortedTiers = [...data.resolvedPriceTiers].sort((a, b) => a.minQty - b.minQty);
+      const nextTier = sortedTiers.find(t => t.minQty > data.effectiveQty);
+      const currentTier = sortedTiers.find(t => data.effectiveQty >= t.minQty && data.effectiveQty <= t.maxQty);
+      const lastTier = sortedTiers[sortedTiers.length - 1];
+      const activeTier = currentTier || (data.effectiveQty > lastTier?.maxQty ? lastTier : null);
+
+      return {
+        ...data,
+        nextTier,
+        activeTier,
+        isMaxDiscount: !nextTier
+      };
+    });
+  }, [items, categories, variantGroups]);
 
   // Reset drawer state on close/open
   useEffect(() => {
@@ -214,7 +288,7 @@ export const CartDrawer: React.FC = () => {
     }
   }, [isDrawerOpen, shareModalOpen]);
 
-  if (!isDrawerOpen && !shareModalOpen) return null;
+
 
   const isAdmin = userData?.role === 'owner' || userData?.role === 'employee';
 
@@ -243,19 +317,36 @@ export const CartDrawer: React.FC = () => {
   const meetsNormal = weightNormal >= thresholdNormal;
   const meetsKeychain = weightKeychain >= thresholdKeychain;
 
-  const activeClient = clients.find(c => c.id === selectedClientId);
+  const effectiveClientId = isAdmin ? selectedClientId : (userData?.customerId || '');
+  const activeClient = clients.find(c => c.id === effectiveClientId);
+  const hasClientWholesale = activeClient?.isWholesale === true;
+
+  const scopeQtyMap = useMemo(() => {
+    return aggregatedQtyByScope(
+      items.map(i => ({
+        priceTiers: i.priceTiers,
+        categoryId: i.categoryId,
+        variantGroup: i.variantGroup,
+        quantity: i.quantity,
+      })),
+      categories,
+      variantGroups
+    );
+  }, [items, categories, variantGroups]);
 
   // Dynamic total amount calculation based on active client's wholesale status
   const totalAmount = (() => {
     let sum = 0;
-    const hasClientWholesale = activeClient?.isWholesale === true;
     
     items.forEach(item => {
       const meetsThreshold = item.isKeychain ? meetsKeychain : meetsNormal;
       const appliesWholesale = (item.type === '3d' && (hasClientWholesale || meetsThreshold));
       
       if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
-        sum += item.price * item.quantity;
+        const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
+        const effectiveQty = scopeId ? (scopeQtyMap.get(scopeId) ?? item.quantity) : item.quantity;
+        const itemPrice = getTierPrice(effectiveQty, item.basePrice, item.resolvedPriceTiers, hasClientWholesale);
+        sum += itemPrice * item.quantity;
       } else if (appliesWholesale) {
         const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
         const wholesalePrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
@@ -266,6 +357,16 @@ export const CartDrawer: React.FC = () => {
     });
     return sum;
   })();
+
+  const totalBasePrice = useMemo(() => {
+    return items.reduce((sum, item) => sum + (item.basePrice * (item.quantity || 0)), 0);
+  }, [items]);
+
+  const totalSavings = useMemo(() => {
+    return Math.max(0, totalBasePrice - totalAmount);
+  }, [totalBasePrice, totalAmount]);
+
+  if (!isDrawerOpen && !shareModalOpen) return null;
 
   const isTrustedClient = activeClient?.isTrusted ?? false;
   const bypassDeposit = isTrustedClient && (depositSettings?.trustedClientBypassDeposit ?? true);
@@ -320,7 +421,7 @@ export const CartDrawer: React.FC = () => {
         
         let finalPrice = item.price;
         if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
-          finalPrice = item.price;
+          finalPrice = getTierPrice(item.quantity, item.basePrice, item.resolvedPriceTiers, hasClientWholesale);
         } else if (appliesWholesale) {
           const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
           finalPrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
@@ -365,14 +466,7 @@ export const CartDrawer: React.FC = () => {
       
       let commissionAmount: number | undefined = undefined;
       if (employeeId) {
-        if (isEmployeeCreator) {
-          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
-        } else {
-          const profit3D = resolvedOrderItems
-            .filter(item => item.type === '3d')
-            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
-          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
-        }
+        commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
       }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
@@ -416,35 +510,7 @@ export const CartDrawer: React.FC = () => {
         totalOwed: (activeClient.totalOwed || 0) + pendingAmount,
       });
 
-      // Update cash register if paidAmountAmt > 0
-      if (paidAmountAmt > 0 && activeSession) {
-        const sessionRef = doc(db, 'cash_sessions', activeSession.id);
-        const currentIncome = activeSession.totalIncome || 0;
-        const currentExpected = activeSession.expectedAmount || 0;
-        const breakdown = { ...(activeSession.breakdown || { cash: 0, transfer: 0, mercadopago: 0, card: 0, other: 0 }) };
-        
-        breakdown[paymentMethod] = (breakdown[paymentMethod] || 0) + paidAmountAmt;
-        
-        batch.update(sessionRef, {
-          totalIncome: currentIncome + paidAmountAmt,
-          expectedAmount: currentExpected + paidAmountAmt,
-          breakdown,
-          transactionsCount: (activeSession.transactionsCount || 0) + 1,
-        });
 
-        // Add cash movement record
-        const transRef = doc(collection(db, 'cash_transactions'));
-        batch.set(transRef, {
-          sessionId: activeSession.id,
-          date: new Date().toISOString(),
-          type: 'income',
-          amount: paidAmountAmt,
-          method: paymentMethod,
-          description: `Seña Pedido #${orderNumber} (${activeClient.firstName} ${activeClient.lastName})`,
-          orderId: newOrderRef.id,
-          createdBy: userData?.uid || 'system',
-        });
-      }
 
       // Deduct inventory stock
       const saleLines: Array<any> = [];
@@ -466,64 +532,7 @@ export const CartDrawer: React.FC = () => {
             finalQuantity: newStock,
           });
 
-          if (product.type === '3d') {
-            const filamentLines = product.filamentLines?.length
-              ? product.filamentLines
-              : (product.filamentIds ?? []).map((filamentId: string) => ({
-                  supplyId: filamentId,
-                  grams: (product.weightGrams * item.quantity) / Math.max(1, product.filamentIds?.length || 1),
-                }));
 
-            for (const line of filamentLines) {
-              const filamentId = line.supplyId;
-              const weightToDeduct = (line.grams || 0) * item.quantity;
-              if (!filamentId || weightToDeduct <= 0) continue;
-
-              const filRef = doc(db, 'inventory', filamentId);
-              const filSnap = await getDoc(filRef);
-              if (filSnap.exists()) {
-                const filData = filSnap.data();
-                const prevWeight = filData.availableWeightGrams || 0;
-                const newWeight = Math.max(0, prevWeight - weightToDeduct);
-                batch.update(filRef, { availableWeightGrams: newWeight });
-
-                saleLines.push({
-                  itemId: filamentId,
-                  itemType: 'filament',
-                  lineType: 'consumption',
-                  previousQuantity: prevWeight,
-                  modifiedQuantity: -weightToDeduct,
-                  finalQuantity: newWeight,
-                  relatedProductId: item.productId,
-                });
-              }
-            }
-
-            if (product.supplyIds?.length) {
-              for (const supplyObj of product.supplyIds) {
-                const supplyId = supplyObj.supplyId;
-                const qtyNeeded = supplyObj.quantity * item.quantity;
-                const supRef = doc(db, 'inventory', supplyId);
-                const supSnap = await getDoc(supRef);
-                if (supSnap.exists()) {
-                  const supData = supSnap.data();
-                  const prevQty = supData.currentStock || 0;
-                  const newQty = Math.max(0, prevQty - qtyNeeded);
-                  batch.update(supRef, { currentStock: newQty });
-
-                  saleLines.push({
-                    itemId: supplyId,
-                    itemType: 'supply',
-                    lineType: 'consumption',
-                    previousQuantity: prevQty,
-                    modifiedQuantity: -qtyNeeded,
-                    finalQuantity: newQty,
-                    relatedProductId: item.productId,
-                  });
-                }
-              }
-            }
-          }
         }
       }
 
@@ -568,7 +577,7 @@ export const CartDrawer: React.FC = () => {
         
         let finalPrice = item.price;
         if (item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
-          finalPrice = item.price;
+          finalPrice = getTierPrice(item.quantity, item.basePrice, item.resolvedPriceTiers, hasClientWholesale);
         } else if (appliesWholesale) {
           const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
           finalPrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
@@ -612,14 +621,7 @@ export const CartDrawer: React.FC = () => {
       
       let commissionAmount: number | undefined = undefined;
       if (employeeId) {
-        if (isEmployeeCreator) {
-          commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
-        } else {
-          const profit3D = resolvedOrderItems
-            .filter(item => item.type === '3d')
-            .reduce((sum, item) => sum + (item.unitProfit * item.quantity), 0);
-          commissionAmount = Number(Math.max(0, profit3D * (commissionPercent / 100)).toFixed(2));
-        }
+        commissionAmount = Number(Math.max(0, totalProfit * (commissionPercent / 100)).toFixed(2));
       }
       const commissionPaidStatus = employeeId ? 'pending' : undefined;
 
@@ -654,6 +656,7 @@ export const CartDrawer: React.FC = () => {
       const generatedUrl = `${window.location.origin}/shared-order/${draftRef.id}`;
       setShareUrl(generatedUrl);
       setShareModalOpen(true);
+      clearCart();
       closeDrawer();
     } catch (err) {
       console.error(err);
@@ -666,16 +669,37 @@ export const CartDrawer: React.FC = () => {
   const has3DNormal = items.some(i => i.type === '3d' && !i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
   const has3DKeychain = items.some(i => i.type === '3d' && i.isKeychain && (!i.resolvedPriceTiers || i.resolvedPriceTiers.length === 0));
 
-  const scopeQtyMap = aggregatedQtyByScope(
-    items.map(i => ({
-      priceTiers: i.priceTiers,
-      categoryId: i.categoryId,
-      variantGroup: i.variantGroup,
-      quantity: i.quantity,
-    })),
-    categories,
-    variantGroups
-  );
+  const handleExploreMore = (lookupId: string, isGroup: boolean, scopeName: string) => {
+    closeDrawer();
+    
+    // Buscar el primer producto en el carrito que corresponda a este descuento
+    const matchingItem = items.find(item => {
+      const itemScopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
+      return itemScopeId && itemScopeId.toLowerCase() === (isGroup ? `group::${lookupId.toLowerCase()}` : lookupId.toLowerCase());
+    });
+
+    if (matchingItem && matchingItem.categoryId) {
+      const catObj = categories.find(c => c && c.id === matchingItem.categoryId);
+      if (catObj && catObj.parentId) {
+        // Redirigir a la categoría padre (ej: FILAR)
+        navigate(`/catalog/category/${catObj.parentId}`);
+        return;
+      } else {
+        // Redirigir a la categoría propia del producto
+        navigate(`/catalog/category/${matchingItem.categoryId}`);
+        return;
+      }
+    }
+
+    // Fallback por si no se encuentra el producto o la categoría
+    if (isGroup) {
+      navigate('/catalog');
+    } else {
+      navigate(`/catalog/category/${lookupId}`);
+    }
+  };
+
+
 
   return (
     <>
@@ -705,12 +729,25 @@ export const CartDrawer: React.FC = () => {
               {view === 'checkout' ? 'Finalizar Pedido' : 'Tu Carrito'}
             </h2>
           </div>
-          <button 
-            onClick={closeDrawer}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-          >
-            <X size={24} />
-          </button>
+          <div className="flex items-center gap-1">
+            {view === 'cart' && items.length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('¿Vaciar todo el carrito?')) { clearCart(); closeDrawer(); }
+                }}
+                title="Vaciar carrito"
+                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+            <button 
+              onClick={closeDrawer}
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         {/* Sliding Views Container */}
@@ -720,8 +757,8 @@ export const CartDrawer: React.FC = () => {
             style={{ transform: view === 'checkout' ? 'translateX(-50%)' : 'translateX(0%)' }}
           >
             {/* VISTA 1: Lista de Productos del Carrito */}
-            <div className="w-1/2 h-full flex flex-col justify-between overflow-y-auto">
-              <div className="p-4 space-y-4 flex-1">
+            <div className="w-1/2 h-full flex flex-col justify-between overflow-hidden">
+              <div className="p-4 space-y-4 flex-1 overflow-y-auto">
                 {/* Wholesale weight progress bar */}
                 {(has3DNormal || has3DKeychain) && items.length > 0 && (
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-3 mb-2 animate-fadeIn">
@@ -769,6 +806,51 @@ export const CartDrawer: React.FC = () => {
                   </div>
                 )}
 
+                {/* Consolidated Category Discounts */}
+                {scopeStatusList.length > 0 && (
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-3 mb-2 animate-fadeIn">
+                    <h3 className="text-xs font-bold uppercase text-slate-500 tracking-wider">Descuentos por Cantidad</h3>
+                    <div className="space-y-2">
+                      {scopeStatusList.map(status => (
+                        <div key={status.scopeId} className="text-xs flex flex-col gap-1.5 p-2.5 bg-white rounded-lg border border-slate-100 shadow-sm animate-fadeIn">
+                          <div className="flex justify-between items-center font-bold text-slate-800">
+                            <span className="text-sm">{status.scopeName}</span>
+                            <span className="text-[10px] text-slate-400 font-medium bg-slate-50 px-1.5 py-0.5 rounded-full border border-slate-100">
+                              {status.effectiveQty} unidades
+                            </span>
+                          </div>
+                          {status.activeTier && status.activeTier.unitPrice < (status.basePrice ?? 0) && (
+                            <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                              <CheckCircle2 size={12} className="text-emerald-500" /> Descuento para {status.scopeName}
+                            </div>
+                          )}
+                          {status.nextTier ? (
+                            <p className="text-[10px] text-orange-700 bg-orange-50/70 px-2 py-1 rounded border border-orange-100/80 font-medium">
+                              Llevá {status.nextTier.minQty - status.effectiveQty} unidad{status.nextTier.minQty - status.effectiveQty > 1 ? 'es' : ''} más de {status.scopeName} para pagar ${(status.nextTier.unitPrice || 0).toLocaleString('es-AR')} c/u
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-emerald-700 bg-emerald-50/70 px-2 py-1 rounded border border-emerald-100/80 font-medium">
+                              ¡Descuento máximo aplicado!
+                            </p>
+                          )}
+                          
+                          <button
+                            onClick={() => {
+                              const isGroup = status.scopeId.startsWith('group::');
+                              const lookupId = isGroup ? status.scopeId.replace('group::', '') : status.scopeId;
+                              handleExploreMore(lookupId, isGroup, status.scopeName);
+                            }}
+                            className="w-full mt-1.5 py-1.5 px-3 bg-blue-50 hover:bg-blue-100/80 text-blue-600 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 border border-blue-100"
+                          >
+                            <Search size={11} className="text-blue-500" />
+                            <span>Ver más productos de {status.scopeName}</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Cart Items */}
                 {items.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4 mt-20">
@@ -776,81 +858,97 @@ export const CartDrawer: React.FC = () => {
                     <p>Tu carrito está vacío</p>
                   </div>
                 ) : (
-                  items.map(item => (
-                    <div key={item.productId} className="flex gap-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                      <div className="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin Foto</div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <h4 className="font-semibold text-slate-800 line-clamp-1">{item.name}</h4>
-                          <div className="flex items-baseline gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-blue-600">${(item.price || 0).toLocaleString('es-AR')}</p>
-                            {item.price < item.basePrice && (
-                              <p className="text-xs text-slate-400 line-through">${(item.basePrice || 0).toLocaleString('es-AR')}</p>
-                            )}
+                  items.map(item => {
+                    const is3D = item.type === '3d';
+                    const hasTiers = item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0;
+                    const meetsThreshold = item.isKeychain ? meetsKeychain : meetsNormal;
+                    const appliesWholesale = (is3D && (hasClientWholesale || meetsThreshold));
+                    
+                    const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
+                    const effectiveQty = scopeId ? (scopeQtyMap.get(scopeId) ?? item.quantity) : item.quantity;
+
+                    let displayPrice = item.price;
+                    if (hasTiers) {
+                      displayPrice = getTierPrice(effectiveQty, item.basePrice, item.resolvedPriceTiers, hasClientWholesale);
+                    } else if (appliesWholesale) {
+                      const discountPercent = item.isKeychain ? discountPercentKeychain : discountPercentNormal;
+                      displayPrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
+                    } else {
+                      displayPrice = item.basePrice;
+                    }
+
+                    return (
+                      <div key={item.productId} className="flex gap-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                        <div className="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin Foto</div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <h4 className="font-semibold text-slate-800 line-clamp-1">{item.name}</h4>
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <p className="text-sm font-medium text-blue-600">${(displayPrice || 0).toLocaleString('es-AR')}</p>
+                              {displayPrice < item.basePrice && (
+                                <p className="text-xs text-slate-400 line-through">${(item.basePrice || 0).toLocaleString('es-AR')}</p>
+                              )}
+                              {(() => {
+                                if (!is3D || hasTiers) return null;
+
+                                const isKeychain = item.isKeychain === true;
+                                const discountPercent = isKeychain ? discountPercentKeychain : discountPercentNormal;
+                                const wholesalePrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
+
+                                if (displayPrice < item.basePrice) {
+                                  return (
+                                    <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.5 rounded">
+                                      May
+                                    </span>
+                                  );
+                                } else if (wholesalePrice < item.basePrice) {
+                                  return (
+                                    <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-bold px-1.5 py-0.5 rounded animate-fadeIn">
+                                      Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                             {(() => {
-                              const is3D = item.type === '3d';
-                              const hasTiers = item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0;
-                              if (!is3D || hasTiers) return null;
+                              const itemScopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
+                              if (itemScopeId && item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0) {
+                                let lookupId = itemScopeId;
+                                let isGroup = false;
+                                if (itemScopeId.startsWith('group::')) {
+                                  lookupId = itemScopeId.replace('group::', '');
+                                  isGroup = true;
+                                }
+                                const scopeCategory = !isGroup && categories ? categories.find(c => c && c.id.toLowerCase() === lookupId.toLowerCase()) : null;
+                                const scopeGroup = isGroup && variantGroups ? variantGroups.find(g => g && (g.id.toLowerCase() === lookupId.toLowerCase() || g.name.toLowerCase() === lookupId.toLowerCase())) : null;
+                                const rawName = scopeCategory ? scopeCategory.name : (scopeGroup ? scopeGroup.name : (isGroup ? lookupId.toUpperCase() : ''));
+                                const segments = rawName.split(' - ').map(s => s.trim());
+                                const cleanScopeName = segments.length >= 2
+                                  ? `${segments[segments.length - 2]} ${segments[segments.length - 1]}`
+                                  : rawName;
 
-                              const isKeychain = item.isKeychain === true;
-                              const discountPercent = isKeychain ? discountPercentKeychain : discountPercentNormal;
-                              const wholesalePrice = roundPriceUp100(item.basePrice * (1 - discountPercent / 100));
-
-                              if (item.price < item.basePrice) {
                                 return (
-                                  <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-black px-1.5 py-0.5 rounded">
-                                    May
-                                  </span>
-                                );
-                              } else if (wholesalePrice < item.basePrice) {
-                                return (
-                                  <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-100 font-bold px-1.5 py-0.5 rounded animate-fadeIn">
-                                    Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
-                                  </span>
+                                  <div className="mt-1 flex items-center gap-1 flex-wrap">
+                                    <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 animate-fadeIn">
+                                      🏷️ {cleanScopeName}
+                                    </span>
+                                    <span className="text-[9px] text-slate-400">
+                                      (suma al descuento)
+                                    </span>
+                                  </div>
                                 );
                               }
                               return null;
                             })()}
                           </div>
-
-                          {/* Price tier next discount hint */}
-                          {item.resolvedPriceTiers && item.resolvedPriceTiers.length > 0 && (() => {
-                            const sortedTiers = [...item.resolvedPriceTiers].sort((a, b) => a.minQty - b.minQty);
-                            const scopeId = deepestTierScopeCategoryId(item.priceTiers, item.categoryId, categories, item.variantGroup);
-                            const effectiveQty = scopeId ? (scopeQtyMap.get(scopeId) ?? item.quantity) : item.quantity;
-                            
-                            const nextTier = sortedTiers.find(t => t.minQty > effectiveQty);
-                            const currentTier = sortedTiers.find(t => effectiveQty >= t.minQty && effectiveQty <= t.maxQty);
-                            const lastTier = sortedTiers[sortedTiers.length - 1];
-                            const activeTier = currentTier || (effectiveQty > lastTier?.maxQty ? lastTier : null);
-
-                            return (
-                              <div className="mt-1 space-y-0.5">
-                                {activeTier && activeTier.unitPrice < item.basePrice && (
-                                  <div className="text-[10px] text-emerald-600 font-bold">
-                                    ¡Descuento por tramo activo!
-                                  </div>
-                                )}
-                                {nextTier ? (
-                                  <p className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 inline-block font-medium">
-                                    Llevá {nextTier.minQty - effectiveQty} más para pagar ${(nextTier.unitPrice || 0).toLocaleString('es-AR')} c/u
-                                  </p>
-                                ) : (
-                                  <p className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 inline-block font-medium">
-                                    ¡Alcanzaste el descuento máximo por tramos!
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </div>
                         
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1">
@@ -885,54 +983,56 @@ export const CartDrawer: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))
+                  );
+                })
                 )}
               </div>
 
               {/* Bottom bar Step 1 */}
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0 space-y-3">
-                {businessSettings?.showEstimatedDeliveryDateToClient !== false && deliveryEstimation?.estimatedDate && (
-                  <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 p-2.5 rounded-xl text-xs text-slate-700 animate-fadeIn">
-                    <Calendar size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold text-slate-800">
-                        Fecha de Entrega Estimada:
-                      </p>
-                      <p className="font-semibold text-blue-600 mt-0.5">
-                        {deliveryEstimation.estimatedDate.toLocaleDateString('es-AR', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </p>
-                      <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                        (sujeta a tiempos de fabricación, armado y calidad)
-                      </p>
-                    </div>
-                  </div>
-                )}
 
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-slate-600 font-medium">Total a pagar:</span>
-                  <span className="text-2xl font-bold text-emerald-600">
-                    ${(getTotalPrice() || 0).toLocaleString('es-AR')}
-                  </span>
+
+                {/* Price breakdown */}
+                <div className="space-y-1.5">
+                  {totalSavings > 0 && (
+                    <div className="flex justify-between items-center text-sm text-slate-400">
+                      <span className="font-medium">Subtotal sin descuento:</span>
+                      <span className="line-through">
+                        ${((getTotalPrice() || 0) + totalSavings).toLocaleString('es-AR')}
+                      </span>
+                    </div>
+                  )}
+
+                  {totalSavings > 0 && (
+                    <div className="flex justify-between items-center text-sm font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-1.5 animate-fadeIn">
+                      <span>Descuento aplicado:</span>
+                      <span>-${totalSavings.toLocaleString('es-AR')}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-slate-700 font-semibold text-sm">Total a pagar:</span>
+                    <span className="text-2xl font-bold text-emerald-600">
+                      ${(getTotalPrice() || 0).toLocaleString('es-AR')}
+                    </span>
+                  </div>
                 </div>
                 
-                <button 
-                  onClick={handleCheckoutClick}
-                  disabled={items.length === 0}
-                  className="w-full btn-primary py-3 flex justify-center items-center gap-2 text-lg disabled:opacity-50"
-                >
-                  {isAdmin ? 'Finalizar Pedido' : 'Finalizar Compra'}
-                </button>
+                <div className="flex justify-center pt-1">
+                  <button 
+                    onClick={handleCheckoutClick}
+                    disabled={items.length === 0}
+                    className="w-auto px-8 py-2 btn-primary flex justify-center items-center gap-2 text-sm font-black tracking-wide uppercase disabled:opacity-50 shadow-md shadow-blue-500/10"
+                  >
+                    {isAdmin ? 'Finalizar Pedido' : 'Finalizar Compra'}
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* VISTA 2: Resumen del Pedido (Checkout administrativo) */}
-            <div className="w-1/2 h-full flex flex-col justify-between overflow-y-auto bg-slate-50/60 border-l border-slate-100">
-              <div className="p-4 space-y-4 flex-1">
+            <div className="w-1/2 h-full flex flex-col justify-between overflow-hidden bg-slate-50/60 border-l border-slate-100">
+              <div className="p-4 space-y-4 flex-1 overflow-y-auto">
                 {/* Resumen Header info */}
                 <div className="flex justify-between items-center text-slate-800 font-bold text-sm">
                   <div className="flex items-center gap-2">
@@ -984,7 +1084,7 @@ export const CartDrawer: React.FC = () => {
                 </div>
 
                 {/* Calculations box */}
-                <div className="space-y-3 bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm">
+                <div className="space-y-3 bg-[#f8fafc] border border-slate-100 rounded-2xl p-4 shadow-sm">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500 font-medium">Subtotal pedido:</span>
                     <span className="font-bold text-slate-800 text-sm">${totalAmount.toLocaleString('es-AR')}</span>
@@ -1004,7 +1104,7 @@ export const CartDrawer: React.FC = () => {
                       <NumericInput 
                         value={paidAmount} 
                         onChange={val => setPaidAmount(val)}
-                        className="w-24 p-1.5 border border-slate-200 rounded-lg text-right font-bold text-sm bg-slate-50"
+                        className="w-24 p-1.5 border border-slate-200 rounded-lg text-right font-bold text-sm bg-white"
                         placeholder="0"
                       />
                     </div>
@@ -1038,43 +1138,13 @@ export const CartDrawer: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Cash Session Status warning */}
-                  {paidAmountAmt > 0 && !activeSession && (
-                    <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-2.5 mt-1.5 text-[10px] flex items-center gap-1.5 font-semibold animate-fadeIn">
-                      <AlertCircle size={14} className="flex-shrink-0 text-amber-600" />
-                      <span>La caja diaria está cerrada. El pago no se registrará en la caja diaria.</span>
-                    </div>
-                  )}
+
 
                   <div className="flex justify-between items-center text-xs pt-2.5 border-t border-slate-200 font-bold">
                     <span className="text-slate-600">Saldo Pendiente:</span>
                     <span className={`text-sm ${pendingAmount > 0 ? 'text-[#f59e0b]' : 'text-emerald-600'}`}>
                       ${pendingAmount.toLocaleString('es-AR')}
                     </span>
-                  </div>
-                </div>
-
-                {/* Observations */}
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Observaciones para el cliente</label>
-                    <input 
-                      type="text" 
-                      value={observationsPublic} 
-                      onChange={e => setObservationsPublic(e.target.value)}
-                      placeholder="Ej. Entregar envuelto para regalo..."
-                      className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Observaciones internas (dueño)</label>
-                    <input 
-                      type="text" 
-                      value={observationsInternal} 
-                      onChange={e => setObservationsInternal(e.target.value)}
-                      placeholder="Ej. Revisar calidad del filamento rojo..."
-                      className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white"
-                    />
                   </div>
                 </div>
               </div>

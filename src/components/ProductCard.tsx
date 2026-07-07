@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Eye, Share2, Copy, Check as CheckIcon, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatPrintTime } from '../utils/printTime';
+import { ShoppingCart, Share2, Copy, Check as CheckIcon, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+
 import { getProductImages } from '../utils/productImages';
 import { useAuth } from '../context/AuthContext';
-import { usePricingData } from '../hooks/usePricingData';
+import { useBusinessSettings } from '../hooks/useBusinessSettings';
+
 
 interface ProductCardProps {
   product: Product;
@@ -14,6 +15,7 @@ interface ProductCardProps {
   getRetailPrice?: (product: Product) => number;
   getCost?: (product: Product) => number;
   salesCount?: number;
+  onCardClick?: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -22,12 +24,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   getRetailPrice,
   getCost,
   salesCount,
+  onCardClick,
 }) => {
   const navigate = useNavigate();
-  const { addItem } = useCartStore();
+  const { addItem, openDrawer, items } = useCartStore();
   const { userData } = useAuth();
   const isOwner = userData?.role === 'owner';
-  const { productTypes } = usePricingData();
+  const cartQty = items.find(item => item.productId === product.id)?.quantity || 0;
+  const { outOfStockSaturate: saturate } = useBusinessSettings();
+  const outOfStockSaturate = saturate ?? 20;
+
   
   const priceToDisplay = getRetailPrice
     ? getRetailPrice(product)
@@ -42,10 +48,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     }
     return product.calculatedWholesalePrice || Math.ceil(priceToDisplay * 0.8);
   }, [product.priceTiers, product.calculatedWholesalePrice, priceToDisplay]);
+  const displayCategory = useMemo(() => {
+    if (!product.category) return 'Sin categoría';
+    const parts = product.category.split(' › ');
+    return parts[parts.length - 1];
+  }, [product.category]);
+
   const images = useMemo(() => getProductImages(product), [product]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsVisible(entry.isIntersecting);
+    }, { threshold: 0.1 });
+
+    observer.observe(el);
+    return () => {
+      observer.unobserve(el);
+    };
+  }, []);
 
   const handleImageLoad = (url: string) => {
     setLoadedImages((prev) => ({ ...prev, [url]: true }));
@@ -57,12 +86,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   }, [product.id]);
 
   useEffect(() => {
-    if (images.length <= 1 || isPaused) return;
+    if (images.length <= 1 || isPaused || !isVisible) return;
     const timer = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % images.length);
     }, 3500);
     return () => window.clearInterval(timer);
-  }, [images.length, isPaused, product.id]);
+  }, [images.length, isPaused, isVisible]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,6 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       maxStock: product.stock !== undefined ? product.stock : 999,
       variantGroup: product.variantGroup
     });
+    openDrawer();
   };
 
   // Share functionality
@@ -143,8 +173,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div 
+      ref={cardRef}
       className="card group cursor-pointer flex flex-col h-full overflow-hidden animate-fadeIn"
-      onClick={() => navigate(`/catalog/${product.id}`)}
+      onClick={(e) => {
+        if (onCardClick) {
+          e.preventDefault();
+          onCardClick(product);
+        } else {
+          navigate(`/catalog/${product.id}`);
+        }
+      }}
     >
       {/* Image */}
       <div
@@ -161,28 +199,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </div>
             )}
             <div className="absolute inset-0 w-full h-full">
-              {images.map((imgUrl, idx) => (
-                <img
-                  key={imgUrl}
-                  src={imgUrl}
-                  alt={`${product.name} - ${idx}`}
-                  onLoad={() => handleImageLoad(imgUrl)}
-                  ref={(el) => {
-                    if (el && el.complete && !loadedImages[imgUrl]) {
-                      setTimeout(() => {
-                        setLoadedImages((prev) => {
-                          if (prev[imgUrl]) return prev;
-                          return { ...prev, [imgUrl]: true };
-                        });
-                      }, 0);
-                    }
-                  }}
-                  className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 ${
-                    idx === activeIndex && loadedImages[imgUrl] ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                  }`}
-                  loading="lazy"
-                />
-              ))}
+              {images.map((imgUrl, idx) => {
+                const shouldRender = idx === activeIndex || idx === 0 || loadedImages[imgUrl];
+                if (!shouldRender) return null;
+                return (
+                  <img
+                    key={imgUrl}
+                    src={imgUrl}
+                    alt={`${product.name} - ${idx}`}
+                    onLoad={() => handleImageLoad(imgUrl)}
+                    ref={(el) => {
+                      if (el && el.complete && !loadedImages[imgUrl]) {
+                        setTimeout(() => {
+                          setLoadedImages((prev) => {
+                            if (prev[imgUrl]) return prev;
+                            return { ...prev, [imgUrl]: true };
+                          });
+                        }, 0);
+                      }
+                    }}
+                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out group-hover:scale-110 ${
+                      idx === activeIndex && loadedImages[imgUrl] ? (isOutOfStock ? 'opacity-70 z-10' : 'opacity-100 z-10') : 'opacity-0 z-0'
+                    }`}
+                    style={isOutOfStock ? { filter: `saturate(${outOfStockSaturate}%)` } : undefined}
+                    loading={idx === 0 ? "eager" : "lazy"}
+                  />
+                );
+              })}
             </div>
           </>
         ) : (
@@ -245,90 +288,62 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </>
         )}
         
-        {/* Overlay on hover (Desktop only) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 hidden md:block z-20" />
-
-        {/* Top badges */}
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-20">
-          <span className={`badge text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5 ${product.type === '3d' ? 'badge-blue' : 'badge-green'}`}>
-            <span className="hidden sm:inline">{product.type === '3d' ? 'Impresión 3D' : (productTypes[product.type] || 'Artículos Varios')}</span>
-            <span className="inline sm:hidden">{product.type === '3d' ? '3D' : (productTypes[product.type] || 'Varios')}</span>
-          </span>
-          {isAdminView && product.useManualPrice && (
-            <span className="badge badge-yellow text-[8px] sm:text-[10px] px-1 py-0.5 sm:px-2 sm:py-0.5">Manual</span>
-          )}
-        </div>
-
-        {/* Stock badge */}
-        {isOutOfStock && (
-          <div className={`absolute top-2 z-20 ${images.length > 1 ? 'left-2' : 'right-2'}`}>
-            <span className="badge badge-red text-[10px]">Sin Stock</span>
-          </div>
-        )}
-
-        {/* Sold badge (Owner only) */}
-        {isOwner && salesCount !== undefined && salesCount > 0 && (
-          <div className={`absolute z-20 ${images.length > 1 ? 'top-10 right-2' : 'top-2 right-2'}`}>
-            <span className="badge badge-purple text-[8px] sm:text-[10px] px-1.5 py-0.5 sm:px-2 sm:py-0.5 shadow-sm">
-              {salesCount} vend.
-            </span>
-          </div>
-        )}
-
-        {/* Bottom action on hover (Desktop only) */}
-        <div className="absolute bottom-2 left-2 right-2 opacity-0 md:group-hover:opacity-100 translate-y-2 md:group-hover:translate-y-0 transition-all duration-300 hidden md:flex gap-2 z-30">
-          <button 
-            className="flex-1 py-2 rounded-xl bg-white/90 backdrop-blur-sm text-slate-800 text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-white transition-colors shadow-lg"
-            onClick={(e) => { e.stopPropagation(); navigate(`/catalog/${product.id}`); }}
-          >
-            <Eye size={14} /> Ver
-          </button>
-          {isAdminView ? (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                navigate(`/admin/products/${product.id}`);
-              }}
-              className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
+        {/* Cart button pinned at center-bottom of image — always visible for both clients and admins */}
+        {!isOutOfStock && (
+          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-30">
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 transition-all duration-200"
+              title="Añadir al carrito"
             >
-              <Pencil size={14} /> Editar
+              <ShoppingCart size={16} className="sm:w-[18px] sm:h-[18px]" />
+              {cartQty > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black min-w-[16px] h-[16px] rounded-full flex items-center justify-center shadow">
+                  {cartQty}
+                </span>
+              )}
             </button>
-          ) : (
-            !isOutOfStock && (
-              <button 
-                onClick={handleAddToCart}
-                className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
-              >
-                <ShoppingCart size={14} /> Comprar
-              </button>
-            )
+          </div>
+        )}
+
+        {/* Top badges (Sales and Stock) */}
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1.5 z-30 pointer-events-none">
+          {/* Sales badge (visible for all) */}
+          {salesCount !== undefined && salesCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-slate-600/90 backdrop-blur-sm text-white text-[9px] sm:text-[10px] font-bold shadow-sm">
+              {salesCount} vendidos
+            </span>
           )}
+
+          {/* Stock badge */}
+          {isOutOfStock ? (
+            <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-[9px] sm:text-[10px] font-bold shadow">
+              Sin Stock
+            </span>
+          ) : product.stock !== undefined ? (
+            <span className={`px-2 py-0.5 rounded-full text-white text-[9px] sm:text-[10px] font-bold shadow ${
+              product.stock <= 3 ? 'bg-orange-500' :
+              product.stock <= 9 ? 'bg-amber-500' :
+              'bg-emerald-500'
+            }`}>
+              {product.stock <= 3 ? `¡Últimas ${product.stock}!` : `${product.stock} disp.`}
+            </span>
+          ) : null}
         </div>
       </div>
       
-      {/* Content */}
       <div className="p-2.5 sm:p-4 flex flex-col flex-1">
-        <p className="text-[9px] sm:text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1">{product.category}</p>
-        <h3 className="font-semibold text-slate-800 line-clamp-2 leading-snug mb-2 flex-1 text-xs sm:text-base">{product.name}</h3>
+        <p className="text-[9px] sm:text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-1 text-center">{displayCategory}</p>
+        <h3 className="font-bold text-slate-900 line-clamp-2 leading-snug mb-2 flex-1 text-sm sm:text-lg text-center tracking-tight">{product.name}</h3>
         
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mt-auto">
-          <div>
-            <div className="flex flex-col">
-              <span className="text-base sm:text-xl font-bold text-slate-900 leading-tight">
-                ${priceToDisplay?.toLocaleString('es-AR') || '0'}
-              </span>
-              {wholesalePrice < priceToDisplay && (
-                <span className="text-[9px] sm:text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded px-1.5 py-0.5 mt-1 w-fit leading-none">
-                  Mayorista: ${wholesalePrice.toLocaleString('es-AR')}
-                </span>
-              )}
-            </div>
-            {product.stock !== undefined && product.stock > 0 && (
-              <p className="text-[9px] sm:text-[11px] text-slate-400 mt-1">{product.stock} disponibles</p>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0 relative">
+        <div className="relative flex flex-col items-center mt-auto w-full pt-1">
+          {/* Centered Price */}
+          <span className="text-lg sm:text-2xl font-black text-blue-600 leading-tight mb-1 sm:mb-2">
+            ${priceToDisplay?.toLocaleString('es-AR') || '0'}
+          </span>
+          
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
             {/* Edit button (Admins only) */}
             {isAdminView && (
               <button
@@ -394,35 +409,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </div>
             )}
 
-            {/* Add to cart */}
-            {!isOutOfStock && (
-              <button
-                onClick={handleAddToCart}
-                className="p-1.5 sm:p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-md shadow-blue-500/20"
-                title="Añadir al carrito"
-              >
-                <ShoppingCart size={14} className="sm:w-[15px] sm:h-[15px]" />
-              </button>
-            )}
+
           </div>
         </div>
 
-        {/* Admin cost info */}
-        {isAdminView && (isOwner || product.type === '3d') && (
-          <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-500">
-            {isOwner && (
-              <>
-                <div>Costo: ${costToDisplay.toLocaleString('es-AR')}</div>
-                <div className="text-right text-emerald-600 font-semibold">
-                  Ganancia: ${((priceToDisplay || 0) - costToDisplay).toLocaleString('es-AR')}
-                </div>
-              </>
-            )}
-            {product.type === '3d' && (
-              <div className="col-span-2 mt-0.5">Tiempo: {formatPrintTime(product.printTimeMinutes)}</div>
-            )}
-          </div>
-        )}
+
       </div>
     </div>
   );

@@ -23,11 +23,7 @@ export const Footer: React.FC<FooterProps> = ({ settings }) => {
         {/* Left side: Brand & description */}
         <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            {settings?.logoUrl ? (
-              <img src={settings.logoUrl} alt={name} className="h-6 w-auto object-contain bg-white/10 p-0.5 rounded" />
-            ) : (
-              <span className="font-bold text-white tracking-wider bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">{name}</span>
-            )}
+            <span className="font-bold text-white tracking-wider bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">{name}</span>
           </div>
           <span className="text-slate-600 hidden sm:inline">|</span>
           <p className="text-slate-500">{desc}</p>

@@ -517,16 +517,47 @@ export const Categories: React.FC = () => {
                 />
               </div>
 
-              {/* Parent category info (read-only) */}
-              {parentCategory && (
-                <div className="bg-slate-50 border border-slate-200/60 rounded-lg p-3 flex items-center gap-2 text-slate-600 text-sm">
-                  <Folder size={16} className="text-amber-500 flex-shrink-0" />
-                  <span>
-                    {editingCategory ? 'Categoría padre:' : 'Se creará como subcategoría de:'}{' '}
-                    <strong>{parentCategory.name}</strong>
-                  </span>
-                </div>
-              )}
+              {/* Parent category selector */}
+              <div>
+                <label className="input-label">
+                  {editingCategory ? 'Mover a categoría padre' : 'Categoría padre'}
+                </label>
+                <select
+                  value={formParentId ?? ''}
+                  onChange={(e) => setFormParentId(e.target.value || null)}
+                  className="input w-full"
+                >
+                  <option value="">— Sin padre (categoría raíz) —</option>
+                  {canonicalCategories
+                    .filter((c) => {
+                      // Excluir la categoría que se está editando y todos sus descendientes
+                      if (!editingCategory) return true;
+                      if (c.id === editingCategory.id) return false;
+                      // Verificar que no sea descendiente de la categoría editada
+                      let current: Category | undefined = c;
+                      while (current?.parentId) {
+                        if (current.parentId === editingCategory.id) return false;
+                        current = canonicalCategories.find(x => x.id === current!.parentId);
+                      }
+                      return true;
+                    })
+                    .map((c) => {
+                      // Construir el path completo para mostrar en el select
+                      const path: string[] = [];
+                      let cur: Category | undefined = c;
+                      while (cur) {
+                        path.unshift(cur.name);
+                        cur = canonicalCategories.find(x => x.id === cur!.parentId);
+                      }
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {path.join(' › ')}
+                        </option>
+                      );
+                    })
+                  }
+                </select>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
